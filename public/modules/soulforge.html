@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+   <title>Geminus - Soulforge</title>
+   
+   <script src="https://cdn.tailwindcss.com"></script>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+   
+   <style>
+       :root {
+           --bg-color: #000000;
+           --accent-cyan: #00ffff;
+           --panel-bg: rgba(10, 30, 35, 0.1); 
+           --panel-border: rgba(0, 255, 255, 0.2);
+           --text-primary: #ffffff;
+           --text-secondary: #bae6fd;
+           --accent-orange: #f5a623;
+           --accent-red: #ff4d4d;
+           --accent-ascended: #ffd700;
+           --text-affordable: #a7f3d0;
+           --text-unaffordable: #fda4af;
+           --stat-highlight-bg: rgba(0, 255, 255, 0.1);
+           --stat-increase-color: #4ade80; /* Green */
+           --stat-decrease-color: #f87171; /* Red */
+       }
+       html, body { height: 100%; }
+       body { 
+           font-family: 'Inter', sans-serif; 
+           background-color: var(--bg-color); 
+           color: var(--text-primary); 
+           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+       }
+       .font-cinzel { font-family: 'Cinzel', serif; }
+       .main-container { 
+           max-width: 420px; 
+           height: 100%; 
+           background-color: #0a0a0a;
+           background-image: url('https://i.ibb.co/PpYh19g/IMG-1903.jpg');
+           background-size: cover;
+           background-position: center;
+       }
+       #app-content {
+           padding-bottom: 90px; /* Space for the fixed footer */
+       }
+       .header { background-color: rgba(0,0,0,0.5); border-bottom: 1px solid var(--panel-border); }
+       .header-title { color: var(--accent-cyan); text-shadow: 0 0 8px var(--accent-cyan), 0 1px 3px rgba(0, 0, 0, 0.7); }
+       .panel { background: var(--panel-bg); backdrop-filter: blur(10px); border: 1px solid var(--panel-border); border-radius: 0.5rem; }
+       .stat-row { border-bottom: 1px solid var(--panel-border); transition: background-color 0.2s; }
+       .stat-row:last-child { border-bottom: none; }
+       .stat-row.selectable:hover { background-color: var(--stat-highlight-bg); cursor: pointer; }
+       .stat-row.selected { background-color: var(--stat-highlight-bg); outline: 1px solid var(--accent-cyan); outline-offset: -1px; }
+       .cost-item-compact { background-color: rgba(0,0,0,0.4); border-radius: 0.5rem; border: 1px solid var(--panel-border); }
+       .inventory-slot { position: relative; border-radius: 0.5rem; border: 2px solid var(--panel-border); background-color: rgba(0,0,0,0.4); }
+       .inventory-slot.ascended { border-color: var(--accent-ascended); box-shadow: 0 0 12px var(--accent-ascended); }
+       .action-button, .secondary-action-button { background: rgba(0, 255, 255, 0.1); border: 1px solid var(--panel-border); border-radius: 0.75rem; color: var(--accent-cyan); font-weight: 700; text-shadow: 0 0 5px rgba(0, 255, 255, 0.5); transition: all 0.2s ease; }
+       .action-button:hover:not(:disabled) { background: rgba(0, 255, 255, 0.2); border-color: var(--accent-cyan); }
+       .secondary-action-button { background: rgba(0, 150, 150, 0.2); font-size: 0.875rem; padding: 0.5rem 1rem; }
+       .secondary-action-button:hover:not(:disabled) { background: rgba(0, 200, 200, 0.3); }
+       .action-button.shatter-mode, .secondary-action-button.shatter-mode, .modal-confirm-btn.shatter-mode { background: rgba(255, 77, 77, 0.1); color: var(--accent-red); text-shadow: 0 0 5px rgba(255, 77, 77, 0.5); border-color: rgba(255, 77, 77, 0.5); }
+       .action-button.shatter-mode:hover:not(:disabled), .secondary-action-button.shatter-mode:hover:not(:disabled), .modal-confirm-btn.shatter-mode:hover:not(:disabled) { background: rgba(255, 77, 77, 0.2); border-color: var(--accent-red); }
+       .action-button.ascension-mode, .modal-confirm-btn.ascension-mode { background: rgba(255, 215, 0, 0.1); color: var(--accent-ascended); text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); border-color: rgba(255, 215, 0, 0.5); }
+       .action-button.ascension-mode:hover:not(:disabled), .modal-confirm-btn.ascension-mode:hover:not(:disabled) { background: rgba(255, 215, 0, 0.2); border-color: var(--accent-ascended); }
+       .action-button:disabled, .secondary-action-button:disabled { background: rgba(60, 60, 60, 0.4); border-color: rgba(100, 100, 100, 0.8); cursor: not-allowed; color: #6b7280; text-shadow: none; }
+       .tab-nav-button { color: var(--text-secondary); transition: all 0.2s ease; border-bottom: 3px solid transparent; }
+       .tab-nav-button.active { color: var(--accent-orange); border-bottom-color: var(--accent-orange); }
+       .custom-input, .custom-select { background-color: rgba(0,0,0,0.4); border: 1px solid var(--panel-border); border-radius: 0.25rem; padding: 0.5rem; color: var(--text-primary); }
+       .custom-select option { background-color: #0a1e23; color: var(--text-primary); }
+       
+       @keyframes flash { 50% { box-shadow: 0 0 15px 5px var(--flash-color); border-color: var(--flash-color); } }
+       .animate-flash { animation: flash 0.5s ease-out; }
+ 
+       @keyframes critical-success { 0% { opacity: 1; transform: scale(0.5); } 50% { transform: scale(1.2); } 100% { opacity: 0; transform: scale(1.5); } }
+       #critical-success-message.animate { animation: critical-success 1.5s ease-out forwards; }
+       
+       .tier-checkbox { display: none; }
+       .tier-checkbox + label { display: flex; align-items: center; justify-content: center; border: 1px solid var(--panel-border); padding: 0.5rem; width: 4rem; height: 2.5rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s ease; text-align: center; }
+       .tier-checkbox:checked + label { background-color: var(--accent-red); color: black; font-weight: bold; border-color: var(--accent-red); }
+   </style>
+</head>
+<body class="bg-black flex justify-center">
+ 
+   <div id="soulforge-root" class="main-container flex flex-col">
+       <header class="header p-4 text-center flex-shrink-0">
+           <h1 id="page-title" class="font-cinzel text-2xl header-title">The Soulforge</h1>
+       </header>
+ 
+       <main id="app-content" class="flex-grow overflow-y-auto">
+           <div id="page-content" class="p-4 space-y-4">
+               <div class="panel p-4">
+                   <h2 id="selected-item-name" class="font-bold text-center mb-4 text-lg font-cinzel"></h2>
+                   <div class="grid grid-cols-3 gap-4">
+                       <div class="col-span-1 flex flex-col items-center justify-start">
+                           <div id="selected-item-icon" class="inventory-slot w-24 h-24 p-1">
+                               <div id="critical-success-message" class="absolute inset-0 flex items-center justify-center text-lg font-bold text-yellow-300 pointer-events-none opacity-0" style="text-shadow: 0 0 5px black;"></div>
+                           </div>
+                           <p id="primary-stat-display" class="text-sm font-bold text-orange-400 mt-2 text-center"></p>
+                       </div>
+                       <div id="selected-item-stats" class="col-span-2"></div>
+                   </div>
+                   <div id="item-interaction-panel" class="mt-4 pt-4 border-t border-dashed border-gray-600"></div>
+               </div>
+ 
+               <nav class="flex text-light flex-shrink-0 panel p-1">
+                   <button data-page="infusion" class="nav-button tab-nav-button active flex-1 py-2 text-center text-sm">Infusion</button>
+                   <button data-page="rerolling" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Rerolling</button>
+                   <button data-page="ascension" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Ascension</button>
+                   <button data-page="shatter" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Shatter</button>
+               </nav>
+ 
+               <div class="panel p-4">
+                    <div id="inventory-controls" class="flex justify-between items-center gap-2 mb-2">
+                       <input type="text" id="inventory-search" class="custom-input w-2/5 text-sm" placeholder="Search...">
+                       <select id="inventory-sort" class="custom-select w-2/5 text-sm">
+                           <option value="primaryStat">Sort by Power</option>
+                           <option value="name">Sort by Name</option>
+                       </select>
+                       <div id="secondary-action-container" class="w-1/5"></div>
+                   </div>
+                   <select id="inventory-select" size="6" class="custom-select w-full"></select>
+               </div>
+               
+               <div class="panel p-2">
+                   <div class="flex justify-between items-center text-xs mb-1 px-1">
+                       <span class="font-bold text-secondary">Crafting Mastery</span>
+                       <span id="mastery-level" class="font-bold"></span>
+                   </div>
+                   <div class="w-full bg-black/50 rounded-full h-2.5 border border-cyan-400/20">
+                       <div id="mastery-progress" class="bg-cyan-400 h-full rounded-full transition-all duration-500"></div>
+                   </div>
+               </div>
+           </div>
+       </main>
+       
+       <footer class="p-4 flex-shrink-0 absolute bottom-0 w-full max-w-[420px]">
+           <button id="action-button" class="action-button w-full py-3">Infuse</button>
+       </footer>
+   </div>
+   
+   <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+       <div class="panel p-6 rounded-lg shadow-lg max-w-sm w-full">
+           <h3 id="modal-title" class="text-xl font-bold font-cinzel text-center mb-4">Confirm Action</h3>
+           <p id="modal-message" class="text-center text-secondary mb-6">Are you sure?</p>
+           <div class="flex justify-center gap-4">
+               <button id="modal-cancel-btn" class="action-button w-full py-2" style="background-color: #4b5563; border-color: #6b7280;">Cancel</button>
+               <button id="modal-confirm-btn" class="action-button modal-confirm-btn w-full py-2">Confirm</button>
+           </div>
+       </div>
+   </div>
+   
+   <div id="bulk-shatter-modal" class="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+       <div class="panel p-6 rounded-lg shadow-lg max-w-md w-full">
+           <h3 class="text-xl font-bold font-cinzel text-center mb-4">Bulk Shatter</h3>
+           <div id="bulk-shatter-echoes-section" class="mb-6"></div>
+           <div class="border-t border-dashed border-gray-600 my-4"></div>
+           <div id="bulk-shatter-shadows-section">
+               <h4 class="font-bold text-center mb-2 text-orange-300">Shatter Shadows by Tier</h4>
+               <div id="bulk-shatter-tier-list" class="grid grid-cols-5 gap-2 mb-4 max-h-48 overflow-y-auto justify-center"></div>
+               <div id="bulk-shatter-shadows-summary" class="text-center text-secondary mb-4"></div>
+               <button id="bulk-shatter-shadows-btn" class="action-button shatter-mode w-full py-2" disabled>Shatter Selected Tiers</button>
+           </div>
+           <button id="bulk-shatter-cancel-btn" class="action-button w-full py-2 mt-4" style="background-color: #4b5563; border-color: #6b7280;">Close</button>
+       </div>
+   </div>
+ 
+<script type="module">
+   // --- MOCK DATA & CONFIG ---
+   const config = { ASCENSION_MIN_LEVEL: 10, CRITICAL_SUCCESS_CHANCE: 0.05, MASTERY_XP_GAIN: 10, MASTERY_CRITICAL_XP_BONUS: 100, MASTERY_XP_PER_LEVEL: (level) => 100 * Math.pow(1.5, level - 1), enchantmentPool: [ { name: 'STR', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'DEX', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'VIT', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'INT', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'WIS', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'Crit Chance', value: () => `+${(Math.random() * 3 + 0.5).toFixed(2)}%` }, { name: 'Crit Damage', value: () => `+${(Math.random() * 15 + 5).toFixed(2)}%` }, { name: 'Gold Find', value: () => `+${(Math.random() * 20 + 5).toFixed(0)}%` }, { name: 'EXP Gain', value: () => `+${(Math.random() * 10 + 2).toFixed(0)}%` }, ] };
+ 
+   // --- ITEM GENERATOR ---
+   function generateMockInventory() {
+       const itemBases = { weapon: ['Sword', 'Axe', 'Mace', 'Dagger', 'Staff', 'Bow', 'Claw'], boots: ['Boots', 'Greaves', 'Sabatons', 'Striders'], armor: ['Plate', 'Mail', 'Jerkin', 'Robes'], offHand: ['Shield', 'Orb', 'Tome', 'Focus'], helmet: ['Helm', 'Coif', 'Crown', 'Visor'], };
+       const prefixes = { common: ['Sturdy', 'Basic', 'Worn', 'Simple'], shadow: ['Shadowy', 'Gloomy', 'Veiled', 'Phantom'], echo: ['Faint', 'Lingering', 'Resonant', 'Fading'], };
+       
+       const generateItem = (id, type, tier) => {
+           const slot = Object.keys(itemBases)[Math.floor(Math.random() * Object.keys(itemBases).length)];
+           const baseName = itemBases[slot][Math.floor(Math.random() * itemBases[slot].length)];
+           const prefixList = type === 'shadow' ? prefixes.shadow : (type === 'echo' ? prefixes.echo : prefixes.common);
+           const prefix = prefixList[Math.floor(Math.random() * prefixList.length)];
+           const name = `${prefix} ${baseName}`;
+           const essenceValue = tier * 1000 + Math.floor(Math.random() * 1000);
+           
+           const stats = {};
+           let primaryStatKey = null;
+           if (['weapon'].includes(slot)) { stats.wc = tier * 50 + Math.floor(Math.random() * 50); primaryStatKey = 'wc'; }
+           else if (['armor', 'helmet', 'boots'].includes(slot)) { stats.ac = tier * 30 + Math.floor(Math.random() * 30); primaryStatKey = 'ac'; }
+           else if (['offHand'].includes(slot)) { stats.sc = tier * 40 + Math.floor(Math.random() * 40); primaryStatKey = 'sc'; }
+ 
+           if (type === 'shadow') {
+               const numEnchants = Math.floor(Math.random() * 3) + 1;
+               const availableEnchants = config.enchantmentPool.filter(e => e.name.toLowerCase() !== primaryStatKey);
+               for (let i = 0; i < numEnchants; i++) {
+                   if (availableEnchants.length === 0) break;
+                   const enchantIndex = Math.floor(Math.random() * availableEnchants.length);
+                   const enchant = availableEnchants[enchantIndex];
+                   stats[enchant.name.toLowerCase().replace(' ', '')] = enchant.value();
+                   availableEnchants.splice(enchantIndex, 1);
+               }
+           }
+ 
+           const item = { id: `item_${id}`, tier, type, name, slot, isAscended: false, infusionLevel: 0, icon: 'https://raw.githubusercontent.com/juugboytv/Geminus/main/Weapons/Ascended-Sword.PNG', stats, essenceValue };
+           
+           if (type === 'dropper' || type === 'shadow') {
+               item.cost = { gold: tier * 100, essence: tier * 2000 };
+               item.rerollCost = { gold: tier * 10000, essence: tier * 5000 };
+           }
+           return item;
+       };
+ 
+       let newInventory = [];
+       let idCounter = 1;
+       for (let i = 0; i < 20; i++) newInventory.push(generateItem(idCounter++, 'echo', Math.ceil(Math.random() * 10)));
+       for (let i = 0; i < 25; i++) newInventory.push(generateItem(idCounter++, 'shadow', Math.ceil(Math.random() * 20)));
+       for (let i = 0; i < 3; i++) newInventory.push(generateItem(idCounter++, 'dropper', Math.ceil(Math.random() * 15)));
+       
+       const ascensionReady = generateItem(idCounter++, 'shadow', 12);
+       ascensionReady.name = "Blade of the Precipice";
+       ascensionReady.infusionLevel = 10;
+       ascensionReady.ascensionCost = { gold: 2500000, essence: 5000000, primalSouls: 1 };
+       newInventory.push(ascensionReady);
+ 
+       const ascendedItem = generateItem(idCounter++, 'shadow', 15);
+       ascendedItem.name = "Champion's Will";
+       ascendedItem.isAscended = true;
+       newInventory.push(ascendedItem);
+ 
+       const equippedWeapon = generateItem(idCounter++, 'shadow', 18);
+       equippedWeapon.name = "Warlord's Longsword";
+       equippedWeapon.stats = { wc: 2000, str: '5000' };
+       newInventory.push(equippedWeapon);
+       
+       const mockPlayer = { id: 'player_1', resources: { gold: 5000000, essence: 10000000, primalSouls: 5 }, equipped: { weapon: equippedWeapon.id, offHand: null, boots: null }, mastery: { level: 1, xp: 20 } };
+ 
+       return { mockPlayer, mockInventory: newInventory };
+   }
+ 
+   const { mockPlayer, mockInventory } = generateMockInventory();
+ 
+   //================================================================
+   // MODULE: State Manager
+   //================================================================
+   const StateManager = {
+       _state: { player: null, inventory: [], currentPage: 'infusion', currentItemId: null, selectedStatIndex: -1, filters: { search: '', sort: 'primaryStat' } }, _onUpdate: () => {},
+       init(player, inventory, onUpdateCallback) { this._state.player = JSON.parse(JSON.stringify(player)); this._state.inventory = JSON.parse(JSON.stringify(inventory)); this._onUpdate = onUpdateCallback; },
+       getState() { return this._state; }, getPlayer() { return this._state.player; }, getInventory() { return this._state.inventory; }, getCurrentItem() { return this._state.inventory.find(i => i.id === this._state.currentItemId); },
+       setCurrentPage(page) { this._state.currentPage = page; this._state.currentItemId = null; this._state.selectedStatIndex = -1; },
+       setCurrentItemId(id) { this._state.currentItemId = id; this._state.selectedStatIndex = -1; },
+       setSelectedStatIndex(index) { this._state.selectedStatIndex = index; },
+       setFilters(filters) { this._state.filters = { ...this._state.filters, ...filters }; },
+       updatePlayerResources(cost) { for (const key in cost) { if (this._state.player.resources[key] !== undefined) { this._state.player.resources[key] -= cost[key]; } } },
+       addPlayerResources(gains) { for (const key in gains) { if (this._state.player.resources[key] !== undefined) { this._state.player.resources[key] += gains[key]; } } },
+       addMasteryXp(xp) { this._state.player.mastery.xp += xp; let xpToNextLevel = config.MASTERY_XP_PER_LEVEL(this._state.player.mastery.level); while (this._state.player.mastery.xp >= xpToNextLevel) { this._state.player.mastery.level++; this._state.player.mastery.xp -= xpToNextLevel; xpToNextLevel = config.MASTERY_XP_PER_LEVEL(this._state.player.mastery.level); } },
+       bulkRemoveItems(itemIds) { this._state.inventory = this._state.inventory.filter(i => !itemIds.includes(i.id)); },
+       updateAndSync(action) { action(); this._onUpdate(this.getState()); },
+       updateItem(updatedItem) { const index = this._state.inventory.findIndex(i => i.id === updatedItem.id); if (index !== -1) { this._state.inventory[index] = updatedItem; } },
+       removeItem(itemId) { this._state.inventory = this._state.inventory.filter(i => i.id !== itemId); }
+   };
+ 
+   //================================================================
+   // MODULE: Crafting Systems
+   //================================================================
+   const CraftingSystems = {
+       getPrimaryStatKey: (item) => {
+           if (item.stats.wc !== undefined) return 'wc';
+           if (item.stats.sc !== undefined) return 'sc';
+           if (item.stats.ac !== undefined) return 'ac';
+           return null;
+       },
+       infusion: { isEligible: (item) => (item.type === 'dropper' || item.type === 'shadow') && !item.isAscended, getCost: (item) => { const level = item.infusionLevel || 0; const mult = Math.pow(1.5, level); return { gold: Math.floor(item.cost.gold * mult), essence: Math.floor(item.cost.essence * mult) }; }, 
+           preview: (item, isCritical = false) => { 
+               const newItem = JSON.parse(JSON.stringify(item));
+               const statMultiplier = isCritical ? 1.20 : 1.1;
+               const primaryStatKey = CraftingSystems.getPrimaryStatKey(newItem);
+               if (primaryStatKey) {
+                   newItem.stats[primaryStatKey] = Math.floor(newItem.stats[primaryStatKey] * statMultiplier);
+               }
+               return newItem; 
+           }, 
+           execute: (item, isCritical) => CraftingSystems.infusion.preview(item, isCritical) 
+       },
+       rerolling: { isEligible: (item) => item.type === 'shadow' && !item.isAscended, getCost: (item) => item.rerollCost, execute: (item, statKey, enchantmentPool) => { const newItem = JSON.parse(JSON.stringify(item)); const currentStatNames = Object.keys(newItem.stats); let potential = enchantmentPool.filter(e => !currentStatNames.includes(e.name.toLowerCase().replace(' ', ''))); if (potential.length === 0) potential = enchantmentPool; const newEnchant = potential[Math.floor(Math.random() * potential.length)]; delete newItem.stats[statKey]; newItem.stats[newEnchant.name.toLowerCase().replace(' ', '')] = newEnchant.value(); return newItem; } },
+       shatter: { isEligible: (item) => (item.type === 'shadow' || item.type === 'echo') && !item.isAscended, getGain: (item, isCritical) => ({ essence: item.essenceValue * (isCritical ? 2 : 1) }), },
+       ascension: { isEligible: (item, minLevel) => item.type === 'shadow' && !item.isAscended && item.infusionLevel >= minLevel, getCost: (item, isCritical) => { const cost = { ...item.ascensionCost }; if (isCritical) { cost.primalSouls = 0; } return cost; }, 
+           execute: (item) => { 
+               const newItem = JSON.parse(JSON.stringify(item));
+               newItem.isAscended = true;
+               const primaryStatKey = CraftingSystems.getPrimaryStatKey(newItem);
+               if (primaryStatKey) {
+                   newItem.stats[primaryStatKey] = Math.floor(newItem.stats[primaryStatKey] * 1.5);
+               }
+               return newItem; 
+           } 
+       },
+       canAfford: (player, cost) => { if (!cost) return false; return Object.keys(cost).every(key => player.resources[key] >= cost[key]); }
+   };
+ 
+   //================================================================
+   // MODULE: UI Manager
+   //================================================================
+   const UIManager = {
+       _elements: {}, _controller: null, _onConfirmCallback: () => {},
+       _resourceIcons: { gold: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f9a825' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8'%3E%3C/circle%3E%3Cpath d='M12 4v16M8 8h8M8 16h8'%3E%3C/path%3E%3C/svg%3E`, essence: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'%3E%3C/path%3E%3C/svg%3E`, primalSouls: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff4d4d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'%3E%3C/path%3E%3C/svg%3E` },
+       init(controller) { this._controller = controller; this._cacheElements(); this._addEventListeners(); },
+       _cacheElements() { this._elements = { root: document.getElementById('soulforge-root'), pageTitle: document.getElementById('page-title'), navButtons: document.querySelectorAll('.nav-button'), itemIcon: document.getElementById('selected-item-icon'), criticalSuccessMessage: document.getElementById('critical-success-message'), itemName: document.getElementById('selected-item-name'), primaryStatDisplay: document.getElementById('primary-stat-display'), itemStats: document.getElementById('selected-item-stats'), interactionPanel: document.getElementById('item-interaction-panel'), actionButton: document.getElementById('action-button'), inventorySelect: document.getElementById('inventory-select'), inventorySearch: document.getElementById('inventory-search'), inventorySort: document.getElementById('inventory-sort'), secondaryActionContainer: document.getElementById('secondary-action-container'), modal: document.getElementById('confirmation-modal'), modalTitle: document.getElementById('modal-title'), modalMessage: document.getElementById('modal-message'), modalConfirmBtn: document.getElementById('modal-confirm-btn'), modalCancelBtn: document.getElementById('modal-cancel-btn'), masteryLevel: document.getElementById('mastery-level'), masteryProgress: document.getElementById('mastery-progress'), bulkShatterModal: document.getElementById('bulk-shatter-modal'), bulkShatterEchoesSection: document.getElementById('bulk-shatter-echoes-section'), bulkShatterTierList: document.getElementById('bulk-shatter-tier-list'), bulkShatterShadowsSummary: document.getElementById('bulk-shatter-shadows-summary'), bulkShatterShadowsBtn: document.getElementById('bulk-shatter-shadows-btn'), bulkShatterCancelBtn: document.getElementById('bulk-shatter-cancel-btn'), }; },
+       _addEventListeners() { this._elements.navButtons.forEach(b => b.addEventListener('click', () => this._controller.onNavigate(b.dataset.page))); this._elements.inventorySelect.addEventListener('change', (e) => this._controller.onSelectItem(e.target.value)); this._elements.inventorySearch.addEventListener('input', (e) => this._controller.onFilterChange({ search: e.target.value })); this._elements.inventorySort.addEventListener('change', (e) => this._controller.onFilterChange({ sort: e.target.value })); this._elements.itemStats.addEventListener('click', (e) => { const statRow = e.target.closest('.stat-row'); if (statRow) this._controller.onSelectStat(statRow.dataset.statKey); }); this._elements.actionButton.addEventListener('click', () => this._controller.onAction()); this._elements.modalCancelBtn.addEventListener('click', () => this.hideModal()); this._elements.modalConfirmBtn.addEventListener('click', () => { this._onConfirmCallback(); this.hideModal(); }); this._elements.bulkShatterCancelBtn.addEventListener('click', () => this.hideBulkShatterModal()); },
+       showModal({ title, message, onConfirm, confirmClass }) { this._elements.modalTitle.textContent = title; this._elements.modalMessage.innerHTML = message; this._onConfirmCallback = onConfirm; this._elements.modalConfirmBtn.className = `action-button modal-confirm-btn w-full py-2 ${confirmClass || ''}`; this._elements.modal.classList.remove('hidden'); },
+       hideModal() { this._elements.modal.classList.add('hidden'); this._onConfirmCallback = () => {}; },
+       showBulkShatterModal(state) { this.renderBulkShatterEchoes(state); this.renderBulkShatterShadows(state); this._elements.bulkShatterModal.classList.remove('hidden'); },
+       hideBulkShatterModal() { this._elements.bulkShatterModal.classList.add('hidden'); },
+       renderBulkShatterEchoes(state) { const echoes = state.inventory.filter(i => i.type === 'echo'); if (echoes.length === 0) { this._elements.bulkShatterEchoesSection.innerHTML = '<p class="text-center text-secondary">No Echoes to shatter.</p>'; return; } const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); this._elements.bulkShatterEchoesSection.innerHTML = ` <h4 class="font-bold text-center mb-2 text-cyan-300">Shatter All Echoes</h4> <p class="text-center text-secondary mb-2">Shatter <strong>${echoes.length}</strong> Echoes for <strong>${totalGain.toLocaleString()}</strong> Essence.</p> <button id="bulk-shatter-echoes-btn" class="action-button shatter-mode w-full py-2">Shatter All Echoes</button> `; document.getElementById('bulk-shatter-echoes-btn').onclick = () => this._controller.onBulkShatterEchoes(); },
+       renderBulkShatterShadows(state) {
+           const shadowTiers = [...new Set(state.inventory.filter(i => i.type === 'shadow' && !i.isAscended).map(i => i.tier))].sort((a,b) => a-b);
+           if (shadowTiers.length === 0) { this._elements.bulkShatterTierList.innerHTML = '<p class="text-center text-secondary">No Shadows to shatter.</p>'; this._elements.bulkShatterShadowsSummary.innerHTML = ''; this._elements.bulkShatterShadowsBtn.disabled = true; return; }
+           this._elements.bulkShatterTierList.innerHTML = shadowTiers.map(tier => ` <div> <input type="checkbox" id="tier-${tier}" value="${tier}" class="tier-checkbox"> <label for="tier-${tier}">T${tier}</label> </div> `).join('');
+           const updateSummary = () => {
+               const checkedTiers = [...this._elements.bulkShatterTierList.querySelectorAll('input:checked')].map(cb => parseInt(cb.value));
+               if (checkedTiers.length === 0) { this._elements.bulkShatterShadowsSummary.innerHTML = 'Select tiers to shatter.'; this._elements.bulkShatterShadowsBtn.disabled = true; return; }
+               const itemsToShatter = state.inventory.filter(i => i.type === 'shadow' && !i.isAscended && checkedTiers.includes(i.tier));
+               const totalGain = itemsToShatter.reduce((sum, item) => sum + item.essenceValue, 0);
+               this._elements.bulkShatterShadowsSummary.innerHTML = `Shatter <strong>${itemsToShatter.length}</strong> items for <strong>${totalGain.toLocaleString()}</strong> Essence.`;
+               this._elements.bulkShatterShadowsBtn.disabled = false;
+           };
+           this._elements.bulkShatterTierList.querySelectorAll('input').forEach(cb => cb.onchange = updateSummary);
+           this._elements.bulkShatterShadowsBtn.onclick = () => { const checkedTiers = [...this._elements.bulkShatterTierList.querySelectorAll('input:checked')].map(cb => parseInt(cb.value)); this._controller.onBulkShatterShadows(checkedTiers); };
+           updateSummary();
+       },
+       triggerItemAnimation(color) { const icon = this._elements.itemIcon; icon.style.setProperty('--flash-color', color); icon.classList.add('animate-flash'); setTimeout(() => icon.classList.remove('animate-flash'), 500); },
+       showCriticalSuccess() { const msg = this._elements.criticalSuccessMessage; msg.textContent = 'Critical Success!'; msg.classList.add('animate'); setTimeout(() => msg.classList.remove('animate'), 1500); },
+       render(state, visibleInventory) { this.renderNav(state); this.renderInventory(state, visibleInventory); this.renderSelectedItem(state); this.renderMastery(state.player.mastery); },
+       renderNav(state) { const { currentPage } = state; const pageName = currentPage.charAt(0).toUpperCase() + currentPage.slice(1); this._elements.pageTitle.textContent = `The Soulforge - ${pageName}`; this._elements.actionButton.textContent = pageName; this._elements.navButtons.forEach(b => b.classList.toggle('active', b.dataset.page === currentPage)); this._elements.actionButton.className = 'action-button w-full py-3'; if (currentPage === 'shatter') this._elements.actionButton.classList.add('shatter-mode'); if (currentPage === 'ascension') this._elements.actionButton.classList.add('ascension-mode'); this.renderSecondaryAction(state); },
+       renderSecondaryAction(state) { this._elements.secondaryActionContainer.innerHTML = ''; if (state.currentPage === 'shatter') { const btn = document.createElement('button'); btn.textContent = 'Bulk'; btn.className = 'secondary-action-button w-full shatter-mode'; btn.onclick = () => this._controller.onBulkShatter(); this._elements.secondaryActionContainer.appendChild(btn); } },
+       renderInventory(state, visibleInventory) { if (visibleInventory.length > 0) { this._elements.inventorySelect.innerHTML = visibleInventory.map(item => { let suffix = ''; if (item.isAscended) suffix = ' (Ascended)'; else if (item.infusionLevel > 0) suffix = ` +${item.infusionLevel}`; return `<option value="${item.id}" ${item.id === state.currentItemId ? 'selected' : ''}>${item.name}${suffix}</option>`; }).join(''); } else { this._elements.inventorySelect.innerHTML = `<option disabled>No eligible items.</option>`; } },
+       renderSelectedItem(state) { const item = state.inventory.find(i => i.id === state.currentItemId); if (!item) { this.clearItemView(); return; } let displayName = item.name; if (item.isAscended) displayName = `${item.name} (Ascended)`; else if (item.infusionLevel > 0) displayName = `${item.name} +${item.infusionLevel}`; this._elements.itemIcon.querySelector('img')?.remove(); const img = document.createElement('img'); img.src = item.icon; img.className = "w-full h-full object-contain"; img.alt = item.name; this._elements.itemIcon.prepend(img); this._elements.itemIcon.classList.toggle('ascended', item.isAscended); this._elements.itemName.textContent = displayName; this._elements.itemName.style.color = item.isAscended ? 'var(--accent-ascended)' : 'var(--text-primary)'; this.renderStats(state, item); this.renderInteractionPanel(state, item); },
+       renderStats(state, item) {
+           const isRerollable = state.currentPage === 'rerolling' && CraftingSystems.rerolling.isEligible(item);
+           const isInfusionPreview = state.currentPage === 'infusion' && CraftingSystems.infusion.isEligible(item);
+           const previewItem = isInfusionPreview ? CraftingSystems.infusion.preview(item) : null;
+           
+           const primaryStatKey = CraftingSystems.getPrimaryStatKey(item);
+           let primaryStatHTML = '';
+           if (primaryStatKey) {
+               primaryStatHTML = `${primaryStatKey.toUpperCase()}: ${item.stats[primaryStatKey].toLocaleString()}`;
+               if (previewItem) {
+                   primaryStatHTML += ` <span style="color: var(--stat-increase-color);">→ ${previewItem.stats[primaryStatKey].toLocaleString()}</span>`;
+               }
+           }
+           this._elements.primaryStatDisplay.innerHTML = primaryStatHTML;
+ 
+           this._elements.itemStats.innerHTML = Object.entries(item.stats).map(([key, value]) => {
+               if (key === primaryStatKey) return ''; // Don't show primary stat in the list
+               const currentValue = typeof value === 'number' ? value.toLocaleString() : value;
+               const selectableClass = isRerollable ? 'selectable' : '';
+               const selectedClass = isRerollable && key === state.selectedStatIndex ? 'selected' : '';
+               return `<div class="stat-row flex justify-between items-center py-1 px-2 text-sm ${selectableClass} ${selectedClass}" data-stat-key="${key}"><span class="text-secondary">${key.toUpperCase()}</span><span class="font-bold text-primary">${currentValue}</span></div>`;
+           }).join('');
+       },
+       renderInteractionPanel(state, item) {
+           const { currentPage, player, selectedStatIndex } = state;
+           let panelHTML = '', disabled = true;
+ 
+           if (item.isAscended) {
+               panelHTML = '<p class="text-center text-lg font-bold" style="color: var(--accent-ascended);">Item is Ascended</p>';
+           } else if (currentPage === 'infusion' && CraftingSystems.infusion.isEligible(item)) {
+               const cost = CraftingSystems.infusion.getCost(item);
+               disabled = !CraftingSystems.canAfford(player, cost);
+               panelHTML = this._createCostPanelHTML('Cost to Infuse +' + (item.infusionLevel + 1), cost, player);
+           } else if (currentPage === 'shatter' && CraftingSystems.shatter.isEligible(item)) {
+               const gain = CraftingSystems.shatter.getGain(item, false);
+               disabled = false;
+               panelHTML = `<h3 class="text-center font-bold mb-2 text-cyan-300">Essence Gained</h3>
+               <div class="flex justify-center">
+                   <div class="cost-item-compact p-2 flex items-center gap-2">
+                       <img src="${this._resourceIcons.essence}" class="h-8 w-8" alt="Essence">
+                       <span class="text-lg font-bold text-cyan-200">+${gain.essence.toLocaleString()}</span>
+                   </div>
+               </div>`;
+           } else if (currentPage === 'rerolling' && CraftingSystems.rerolling.isEligible(item)) {
+               if (selectedStatIndex === -1) {
+                   panelHTML = '<p class="text-center text-sm text-secondary">Select a stat to reroll.</p>';
+               } else {
+                   const cost = CraftingSystems.rerolling.getCost(item);
+                   disabled = !CraftingSystems.canAfford(player, cost);
+                   panelHTML = this._createCostPanelHTML('Cost to Reroll Stat', cost, player);
+               }
+           } else if (currentPage === 'ascension' && CraftingSystems.ascension.isEligible(item, config.ASCENSION_MIN_LEVEL)) {
+               const cost = CraftingSystems.ascension.getCost(item, false);
+               disabled = !CraftingSystems.canAfford(player, cost);
+               panelHTML = this._createCostPanelHTML('Cost to Ascend', cost, player);
+           }
+           this._elements.interactionPanel.innerHTML = panelHTML;
+           this._elements.actionButton.disabled = disabled;
+       },
+       _createCostPanelHTML(title, cost, player) {
+           const resourceHTML = Object.keys(cost).map(key => {
+               const canAfford = player.resources[key] >= cost[key];
+               const color = canAfford ? 'var(--text-affordable)' : 'var(--text-unaffordable)';
+               const iconSrc = this._resourceIcons[key];
+               return `<div class="cost-item-compact p-2 flex-1 flex items-center justify-center gap-2">
+                           <img src="${iconSrc}" class="h-6 w-6" alt="${key}">
+                           <span class="text-sm" style="color: ${color};">${player.resources[key].toLocaleString()}/${cost[key].toLocaleString()}</span>
+                       </div>`;
+           }).join('');
+           return `<h3 class="text-center font-bold mb-2 text-orange-300">${title}</h3><div class="flex justify-center gap-2 sm:gap-4">${resourceHTML}</div>`;
+       },
+       clearItemView() { this._elements.itemIcon.querySelector('img')?.remove(); this._elements.itemName.textContent = 'No Item Selected'; this._elements.primaryStatDisplay.textContent = ''; this._elements.itemStats.innerHTML = '<p class="text-sm text-secondary text-center h-full flex items-center justify-center">Select an item from your inventory to see its stats.</p>'; this._elements.interactionPanel.innerHTML = ''; this._elements.actionButton.disabled = true; },
+       renderMastery(mastery) { const xpToNextLevel = config.MASTERY_XP_PER_LEVEL(mastery.level); const progress = (mastery.xp / xpToNextLevel) * 100; this._elements.masteryLevel.textContent = `Lvl. ${mastery.level}`; this._elements.masteryProgress.style.width = `${Math.min(progress, 100)}%`; }
+   };
+ 
+   //================================================================
+   // MODULE: Soulforge Controller
+   //================================================================
+   const SoulforgeController = {
+       init(player, inventory, onUpdate) { StateManager.init(player, inventory, onUpdate); UIManager.init(this); this.refreshUI(); },
+       refreshUI() { UIManager.render(StateManager.getState(), this.getVisibleInventory()); },
+       getVisibleInventory() { 
+           const state = StateManager.getState();
+           let pool = state.inventory;
+           if (state.currentPage === 'infusion') pool = state.inventory.filter(i => CraftingSystems.infusion.isEligible(i)); 
+           else if (state.currentPage === 'shatter') pool = state.inventory.filter(i => CraftingSystems.shatter.isEligible(i)); 
+           else if (state.currentPage === 'rerolling') pool = state.inventory.filter(i => CraftingSystems.rerolling.isEligible(i)); 
+           else if (state.currentPage === 'ascension') pool = state.inventory.filter(i => CraftingSystems.ascension.isEligible(i, config.ASCENSION_MIN_LEVEL)); 
+           
+           const { search, sort } = state.filters;
+           const filtered = pool.filter(i => i.name.toLowerCase().includes(search.toLowerCase())); 
+           
+           const getPrimaryStatValue = item => {
+               const key = CraftingSystems.getPrimaryStatKey(item);
+               return key ? item.stats[key] || 0 : 0;
+           };
+ 
+           return [...filtered].sort((a, b) => {
+               if (sort === 'primaryStat') return getPrimaryStatValue(b) - getPrimaryStatValue(a);
+               return a.name.localeCompare(b.name);
+           }); 
+       },
+       getState() { return StateManager.getState(); },
+       onNavigate(page) { StateManager.setCurrentPage(page); const visibleInventory = this.getVisibleInventory(); if (visibleInventory.length > 0) { StateManager.setCurrentItemId(visibleInventory[0].id); } this.refreshUI(); },
+       onSelectItem(itemId) { StateManager.setCurrentItemId(itemId); this.refreshUI(); },
+       onSelectStat(statKey) { StateManager.setSelectedStatIndex(statKey); this.refreshUI(); },
+       onFilterChange(filter) { StateManager.setFilters(filter); this.refreshUI(); },
+       onAction() { const state = StateManager.getState(); const item = StateManager.getCurrentItem(); if (!item) return; switch(state.currentPage) { case 'infusion': this.executeInfusion(item); break; case 'rerolling': this.executeReroll(item, state.selectedStatIndex); break; case 'shatter': UIManager.showModal({ title: 'Shatter Item', message: `Shatter <strong>${item.name}</strong>? This cannot be undone.`, onConfirm: () => this.executeShatter(item), confirmClass: 'shatter-mode' }); break; case 'ascension': UIManager.showModal({ title: 'Ascend Item', message: `Ascend <strong>${item.name}</strong>? The item will become permanent.`, onConfirm: () => this.executeAscension(item), confirmClass: 'ascension-mode' }); break; } },
+       onBulkShatter() { UIManager.showBulkShatterModal(StateManager.getState()); },
+       onBulkShatterEchoes() { const echoes = StateManager.getInventory().filter(i => i.type === 'echo'); if (echoes.length === 0) return; const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); UIManager.hideBulkShatterModal(); UIManager.showModal({ title: 'Bulk Shatter Echoes', message: `Shatter <strong>${echoes.length}</strong> Echo items for <strong>${totalGain.toLocaleString()}</strong> Essence?`, onConfirm: () => this.executeBulkShatterEchoes(echoes), confirmClass: 'shatter-mode'}); },
+       onBulkShatterShadows(tiers) { if (tiers.length === 0) return; const itemsToShatter = StateManager.getInventory().filter(i => i.type === 'shadow' && !i.isAscended && tiers.includes(i.tier)); const totalGain = itemsToShatter.reduce((sum, item) => sum + item.essenceValue, 0); UIManager.hideBulkShatterModal(); UIManager.showModal({ title: 'Bulk Shatter Shadows', message: `Shatter <strong>${itemsToShatter.length}</strong> items from tiers <strong>[${tiers.join(', ')}]</strong> for <strong>${totalGain.toLocaleString()}</strong> Essence?`, onConfirm: () => this.executeBulkShatterShadows(itemsToShatter), confirmClass: 'shatter-mode'}); },
+       _performCraft(logic) { const isCritical = Math.random() < config.CRITICAL_SUCCESS_CHANCE; let xpGained = config.MASTERY_XP_GAIN; if (isCritical) { xpGained += config.MASTERY_CRITICAL_XP_BONUS; UIManager.showCriticalSuccess(); } StateManager.updateAndSync(() => { logic(isCritical); StateManager.addMasteryXp(xpGained); }); this.refreshUI(); },
+       executeInfusion(item) { this._performCraft((isCritical) => { const cost = CraftingSystems.infusion.getCost(item); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.infusion.execute(item, isCritical); StateManager.updatePlayerResources(cost); StateManager.updateItem({ ...newItem, infusionLevel: item.infusionLevel + 1 }); UIManager.triggerItemAnimation('var(--accent-cyan)'); }); },
+       executeReroll(item, statKey) { if (statKey === -1) return; this._performCraft((isCritical) => { const cost = CraftingSystems.rerolling.getCost(item); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.rerolling.execute(item, statKey, config.enchantmentPool); if (!isCritical) { StateManager.updatePlayerResources(cost); } else { UIManager.showModal({title: 'Critical Success!', message: 'Your reroll was free!', onConfirm: () => {}})} StateManager.updateItem(newItem); StateManager.setSelectedStatIndex(-1); UIManager.triggerItemAnimation('var(--accent-orange)'); }); },
+       executeShatter(item) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const gain = CraftingSystems.shatter.getGain(item, isCritical); StateManager.addPlayerResources(gain); StateManager.removeItem(item.id); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
+       executeBulkShatterEchoes(echoes) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); const echoIds = echoes.map(i => i.id); StateManager.addPlayerResources({ essence: totalGain * (isCritical ? 2 : 1) }); StateManager.bulkRemoveItems(echoIds); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
+       executeBulkShatterShadows(items) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const totalGain = items.reduce((sum, item) => sum + item.essenceValue, 0); const itemIds = items.map(i => i.id); StateManager.addPlayerResources({ essence: totalGain * (isCritical ? 2 : 1) }); StateManager.bulkRemoveItems(itemIds); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
+       executeAscension(item) { this._performCraft((isCritical) => { const cost = CraftingSystems.ascension.getCost(item, isCritical); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.ascension.execute(item); StateManager.updatePlayerResources(cost); StateManager.updateItem(newItem); UIManager.triggerItemAnimation('var(--accent-ascended)'); }); }
+   };
+ 
+   // --- INITIALIZATION ---
+   window.SoulforgeController = SoulforgeController;
+</script>
+</body>
+</html>
+ 

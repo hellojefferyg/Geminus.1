@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Geminus - Gemcutter's Workshop</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #000000;
+            --accent-cyan: #00ffff;
+            --panel-bg: rgba(10, 20, 25, 0.6); 
+            --panel-border: rgba(245, 166, 35, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #bae6fd;
+            --accent-orange: #f5a623;
+            --accent-red: #ff4d4d;
+            --text-affordable: #a7f3d0;
+            --text-unaffordable: #fda4af;
+            --stat-highlight-bg: rgba(245, 166, 35, 0.1);
+            --glow-caster: #3b82f6; /* Blue */
+            --glow-fighter: #ef4444; /* Red */
+            --glow-misc: #22c55e;   /* Green */
+        }
+        html, body { height: 100%; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-primary); 
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            background-image: url('https://i.ibb.co/GQSfZCpf/IMG-1985.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .main-container { 
+            max-width: 480px; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.5);
+        }
+        #app-content {
+            padding-bottom: 90px; /* Space for the fixed footer */
+        }
+        .header { background-color: rgba(0,0,0,0.5); border-bottom: 1px solid var(--panel-border); }
+        .header-title { color: var(--accent-orange); text-shadow: 0 0 8px var(--accent-orange), 0 1px 3px rgba(0, 0, 0, 0.7); }
+        .panel { background: var(--panel-bg); backdrop-filter: blur(10px); border: 1px solid var(--panel-border); border-radius: 0.5rem; }
+        
+        .action-button { background: rgba(245, 166, 35, 0.1); border: 1px solid rgba(245, 166, 35, 0.5); border-radius: 0.75rem; color: var(--accent-orange); font-weight: 700; text-shadow: 0 0 5px rgba(245, 166, 35, 0.5); transition: all 0.2s ease; }
+        .action-button:hover:not(:disabled) { background: rgba(245, 166, 35, 0.2); border-color: var(--accent-orange); }
+        .action-button:disabled { background: rgba(60, 60, 60, 0.4); border-color: rgba(100, 100, 100, 0.8); cursor: not-allowed; color: #6b7280; text-shadow: none; }
+        .action-button.destroy { background: rgba(255, 77, 77, 0.1); color: var(--accent-red); text-shadow: 0 0 5px rgba(255, 77, 77, 0.5); border-color: rgba(255, 77, 77, 0.5); }
+        .action-button.destroy:hover:not(:disabled) { background: rgba(255, 77, 77, 0.2); border-color: var(--accent-red); }
+
+        .tab-nav-button { color: var(--text-secondary); transition: all 0.2s ease; border-bottom: 3px solid transparent; }
+        .tab-nav-button.active { color: var(--accent-orange); border-bottom-color: var(--accent-orange); }
+        
+        .custom-select { background-color: rgba(0,0,0,0.4); border: 1px solid var(--panel-border); border-radius: 0.25rem; padding: 0.5rem; color: var(--text-primary); }
+        
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 0.75rem; }
+        .inventory-slot { position: relative; width: 100%; padding-bottom: 100%; height: 0; border: 1px solid var(--panel-border); border-radius: 0.375rem; background: rgba(0,0,0,0.4); cursor: pointer; transition: all 0.2s; }
+        .inventory-slot:hover { border-color: var(--accent-orange); transform: translateY(-2px); }
+        .inventory-slot.selected { border-color: var(--accent-orange); box-shadow: 0 0 10px var(--accent-orange); }
+        .inventory-slot img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+        
+        .gem-pouch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 0.5rem; }
+        .gem-item { position: relative; border: 2px solid; border-radius: 0.375rem; background: rgba(0,0,0,0.2); cursor: pointer; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .gem-item.gem-type-Fighter { border-color: var(--glow-fighter); }
+        .gem-item.gem-type-Caster { border-color: var(--glow-caster); }
+        .gem-item.gem-type-Misc { border-color: var(--glow-misc); }
+        .gem-item:hover { transform: scale(1.1); }
+        .gem-item.selected { box-shadow: 0 0 12px var(--accent-orange); transform: scale(1.1); }
+
+        .fuse-slot { border-radius: 0.5rem; border: 2px dashed var(--panel-border); background-color: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; }
+        .fuse-slot:hover { background-color: rgba(245, 166, 35, 0.1); }
+        .fuse-slot.filled { border-style: solid; border-color: var(--accent-orange); }
+
+        .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.8); z-index: 50; display: none; align-items: center; justify-content: center; }
+        .modal-content { position: relative; width: 90%; max-width: 400px; }
+        
+        .custom-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; outline: none; border: 1px solid var(--panel-border); }
+        .custom-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: var(--accent-orange); cursor: pointer; border-radius: 50%; border: 2px solid #000; }
+        .custom-slider::-moz-range-thumb { width: 20px; height: 20px; background: var(--accent-orange); cursor: pointer; border-radius: 50%; border: 2px solid #000; }
+
+        /* Artisan Perks */
+        .perk-node { border: 2px solid var(--panel-border); background-color: rgba(0,0,0,0.4); transition: all 0.3s; }
+        .perk-node.can-unlock { border-color: var(--accent-orange); cursor: pointer; }
+        .perk-node.can-unlock:hover { background-color: var(--stat-highlight-bg); }
+        .perk-node.unlocked { border-color: var(--accent-cyan); background-color: rgba(0, 255, 255, 0.1); }
+        .perk-node.maxed { border-color: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-cyan); }
+    </style>
+</head>
+<body class="flex justify-center">
+
+    <div id="gem-cutter-root" class="main-container flex flex-col">
+        <header class="header p-4 text-center flex-shrink-0">
+            <h1 class="font-cinzel text-2xl header-title">Gemcutter's Workshop</h1>
+        </header>
+
+        <main id="app-content" class="flex-grow overflow-y-auto p-4 space-y-4">
+            <nav class="flex text-light flex-shrink-0 panel p-1">
+                <button data-page="socketing" class="nav-button tab-nav-button active flex-1 py-2 text-center text-sm">Socket</button>
+                <button data-page="unsocketing" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Unsocket</button>
+                <button data-page="fusing" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Fuse</button>
+                <button data-page="gem_crucible" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Gem Crucible</button>
+                <button data-page="salvage" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Salvage</button>
+                <button data-page="artisan" class="nav-button tab-nav-button flex-1 py-2 text-center text-sm">Artisan</button>
+            </nav>
+
+            <div class="panel p-2">
+                <div class="flex justify-center items-center text-sm gap-4">
+                    <span><strong class="text-yellow-400">Gold:</strong> <span id="player-gold"></span></span>
+                    <span><strong class="text-cyan-400">Gem Dust:</strong> <span id="player-gem-dust"></span></span>
+                </div>
+            </div>
+
+            <div id="page-content" class="space-y-4">
+                <!-- Content will be dynamically rendered here -->
+            </div>
+        </main>
+        
+        <footer class="p-4 flex-shrink-0 absolute bottom-0 w-full max-w-[480px]">
+            <div id="action-panel" class="text-center"></div>
+        </footer>
+    </div>
+    
+    <!-- Modals -->
+    <div id="confirmation-modal" class="modal-backdrop">
+        <div id="modal-content-area" class="modal-content panel p-6 rounded-lg shadow-lg"></div>
+    </div>
+    <div id="toast-notification" class="fixed bottom-[-100px] left-1/2 -translate-x-1/2 z-[1000] transition-all duration-500 ease-in-out px-6 py-3 rounded-lg font-semibold border"></div>
+
+<script type="module">
+    // --- GDD DATA & CONFIG ---
+    // This section now contains all the gem data and crucible logic provided.
+    const GDD = {
+        UNSOCKET_COST: 250,
+        MAX_TIER: 25,
+        FUSE_REQUIREMENT: 3, // For old fusing system
+        fusingCost: (gemGrade) => ({ gold: (gemGrade ** 2) * 10000 }), // Old system
+        
+        GEM_CRUCIBLE: {
+            // Gem Dust cost for a random fusion, scales with grade
+            randomFuseCost: (grade) => 25 * grade,
+            // Defines the pool of gems that can result from a random fusion
+            randomResultPool: [
+                'lorestone', 'mindrite', 'dullrite', 'drainrite', 'mindstone', 'dullstone', 'drawstone',
+                'warstone', 'mightrite', 'cripplite', 'siphilite', 'mightstone', 'weakstone', 'sapstone',
+                'obsidian_heart', 'spike_core', 'true_core', 'veil_core', 'vital_core', 'blood_core',
+                'shadow_core', 'treasure_core', 'ascend_core', 'midas_core', 'masterwork_core', 'echoing_core', 'harvester_core'
+            ],
+            // Gem Dust values from salvaging gems. Returns a [min, max] range.
+            gemSalvageValues: {
+                1: [1, 4], 2: [2, 8], 3: [3, 12], 4: [4, 16], 5: [5, 20],
+                6: [6, 24], 7: [7, 28], 8: [9, 36], 9: [10, 40]
+            },
+            // Mass salvage level requirements
+            massSalvageGemReq: {
+                1: 1, 2: 1, 3: 300, 4: 450, 5: 1500, 6: 5000, 7: 15000, 8: 50000, 9: 200000
+            },
+        },
+
+        ARTISAN: {
+            xpPerAction: { socket: 10, unsocket: 5, fuse: 25, salvage: 2 },
+            xpForLevel: (level) => 100 * Math.pow(1.5, level - 1),
+            perks: {
+                'efficiency': { id: 'efficiency', name: 'Fusing Efficiency', maxRank: 5, description: (rank) => `Reduce Fusing gold cost by ${rank * 5}%.`, requires: null },
+                'extraction': { id: 'extraction', name: 'Expert Extraction', maxRank: 5, description: (rank) => `Reduce Unsocketing gold cost by ${rank * 5}%.`, requires: null },
+                'clarity': { id: 'clarity', name: 'Salvaging Clarity', maxRank: 5, description: (rank) => `Gain ${rank * 10}% more Gem Dust from salvaging.`, requires: 'efficiency' },
+                'proficiency': { id: 'proficiency', name: 'Socketing Proficiency', maxRank: 5, description: (rank) => `${rank}% chance to not consume a gem on socketing.`, requires: 'extraction' },
+            }
+        },
+        ITEMS: {
+            baseItemTemplates: [
+                { id: 'base_helm_1', name: 'Helmet', type: 'Armor', subType: 'Helmet', imageUrl: 'https://raw.githubusercontent.com/juugboytv/Geminus/refs/heads/juugboytv-equipment1/IMG_1396.png', sockets: 2},
+                { id: 'base_armor_1', name: 'Armor', type: 'Armor', subType: 'Armor', imageUrl: 'https://raw.githubusercontent.com/juugboytv/Geminus/refs/heads/juugboytv-equipment1/IMG_1401.png', sockets: 2},
+                { id: 'base_sword_1', name: 'Sword', type: 'Weapons', subType: 'Sword', imageUrl: 'https://raw.githubusercontent.com/juugboytv/Geminus/Weapons/IMG_1412.png', sockets: 2 },
+            ]
+        },
+        // --- COMPLETE GEM DATABASE ---
+        GEMS: {
+            // --- BLUE (CASTER) GEMS ---
+            lorestone: { name: 'LoreStone', type: 'Caster', effects: [{desc: 'Increase Base Spell Class', values: [1.5, 2.5, 3.5, 5, 7, 9, 11, 13, 15]}]},
+            mindrite: { name: 'Mindrite', type: 'Caster', effects: [{desc: 'Increase Wisdom', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
+            dullrite: { name: 'Dullrite', type: 'Caster', effects: [{desc: 'Decrease Enemy Wisdom', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
+            drainrite: { name: 'Drainrite', type: 'Caster', effects: [{desc: 'Steal Enemy Wisdom', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
+            mindstone: { name: 'MindStone', type: 'Caster', effects: [{desc: 'Increase Intelligence', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
+            dullstone: { name: 'DullStone', type: 'Caster', effects: [{desc: 'Decrease Enemy Intelligence', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
+            drawstone: { name: 'DrawStone', type: 'Caster', effects: [{desc: 'Steal Enemy Intelligence', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
+            
+            // --- RED (FIGHTER) GEMS ---
+            warstone: { name: 'WarStone', type: 'Fighter', effects: [{desc: 'Increase Base Weapon Class', values: [1.5, 2.5, 3.5, 5, 7, 9, 11, 13, 15]}]},
+            mightrite: { name: 'Mightrite', type: 'Fighter', effects: [{desc: 'Increase Dexterity', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
+            cripplite: { name: 'Cripplite', type: 'Fighter', effects: [{desc: 'Decrease Enemy Dexterity', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
+            siphilite: { name: 'Siphilite', type: 'Fighter', effects: [{desc: 'Steal Enemy Dexterity', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
+            mightstone: { name: 'MightStone', type: 'Fighter', effects: [{desc: 'Increase Strength', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
+            weakstone: { name: 'WeakStone', type: 'Fighter', effects: [{desc: 'Decrease Enemy Strength', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
+            sapstone: { name: 'SapStone', type: 'Fighter', effects: [{desc: 'Steal Enemy Strength', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
+
+            // --- GREEN (MISC) GEMS ---
+            obsidian_heart: { name: 'Obsidian Heart', type: 'Misc', effects: [{desc: 'Increase Base Armor Class', values: [1.5, 2.5, 3.5, 5, 7, 9, 11, 13, 15]}]},
+            spike_core: { name: 'Spike-Core', type: 'Misc', effects: [{desc: 'Increase Critical Hit Chance', values: [1, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]}]},
+            true_core: { name: 'True-Core', type: 'Misc', effects: [{desc: 'Increase Hit Chance', values: [3, 6, 9, 12, 15, 18, 21, 25, 30]}]},
+            veil_core: { name: 'Veil-Core', type: 'Misc', effects: [{desc: 'Decrease Enemy Hit Chance', values: [2.7, 5.4, 8.1, 10.8, 13.5, 16.2, 18.9, 22.5, 27]}]},
+            vital_core: { name: 'Vital-Core', type: 'Misc', effects: [{desc: 'Heals', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
+            blood_core: { name: 'Blood-Core', type: 'Misc', effects: [{desc: 'Steal Enemy Health', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
+            shadow_core: { name: 'Shadow-Core', type: 'Misc', effects: [{desc: 'Increase Shadow Drop Chance', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
+            treasure_core: { name: 'Treasure-Core', type: 'Misc', effects: [{desc: 'Increase Drop Chance', values: [2, 3, 4, 5, 6, 7, 8, 9, 10]}]},
+            ascend_core: { name: 'Ascend-Core', type: 'Misc', effects: [{desc: 'Increase Experience Gain', values: [2, 4, 6, 9, 12, 15, 19, 24, 30]}]},
+            midas_core: { name: 'Midas’s-Core', type: 'Misc', effects: [{desc: 'Increase Gold Earned', values: [2, 4, 6, 9, 12, 15, 19, 24, 30]}]},
+            masterwork_core: { name: 'Masterwork-Core', type: 'Misc', effects: [{desc: 'Increase Mastery Chance', values: [5, 10, 15, 20, 25, 30, 35, 40, 50]}]},
+            echoing_core: { name: 'Echoing-Core', type: 'Misc', effects: [{desc: 'Increase Double Hit Chance', values: [2, 3, 4, 5, 6, 7, 8, 10, 12]}]},
+            harvester_core: { name: 'Harvester-Core', type: 'Misc', effects: [{desc: 'Increase Resource Drop Chance', values: [5, 10, 15, 20, 30, 50, 55, 60, 75]}]},
+
+            // --- FUSION GEMS ---
+            warheart: { name: 'WarHeart', type: 'Fighter', recipe: ['warstone', 'obsidian_heart'], dustCost: 50 },
+            loreheart: { name: 'LoreHeart', type: 'Caster', recipe: ['lorestone', 'obsidian_heart'], dustCost: 50 },
+            true_rite: { name: 'True-Rite', type: 'Caster', recipe: ['true_core', 'dullrite'], dustCost: 60 },
+            true_lite: { name: 'True-Lite', type: 'Fighter', recipe: ['true_core', 'cripplite'], dustCost: 60 },
+            shadow_treasure: { name: 'Shadow Treasure', type: 'Misc', recipe: ['shadow_core', 'treasure_core'], dustCost: 80 },
+            ascend_treasure: { name: 'Ascend-Treasure', type: 'Misc', recipe: ['ascend_core', 'treasure_core'], dustCost: 80 },
+            ascend_midas: { name: 'Ascend-Midas', type: 'Misc', recipe: ['ascend_core', 'midas_core'], dustCost: 100 },
+            midas_treasure: { name: 'Midas-Treasure', type: 'Misc', recipe: ['midas_core', 'treasure_core'], dustCost: 80 },
+            mastery_echoing: { name: 'Mastery-Echoing', type: 'Misc', recipe: ['masterwork_core', 'echoing_core'], dustCost: 120 },
+            sagerite: { name: 'Sagerite', type: 'Caster', recipe: ['mindstone', 'mindrite'], dustCost: 75 },
+            drowseite: { name: 'Drowseite', type: 'Caster', recipe: ['dullrite', 'dullstone'], dustCost: 75 },
+            leechrite: { name: 'Leechrite', type: 'Caster', recipe: ['drawstone', 'drainrite'], dustCost: 90 },
+            vigorite: { name: 'Vigorite', type: 'Fighter', recipe: ['mightstone', 'mightrite'], dustCost: 75 },
+            debilitate: { name: 'Debilitate', type: 'Fighter', recipe: ['cripplite', 'weakstone'], dustCost: 75 },
+            syphonite: { name: 'Syphonite', type: 'Fighter', recipe: ['sapstone', 'siphilite'], dustCost: 90 },
+
+            // --- PRIMAL FUSION GEMS ---
+            lorerite: { name: 'LoreRite', type: 'Caster', recipe: ['loreheart', 'true_rite'], dustCost: 200 },
+            warlite: { name: 'WarLite', type: 'Fighter', recipe: ['warheart', 'true_lite'], dustCost: 200 },
+            shadowlore: { name: 'ShadowLore', type: 'Caster', recipe: ['lorestone', 'shadow_treasure'], dustCost: 250 },
+            shadowwar: { name: 'ShadowWar', type: 'Fighter', recipe: ['warstone', 'shadow_treasure'], dustCost: 250 },
+            ascendlore: { name: 'AscendLore', type: 'Caster', recipe: ['lorestone', 'ascend_treasure'], dustCost: 250 },
+            ascendwar: { name: 'AscendWar', type: 'Fighter', recipe: ['warstone', 'ascend_treasure'], dustCost: 250 },
+            loremidas: { name: 'LoreMidas', type: 'Caster', recipe: ['loreheart', 'ascend_midas'], dustCost: 300 },
+            warmidas: { name: 'WarMidas', type: 'Fighter', recipe: ['warheart', 'ascend_midas'], dustCost: 300 },
+        }
+    };
+
+    // --- MOCK DATA ---
+    function generateMockData() {
+        return {
+            player: {
+                level: 500, // Increased level to meet some salvage reqs
+                gold: 500000,
+                gemDust: 1250,
+                artisan: { level: 1, xp: 20, perkPoints: 1, unlockedPerks: {} },
+                inventory: [
+                    { instanceId: 'item_1', baseItemId: 'base_helm_1', tier: 5, socketedGems: [ { id: 'warstone', grade: 1 }, { id: 'mightstone', grade: 2 } ] },
+                    { instanceId: 'item_2', baseItemId: 'base_armor_1', tier: 7, socketedGems: [] },
+                    { instanceId: 'item_3', baseItemId: 'base_sword_1', tier: 6, socketedGems: [ { id: 'obsidian_heart', grade: 3 }] },
+                ],
+                gems: [
+                    { id: 'ascend_core', grade: 1, count: 2 }, { id: 'warstone', grade: 1, count: 5 }, { id: 'mightstone', grade: 5, count: 1 },
+                    { id: 'obsidian_heart', grade: 1, count: 8 }, { id: 'dullrite', grade: 2, count: 3 }, { id: 'true_core', grade: 2, count: 1}
+                ]
+            }
+        };
+    }
+
+    // --- STATE MANAGER ---
+    const State = {
+        _state: {
+            ...generateMockData(),
+            ui: {
+                currentPage: 'socketing',
+                selectedItemId: null,
+                selectedGemId: null,
+                selectedGemGrade: null,
+                fuseSlots: [null, null, null],
+                crucibleSlots: [null, null],
+                massSalvageGemGrade: 1,
+            }
+        },
+        _listeners: [],
+        
+        getState() { return this._state; },
+        subscribe(listener) { this._listeners.push(listener); },
+        _notify() { this._listeners.forEach(listener => listener(this._state)); },
+        
+        setState(updater) {
+            const oldState = JSON.parse(JSON.stringify(this._state)); // Deep copy for safety
+            this._state = updater(oldState);
+            this._notify();
+        },
+
+        resetSelections() {
+            this.setState(s => ({ ...s, ui: {
+                ...s.ui, 
+                selectedItemId: null, 
+                selectedGemId: null, 
+                selectedGemGrade: null, 
+                fuseSlots: [null, null, null],
+                crucibleSlots: [null, null]
+            }}));
+        },
+
+        findItem(instanceId) { return this._state.player.inventory.find(i => i.instanceId === instanceId); },
+        findItemBase(baseId) { return GDD.ITEMS.baseItemTemplates.find(b => b.id === baseId); },
+        findGem(gemId, grade) { return this._state.player.gems.find(g => g.id === gemId && g.grade === grade); },
+        findGemBase(gemId) { 
+            const gem = GDD.GEMS[gemId];
+            if (gem) return gem;
+            // Handle fused gems which might not be in the base list but have recipes
+            for (const key in GDD.GEMS) {
+                if (GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_') === gemId) {
+                    return GDD.GEMS[key];
+                }
+            }
+            return null;
+        },
+        
+        getPerkRank(perkId) { return this._state.player.artisan.unlockedPerks[perkId] || 0; },
+        addArtisanXp(actionType) {
+            this.setState(s => {
+                const xpGained = GDD.ARTISAN.xpPerAction[actionType] || 0;
+                let newXp = s.player.artisan.xp + xpGained;
+                let newLevel = s.player.artisan.level;
+                let newPerkPoints = s.player.artisan.perkPoints;
+                let xpToNextLevel = GDD.ARTISAN.xpForLevel(newLevel);
+                
+                while (newXp >= xpToNextLevel) {
+                    newXp -= xpToNextLevel;
+                    newLevel++;
+                    newPerkPoints++;
+                    xpToNextLevel = GDD.ARTISAN.xpForLevel(newLevel);
+                    UI.showToast(`Artisan Level Up! You are now level ${newLevel}.`, false);
+                }
+                return {...s, player: {...s.player, artisan: { ...s.player.artisan, xp: newXp, level: newLevel, perkPoints: newPerkPoints }}};
+            });
+        }
+    };
+
+    // --- UI RENDERER ---
+    const UI = {
+        _elements: {},
+        init() {
+            this._cacheElements();
+            this._addEventListeners();
+            State.subscribe(this.render.bind(this));
+            this.render(State.getState());
+        },
+        _cacheElements() {
+            this._elements = {
+                pageContent: document.getElementById('page-content'),
+                navButtons: document.querySelectorAll('.nav-button'),
+                actionPanel: document.getElementById('action-panel'),
+                modal: document.getElementById('confirmation-modal'),
+                modalContent: document.getElementById('modal-content-area'),
+                toast: document.getElementById('toast-notification'),
+                playerGold: document.getElementById('player-gold'),
+                playerGemDust: document.getElementById('player-gem-dust'),
+            };
+        },
+        _addEventListeners() {
+            this._elements.navButtons.forEach(b => b.addEventListener('click', () => {
+                Controller.onNavigate(b.dataset.page);
+            }));
+            this._elements.modal.addEventListener('click', e => {
+                if (e.target.id === 'confirmation-modal') this.hideModal();
+            });
+        },
+        render(state) {
+            const { currentPage } = state.ui;
+            this._elements.navButtons.forEach(b => b.classList.toggle('active', b.dataset.page === currentPage));
+            
+            if (currentPage === 'socketing') this.renderSocketingPage(state);
+            else if (currentPage === 'unsocketing') this.renderUnsocketingPage(state);
+            else if (currentPage === 'fusing') this.renderFusingPage(state);
+            else if (currentPage === 'gem_crucible') this.renderGemCruciblePage(state);
+            else if (currentPage === 'salvage') this.renderSalvagePage(state);
+            else if (currentPage === 'artisan') this.renderArtisanPage(state);
+            
+            this.renderPlayerResources(state.player);
+        },
+
+        renderPlayerResources(player) {
+            this._elements.playerGold.textContent = player.gold.toLocaleString();
+            this._elements.playerGemDust.textContent = player.gemDust.toLocaleString();
+        },
+
+        // --- RENDER PAGES ---
+        renderSocketingPage(state) {
+            const { ui, player } = state;
+            const availableItems = player.inventory.filter(item => {
+                const base = State.findItemBase(item.baseItemId);
+                return base && item.socketedGems.length < base.sockets;
+            });
+
+            this._elements.pageContent.innerHTML = `
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Item to Socket</h2>
+                    <div id="socket-item-grid" class="inventory-grid">
+                        ${availableItems.map(item => this.renderItem(item, State.findItemBase(item.baseItemId), item.instanceId === ui.selectedItemId)).join('') || '<p class="text-center text-secondary col-span-full">No items with empty sockets.</p>'}
+                    </div>
+                </div>
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Gem to Insert</h2>
+                    <div id="socket-gem-grid" class="gem-pouch-grid">
+                        ${player.gems.map(gem => this.renderGem(gem, State.findGemBase(gem.id), gem.count, gem.id === ui.selectedGemId && gem.grade === ui.selectedGemGrade)).join('') || '<p class="text-center text-secondary col-span-full">No gems available.</p>'}
+                    </div>
+                </div>`;
+            
+            document.querySelectorAll('#socket-item-grid .inventory-slot').forEach(el => el.onclick = () => Controller.onSelectItem(el.dataset.itemId));
+            document.querySelectorAll('#socket-gem-grid .gem-item').forEach(el => el.onclick = () => Controller.onSelectGem(el.dataset.gemId, parseInt(el.dataset.gemGrade)));
+            this.renderActionPanel(state);
+        },
+        renderUnsocketingPage(state) {
+            const { player } = state;
+            const socketedItems = player.inventory.filter(item => item.socketedGems.length > 0);
+
+            this._elements.pageContent.innerHTML = `
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Item to Unsocket</h2>
+                    <div id="unsocket-item-grid" class="inventory-grid">
+                        ${socketedItems.map(item => this.renderItem(item, State.findItemBase(item.baseItemId), false)).join('') || '<p class="text-center text-secondary col-span-full">No items with gems socketed.</p>'}
+                    </div>
+                </div>`;
+            
+            document.querySelectorAll('#unsocket-item-grid .inventory-slot').forEach(el => el.onclick = () => Controller.onUnsocketItemSelect(el.dataset.itemId));
+            this.renderActionPanel(state);
+        },
+        renderFusingPage(state) {
+            const { ui, player } = state;
+            const firstGem = ui.fuseSlots.find(g => g !== null);
+            let availableGems = player.gems;
+            if (firstGem) {
+                availableGems = player.gems.filter(g => g.id === firstGem.id && g.grade === firstGem.grade);
+            }
+
+            this._elements.pageContent.innerHTML = `
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Fuse Gems (Legacy)</h2>
+                    <p class="text-center text-sm text-secondary mb-4">Place ${GDD.FUSE_REQUIREMENT} identical gems to upgrade them.</p>
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        ${ui.fuseSlots.map((gem, i) => this.renderFuseSlot(gem, i)).join('')}
+                        <div class="text-2xl font-bold text-cyan-400">→</div>
+                        ${this.renderFuseResult(ui.fuseSlots)}
+                    </div>
+                </div>
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Available Gems for Fusing</h2>
+                    <div id="fuse-gem-grid" class="gem-pouch-grid">
+                        ${availableGems.map(gem => this.renderGem(gem, State.findGemBase(gem.id), gem.count, gem.id === ui.selectedGemId && gem.grade === ui.selectedGemGrade)).join('') || '<p class="text-center text-secondary col-span-full">No gems available for fusing.</p>'}
+                    </div>
+                </div>`;
+            
+            document.querySelectorAll('.fuse-slot').forEach(el => el.onclick = () => Controller.onClickFuseSlot(parseInt(el.dataset.index)));
+            document.querySelectorAll('#fuse-gem-grid .gem-item').forEach(el => el.onclick = () => Controller.onSelectGemForFuse(el.dataset.gemId, parseInt(el.dataset.gemGrade)));
+            this.renderActionPanel(state);
+        },
+        
+        // --- GEM CRUCIBLE RENDER ---
+        renderGemCruciblePage(state) {
+            const { ui, player } = state;
+            const [slot1, slot2] = ui.crucibleSlots;
+            let availableGems = player.gems;
+            // If one gem is selected, only show other gems of the same grade
+            if (slot1 && !slot2) {
+                availableGems = player.gems.filter(g => g.grade === slot1.grade && (g.id !== slot1.id || g.count > 1));
+            } else if (slot1 && slot2) {
+                availableGems = [];
+            }
+            
+            this._elements.pageContent.innerHTML = `
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Combine Gems</h2>
+                    <p class="text-center text-sm text-secondary mb-4">Place two gems of the same grade to discover new combinations or receive a random gem.</p>
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        ${this.renderCrucibleSlot(slot1, 0)}
+                        <div class="text-2xl font-bold text-cyan-400">+</div>
+                        ${this.renderCrucibleSlot(slot2, 1)}
+                        <div class="text-2xl font-bold text-cyan-400">→</div>
+                        ${this.renderCrucibleResult(ui.crucibleSlots)}
+                    </div>
+                </div>
+                <div class="panel p-4 mt-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Available Gems</h2>
+                    <div id="crucible-gem-grid" class="gem-pouch-grid">
+                        ${availableGems.map(gem => this.renderGem(gem, State.findGemBase(gem.id), gem.count, false)).join('') || '<p class="text-center text-secondary col-span-full">No gems available for fusing.</p>'}
+                    </div>
+                </div>
+            `;
+            document.querySelectorAll('.fuse-slot').forEach(el => el.onclick = () => Controller.onClickCrucibleSlot(parseInt(el.dataset.index)));
+            document.querySelectorAll('#crucible-gem-grid .gem-item').forEach(el => el.onclick = () => Controller.onSelectGemForCrucible(el.dataset.gemId, parseInt(el.dataset.gemGrade)));
+            this.renderActionPanel(state);
+        },
+
+        renderSalvagePage(state) {
+            const { player } = state;
+            const maxGrade = 9;
+            let options = '';
+            for(let i = 1; i <= maxGrade; i++) {
+                const reqLevel = GDD.GEM_CRUCIBLE.massSalvageGemReq[i];
+                const canSalvage = player.level >= reqLevel;
+                options += `<option value="${i}" ${!canSalvage ? 'disabled' : ''}>Grade ${i} ${!canSalvage ? `(Lvl ${reqLevel})` : ''}</option>`;
+            }
+
+            this._elements.pageContent.innerHTML = `
+                <div class="panel p-4 mt-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Mass Salvage Gems</h2>
+                    <p class="text-center text-sm text-secondary mb-4">Quickly convert all gems of a specific grade into Gem Dust. Higher grades may require a higher player level.</p>
+                    <div class="flex flex-col items-center gap-4">
+                        <select id="mass-salvage-grade-select" class="custom-select w-full max-w-xs">
+                            ${options}
+                        </select>
+                        <button id="mass-salvage-btn" class="action-button destroy w-full max-w-xs py-2">Salvage All Selected Grade</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('mass-salvage-grade-select').onchange = (e) => Controller.onMassSalvageGradeSelect(parseInt(e.target.value));
+            document.getElementById('mass-salvage-btn').onclick = () => Controller.onMassSalvage();
+            this.renderActionPanel(state);
+        },
+
+        renderArtisanPage(state) {
+            const { artisan } = state.player;
+            const xpToNextLevel = GDD.ARTISAN.xpForLevel(artisan.level);
+            const progress = (artisan.xp / xpToNextLevel) * 100;
+
+            this._elements.pageContent.innerHTML = `
+                <div class="panel p-4">
+                    <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Artisan's Insight</h2>
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center text-sm mb-1 px-1">
+                            <span class="font-bold text-secondary">Artisan Level ${artisan.level}</span>
+                            <span class="font-bold">${artisan.xp.toFixed(0)} / ${xpToNextLevel.toFixed(0)} XP</span>
+                        </div>
+                        <div class="w-full bg-black/50 rounded-full h-4 border border-cyan-400/20">
+                            <div class="bg-cyan-400 h-full rounded-full transition-all duration-500" style="width: ${progress}%;"></div>
+                        </div>
+                    </div>
+                    <p class="text-center text-lg font-bold text-orange-400">Perk Points: ${artisan.perkPoints}</p>
+                </div>
+                <div class="panel p-4">
+                    <h3 class="font-bold text-center mb-4 text-lg font-cinzel">Perk Tree</h3>
+                    <div id="perk-tree" class="grid grid-cols-2 gap-4">
+                        ${Object.values(GDD.ARTISAN.perks).map(perk => this.renderPerkNode(perk, artisan)).join('')}
+                    </div>
+                </div>
+            `;
+            document.querySelectorAll('.perk-node.can-unlock').forEach(el => el.onclick = () => Controller.onUnlockPerk(el.dataset.perkId));
+        },
+
+        // --- SHARED & SUB-RENDERERS ---
+        renderItem(item, base, isSelected) {
+            return `<div class="inventory-slot ${isSelected ? 'selected' : ''}" data-item-id="${item.instanceId}"><img src="${base.imageUrl}" alt="${base.name}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/1f2937/ffffff?text=ERR';"><span class="absolute bottom-1 right-1 text-xs font-bold bg-black/70 px-1 rounded">T${item.tier}</span></div>`;
+        },
+        renderGem(gem, base, count, isSelected) {
+            // Use a placeholder if the gem base is not found
+            const type = base ? base.type : 'Misc';
+            const name = base ? base.name : 'Unknown Gem';
+            const imageUrl = `https://placehold.co/40x40/1f2937/ffffff?text=${name.substring(0,3).toUpperCase()}`;
+
+            return `<div class="gem-item gem-type-${type} ${isSelected ? 'selected' : ''}" data-gem-id="${gem.id}" data-gem-grade="${gem.grade}" title="${name} - Grade ${gem.grade}">
+                <img src="${imageUrl}" alt="${name}" class="w-10 h-10 object-contain">
+                <span class="absolute bottom-1 right-1 text-xs font-bold bg-black/70 px-1 rounded">x${count}</span>
+                <span class="absolute top-1 left-1 text-xs font-bold bg-black/70 px-1 rounded">G${gem.grade}</span>
+            </div>`;
+        },
+        renderFuseSlot(gem, index) {
+            if (gem) {
+                const base = State.findGemBase(gem.id);
+                return `<div class="fuse-slot filled w-20 h-20 p-1" data-index="${index}">${this.renderGem(gem, base, 1, false)}</div>`;
+            }
+            return `<div class="fuse-slot w-20 h-20" data-index="${index}"></div>`;
+        },
+        renderCrucibleSlot(gem, index) {
+            if (gem) {
+                const base = State.findGemBase(gem.id);
+                return `<div class="fuse-slot filled w-20 h-20 p-1" data-index="${index}" title="Click to remove">${this.renderGem(gem, base, 1, false)}</div>`;
+            }
+            return `<div class="fuse-slot w-20 h-20" data-index="${index}"><span class="text-gray-500 text-3xl">?</span></div>`;
+        },
+        renderCrucibleResult(slots) {
+            const [slot1, slot2] = slots;
+            if (!slot1 || !slot2) {
+                return `<div class="fuse-slot w-20 h-20"><span class="text-gray-500 text-3xl">?</span></div>`;
+            }
+            
+            const recipe = Controller.findCrucibleRecipe(slot1, slot2);
+            if (recipe) {
+                const resultGem = State.findGemBase(recipe.resultId);
+                return `<div class="fuse-slot filled w-20 h-20 p-1 border-cyan-400">${this.renderGem({id: recipe.resultId, grade: slot1.grade}, resultGem, 1, false)}</div>`;
+            } else {
+                 return `<div class="fuse-slot filled w-20 h-20 p-1 border-purple-400" title="Random Gem"><span class="text-purple-400 text-3xl font-bold">?</span></div>`;
+            }
+        },
+        renderFuseResult(fuseSlots) {
+            const filledSlots = fuseSlots.filter(s => s !== null);
+            if (filledSlots.length !== GDD.FUSE_REQUIREMENT) return `<div class="fuse-slot w-20 h-20"><span class="text-gray-500 text-3xl">?</span></div>`;
+            const baseGem = filledSlots[0];
+            const nextGrade = baseGem.grade + 1;
+            const gemInfo = State.findGemBase(baseGem.id);
+            if (!gemInfo) return `<div class="fuse-slot w-20 h-20"></div>`;
+            return `<div class="fuse-slot filled w-20 h-20 p-1 border-cyan-400">${this.renderGem({id: baseGem.id, grade: nextGrade}, gemInfo, 1, false)}</div>`;
+        },
+        renderPerkNode(perk, artisan) {
+            const rank = artisan.unlockedPerks[perk.id] || 0;
+            const isMaxed = rank >= perk.maxRank;
+            const reqRank = perk.requires ? (artisan.unlockedPerks[perk.requires] || 0) : perk.maxRank;
+            const canUnlock = artisan.perkPoints > 0 && !isMaxed && reqRank > 0;
+            
+            let nodeClass = 'perk-node p-4 rounded-lg text-center';
+            if (isMaxed) nodeClass += ' maxed';
+            else if (rank > 0) nodeClass += ' unlocked';
+            else if (canUnlock) nodeClass += ' can-unlock';
+            else nodeClass += ' opacity-50';
+
+            return `
+                <div class="${nodeClass}" data-perk-id="${perk.id}">
+                    <p class="font-bold text-orange-300">${perk.name}</p>
+                    <p class="text-sm text-secondary my-1">${perk.description(rank)}</p>
+                    <p class="font-bold text-cyan-300">Rank ${rank} / ${perk.maxRank}</p>
+                </div>`;
+        },
+        renderActionPanel(state) {
+            const { ui, player } = state;
+            let content = '<p class="text-secondary">Select items to continue.</p>';
+            if (ui.currentPage === 'socketing' && ui.selectedItemId && ui.selectedGemId) {
+                content = `<button id="action-btn" class="action-button w-full py-3">Socket Gem</button>`;
+            } else if (ui.currentPage === 'fusing' && ui.fuseSlots.filter(Boolean).length === GDD.FUSE_REQUIREMENT) {
+                const cost = Controller.getFuseCost();
+                content = `<button id="action-btn" class="action-button w-full py-3">Fuse Gems (${cost.gold.toLocaleString()} Gold)</button>`;
+            } else if (ui.currentPage === 'gem_crucible') {
+                const [slot1, slot2] = ui.crucibleSlots;
+                if (slot1 && slot2) {
+                    const cost = Controller.getCrucibleFuseCost();
+                    const canAfford = player.gemDust >= cost;
+                    content = `<button id="action-btn" class="action-button w-full py-3 ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}" ${!canAfford ? 'disabled' : ''}>Fuse (<span class="${canAfford ? 'text-text-affordable' : 'text-text-unaffordable'}">${cost.toLocaleString()} Gem Dust</span>)</button>`;
+                } else {
+                    content = '<p class="text-secondary">Place two gems of the same grade in the crucible.</p>';
+                }
+            } else if (ui.currentPage === 'salvage') {
+                content = '<p class="text-secondary">Select a grade and press the button to mass salvage.</p>';
+            }
+            this._elements.actionPanel.innerHTML = content;
+            const btn = document.getElementById('action-btn');
+            if (btn) btn.onclick = () => Controller.onAction();
+        },
+        showModal(htmlContent) {
+            this._elements.modalContent.innerHTML = htmlContent;
+            this._elements.modal.style.display = 'flex';
+        },
+        hideModal() {
+            this._elements.modal.style.display = 'none';
+        },
+        showToast(message, isError = false) {
+            this._elements.toast.textContent = message;
+            this._elements.toast.className = `fixed bottom-[-100px] left-1/2 -translate-x-1/2 z-[1000] transition-all duration-500 ease-in-out px-6 py-3 rounded-lg font-semibold border ${isError ? 'bg-red-900/70 border-red-500 text-red-300' : 'bg-green-900/70 border-green-500 text-green-300'}`;
+            this._elements.toast.style.bottom = '2rem';
+            setTimeout(() => { this._elements.toast.style.bottom = '-100px'; }, 3000);
+        }
+    };
+
+    // --- CONTROLLER ---
+    const Controller = {
+        init() { UI.init(); },
+        onNavigate(page) { State.setState(s => ({...s, ui: {...s.ui, currentPage: page}})); State.resetSelections(); },
+        onSelectItem(itemId) { State.setState(s => ({...s, ui: {...s.ui, selectedItemId: itemId}})); },
+        onSelectGem(gemId, grade) { State.setState(s => ({...s, ui: {...s.ui, selectedGemId: gemId, selectedGemGrade: grade}})); },
+        
+        // --- GEM CRUCIBLE CONTROLLER ---
+        onSelectGemForCrucible(gemId, grade) {
+            const state = State.getState();
+            const emptyIndex = state.ui.crucibleSlots.findIndex(s => s === null);
+            if (emptyIndex === -1) return; // Both slots are full
+
+            const firstGem = state.ui.crucibleSlots[0];
+            if (firstGem && firstGem.grade !== grade) {
+                UI.showToast("Gems must be the same grade to fuse.", true);
+                return;
+            }
+
+            const gemInPouch = State.findGem(gemId, grade);
+            const gemsInSlots = state.ui.crucibleSlots.filter(s => s && s.id === gemId && s.grade === grade).length;
+            
+            if (gemInPouch && gemInPouch.count > gemsInSlots) {
+                State.setState(s => {
+                    const newSlots = [...s.ui.crucibleSlots];
+                    newSlots[emptyIndex] = { id: gemId, grade: grade };
+                    return {...s, ui: {...s.ui, crucibleSlots: newSlots}};
+                });
+            } else {
+                UI.showToast("Not enough of that gem available.", true);
+            }
+        },
+        onClickCrucibleSlot(index) {
+            State.setState(s => {
+                const newSlots = [...s.ui.crucibleSlots];
+                newSlots[index] = null;
+                // If we remove the first slot, and the second exists, move it to the first slot
+                if (index === 0 && newSlots[1] !== null) {
+                    newSlots[0] = newSlots[1];
+                    newSlots[1] = null;
+                }
+                return {...s, ui: {...s.ui, crucibleSlots: newSlots}};
+            });
+        },
+        findCrucibleRecipe(slot1, slot2) {
+            if (!slot1 || !slot2) return null;
+            for (const resultId in GDD.GEMS) {
+                const gemData = GDD.GEMS[resultId];
+                if (gemData.recipe) {
+                    const [ing1, ing2] = gemData.recipe;
+                    if ((ing1 === slot1.id && ing2 === slot2.id) || (ing1 === slot2.id && ing2 === slot1.id)) {
+                        return { resultId, dustCost: gemData.dustCost };
+                    }
+                }
+            }
+            return null;
+        },
+        getCrucibleFuseCost() {
+            const { crucibleSlots } = State.getState().ui;
+            const [slot1, slot2] = crucibleSlots;
+            if (!slot1 || !slot2) return 0;
+
+            const recipe = this.findCrucibleRecipe(slot1, slot2);
+            if (recipe) {
+                return recipe.dustCost;
+            }
+            return GDD.GEM_CRUCIBLE.randomFuseCost(slot1.grade);
+        },
+        executeCrucibleFuse() {
+            const { ui, player } = State.getState();
+            const [slot1, slot2] = ui.crucibleSlots;
+            if (!slot1 || !slot2) return;
+
+            const cost = this.getCrucibleFuseCost();
+            if (player.gemDust < cost) {
+                UI.showToast("Not enough Gem Dust.", true);
+                return;
+            }
+
+            State.setState(s => {
+                let newGems = [...s.player.gems];
+                // Consume ingredient gems
+                [slot1, slot2].forEach(ingredient => {
+                    const index = newGems.findIndex(g => g.id === ingredient.id && g.grade === ingredient.grade);
+                    if (index !== -1) {
+                        newGems[index] = { ...newGems[index], count: newGems[index].count - 1 };
+                    }
+                });
+
+                // Determine result and add it
+                const recipe = this.findCrucibleRecipe(slot1, slot2);
+                let resultGemId, resultGrade = slot1.grade;
+                let toastMessage = '';
+
+                if (recipe) {
+                    resultGemId = recipe.resultId;
+                    const resultBase = State.findGemBase(resultGemId);
+                    toastMessage = `Recipe success! Created ${resultBase.name}.`;
+                } else {
+                    // Random fusion
+                    const pool = GDD.GEM_CRUCIBLE.randomResultPool;
+                    resultGemId = pool[Math.floor(Math.random() * pool.length)];
+                    toastMessage = 'The elements combined unpredictably! You received a random gem.';
+                }
+                
+                const resultIndex = newGems.findIndex(g => g.id === resultGemId && g.grade === resultGrade);
+                if (resultIndex !== -1) {
+                    newGems[resultIndex] = { ...newGems[resultIndex], count: newGems[resultIndex].count + 1 };
+                } else {
+                    newGems.push({ id: resultGemId, grade: resultGrade, count: 1 });
+                }
+
+                UI.showToast(toastMessage, false);
+                State.addArtisanXp('fuse'); // Assuming crucible fuse gives same xp
+                
+                return {
+                    ...s,
+                    player: {
+                        ...s.player,
+                        gemDust: s.player.gemDust - cost,
+                        gems: newGems.filter(g => g.count > 0)
+                    },
+                    ui: { ...s.ui, crucibleSlots: [null, null] }
+                };
+            });
+        },
+        // --- END GEM CRUCIBLE ---
+
+        // --- SALVAGE CONTROLLER ---
+        onMassSalvageGradeSelect(grade) {
+            State.setState(s => ({...s, ui: {...s.ui, massSalvageGemGrade: grade}}));
+        },
+        onMassSalvage() {
+            const { ui, player } = State.getState();
+            const gradeToSalvage = ui.massSalvageGemGrade;
+            const gemsOfType = player.gems.filter(g => g.grade === gradeToSalvage);
+            const totalCount = gemsOfType.reduce((sum, g) => sum + g.count, 0);
+
+            if (totalCount === 0) {
+                UI.showToast(`You have no Grade ${gradeToSalvage} gems to salvage.`, true);
+                return;
+            }
+            
+            const [min, max] = GDD.GEM_CRUCIBLE.gemSalvageValues[gradeToSalvage];
+            let totalDustGained = 0;
+            for(let i = 0; i < totalCount; i++) {
+                totalDustGained += Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            const content = `
+                <h3 class="font-cinzel text-xl text-center mb-4">Confirm Mass Salvage</h3>
+                <p class="text-center text-secondary mb-6">Are you sure you want to destroy all ${totalCount} of your Grade ${gradeToSalvage} gems for approximately ${totalDustGained.toLocaleString()} Gem Dust?</p>
+                <div class="flex flex-col gap-3">
+                    <button id="confirm-mass-salvage" class="action-button destroy w-full py-2">Yes, Salvage Them!</button>
+                    <button id="cancel-btn" class="action-button w-full py-2 mt-4" style="background-color: #4b5563;">Cancel</button>
+                </div>`;
+            UI.showModal(content);
+            document.getElementById('confirm-mass-salvage').onclick = () => this.executeMassSalvage(gradeToSalvage, totalDustGained);
+            document.getElementById('cancel-btn').onclick = () => UI.hideModal();
+        },
+        executeMassSalvage(grade, dustGained) {
+            State.setState(s => {
+                const newGems = s.player.gems.filter(g => g.grade !== grade);
+                UI.showToast(`Salvaged all Grade ${grade} gems for ${dustGained.toLocaleString()} Gem Dust.`, false);
+                UI.hideModal();
+                State.addArtisanXp('salvage');
+                return {
+                    ...s,
+                    player: {
+                        ...s.player,
+                        gemDust: s.player.gemDust + dustGained,
+                        gems: newGems
+                    }
+                };
+            });
+        },
+        // --- END SALVAGE ---
+
+        onUnsocketItemSelect(instanceId) {
+            const item = State.findItem(instanceId);
+            const base = State.findItemBase(item.baseItemId);
+            const extractionRank = State.getPerkRank('extraction');
+            const costMultiplier = 1 - (extractionRank * 0.05);
+            const cost = Math.round((GDD.UNSOCKET_COST * item.socketedGems.length) * costMultiplier);
+            const content = `
+                <h3 class="font-cinzel text-xl text-center mb-4">Unsocket ${base.name}</h3>
+                <p class="text-center text-secondary mb-6">Choose an action for the ${item.socketedGems.length} socketed gem(s).</p>
+                <div class="flex flex-col gap-3">
+                    <button id="unsocket-btn" class="action-button w-full py-2">Unsocket All (${cost.toLocaleString()} Gold)</button>
+                    <button id="destroy-btn" class="action-button destroy w-full py-2">Destroy All (Free)</button>
+                    <button id="cancel-btn" class="action-button w-full py-2 mt-4" style="background-color: #4b5563;">Cancel</button>
+                </div>`;
+            UI.showModal(content);
+            document.getElementById('unsocket-btn').onclick = () => this.executeUnsocket(instanceId, cost);
+            document.getElementById('destroy-btn').onclick = () => this.executeDestroy(instanceId);
+            document.getElementById('cancel-btn').onclick = () => UI.hideModal();
+        },
+        onSelectGemForFuse(gemId, grade) {
+            const state = State.getState();
+            const emptyIndex = state.ui.fuseSlots.findIndex(s => s === null);
+            if (emptyIndex === -1) return;
+            
+            const firstGem = state.ui.fuseSlots.find(s => s !== null);
+            if (firstGem && (firstGem.id !== gemId || firstGem.grade !== grade)) {
+                UI.showToast("Gems must be identical to fuse.", true);
+                return;
+            }
+
+            const gemInPouch = State.findGem(gemId, grade);
+            const gemsInSlots = state.ui.fuseSlots.filter(s => s && s.id === gemId && s.grade === grade).length;
+            if (gemInPouch && gemInPouch.count > gemsInSlots) {
+                State.setState(s => {
+                    const newSlots = [...s.ui.fuseSlots];
+                    newSlots[emptyIndex] = { id: gemId, grade: grade };
+                    return {...s, ui: {...s.ui, fuseSlots: newSlots}};
+                });
+            } else {
+                UI.showToast("Not enough of that gem available.", true);
+            }
+        },
+        onClickFuseSlot(index) {
+            State.setState(s => {
+                const newSlots = [...s.ui.fuseSlots];
+                newSlots[index] = null;
+                return {...s, ui: {...s.ui, fuseSlots: newSlots}};
+            });
+        },
+        onUnlockPerk(perkId) {
+            State.setState(s => {
+                if (s.player.artisan.perkPoints <= 0) return s;
+                const currentRank = s.player.artisan.unlockedPerks[perkId] || 0;
+                const perk = GDD.ARTISAN.perks[perkId];
+                if (currentRank >= perk.maxRank) return s;
+
+                const reqRank = perk.requires ? (s.player.artisan.unlockedPerks[perk.requires] || 0) : perk.maxRank;
+                if (reqRank === 0) {
+                    UI.showToast("Requires prerequisite perk.", true);
+                    return s;
+                }
+
+                const newPerks = {...s.player.artisan.unlockedPerks, [perkId]: currentRank + 1};
+                return {...s, player: {...s.player, artisan: {...s.player.artisan, perkPoints: s.player.artisan.perkPoints - 1, unlockedPerks: newPerks}}};
+            });
+        },
+        onAction() {
+            const { ui } = State.getState();
+            if (ui.currentPage === 'socketing') this.executeSocket();
+            else if (ui.currentPage === 'fusing') this.executeFuse();
+            else if (ui.currentPage === 'gem_crucible') this.executeCrucibleFuse();
+        },
+
+        // --- ACTION EXECUTIONS ---
+        getFuseCost() {
+            const { ui } = State.getState();
+            const baseGem = ui.fuseSlots[0];
+            if (!baseGem) return { gold: 0 };
+            const efficiencyRank = State.getPerkRank('efficiency');
+            const costMultiplier = 1 - (efficiencyRank * 0.05);
+            const baseCost = GDD.fusingCost(baseGem.grade);
+            return { gold: Math.round(baseCost.gold * costMultiplier) };
+        },
+        executeSocket() {
+            const { ui } = State.getState();
+            if (!ui.selectedItemId || !ui.selectedGemId) return;
+            
+            const proficiencyRank = State.getPerkRank('proficiency');
+            const saveChance = proficiencyRank * 0.01;
+            const isGemSaved = Math.random() < saveChance;
+            
+            State.setState(s => {
+                const gemToSocket = { id: s.ui.selectedGemId, grade: s.ui.selectedGemGrade };
+                let newGems = [...s.player.gems];
+                
+                if (!isGemSaved) {
+                    const gemIndex = newGems.findIndex(g => g.id === gemToSocket.id && g.grade === gemToSocket.grade);
+                    if (gemIndex === -1 || newGems[gemIndex].count === 0) {
+                        UI.showToast("Gem not available.", true);
+                        return s;
+                    }
+                    newGems[gemIndex] = {...newGems[gemIndex], count: newGems[gemIndex].count - 1};
+                }
+
+                const newInventory = s.player.inventory.map(item => {
+                    if (item.instanceId === s.ui.selectedItemId) {
+                        return {...item, socketedGems: [...item.socketedGems, gemToSocket]};
+                    }
+                    return item;
+                });
+                
+                if (isGemSaved) UI.showToast("Proficiency! Gem was not consumed.", false);
+                else UI.showToast("Gem socketed successfully!", false);
+                
+                State.addArtisanXp('socket');
+                return { ...s, player: {...s.player, inventory: newInventory, gems: newGems.filter(g => g.count > 0)}, ui: {...s.ui, selectedItemId: null, selectedGemId: null, selectedGemGrade: null} };
+            });
+        },
+        executeUnsocket(instanceId, cost) {
+            const player = State.getState().player;
+            if (player.gold < cost) {
+                UI.showToast("Not enough gold.", true);
+                return;
+            }
+            State.setState(s => {
+                const item = s.player.inventory.find(i => i.instanceId === instanceId);
+                const removedGems = [...item.socketedGems];
+                const newGems = [...s.player.gems];
+
+                removedGems.forEach(rg => {
+                    const existingGemIndex = newGems.findIndex(g => g.id === rg.id && g.grade === rg.grade);
+                    if (existingGemIndex !== -1) {
+                        newGems[existingGemIndex] = {...newGems[existingGemIndex], count: newGems[existingGemIndex].count + 1};
+                    } else {
+                        newGems.push({...rg, count: 1});
+                    }
+                });
+
+                const newInventory = s.player.inventory.map(i => i.instanceId === instanceId ? {...i, socketedGems: []} : i);
+                UI.showToast("Gems unsocketed.", false);
+                UI.hideModal();
+                State.addArtisanXp('unsocket');
+                return {...s, player: {...s.player, gold: s.player.gold - cost, inventory: newInventory, gems: newGems}};
+            });
+        },
+        executeDestroy(instanceId) {
+            State.setState(s => {
+                const newInventory = s.player.inventory.map(i => i.instanceId === instanceId ? {...i, socketedGems: []} : i);
+                UI.showToast("Gems destroyed.", false);
+                UI.hideModal();
+                return {...s, player: {...s.player, inventory: newInventory}};
+            });
+        },
+        executeFuse() {
+            const { ui, player } = State.getState();
+            const fuseSlots = ui.fuseSlots;
+            if (fuseSlots.filter(Boolean).length !== GDD.FUSE_REQUIREMENT) return;
+            
+            const baseGem = fuseSlots[0];
+            const cost = this.getFuseCost();
+            if (player.gold < cost.gold) {
+                UI.showToast("Not enough gold.", true);
+                return;
+            }
+            
+            State.setState(s => {
+                const nextGrade = baseGem.grade + 1;
+                const newGems = [...s.player.gems];
+
+                const sourceGemIndex = newGems.findIndex(g => g.id === baseGem.id && g.grade === baseGem.grade);
+                newGems[sourceGemIndex] = {...newGems[sourceGemIndex], count: newGems[sourceGemIndex].count - GDD.FUSE_REQUIREMENT};
+
+                const resultGemIndex = newGems.findIndex(g => g.id === baseGem.id && g.grade === nextGrade);
+                if (resultGemIndex !== -1) {
+                    newGems[resultGemIndex] = {...newGems[resultGemIndex], count: newGems[resultGemIndex].count + 1};
+                } else {
+                    newGems.push({id: baseGem.id, grade: nextGrade, count: 1});
+                }
+                
+                UI.showToast("Gems fused successfully!", false);
+                State.addArtisanXp('fuse');
+                return {...s, player: {...s.player, gold: s.player.gold - cost.gold, gems: newGems.filter(g => g.count > 0)}, ui: {...s.ui, fuseSlots: [null, null, null]}};
+            });
+        },
+    };
+
+    // --- INITIALIZATION ---
+    window.Controller = Controller;
+</script>
+</body>
+</html>
+

@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Clan Bastion</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0c101d;
+            --highlight-powder-blue: #cae9ea;
+            --shadow-dark-grey: #3c4748;
+            --accent-cyan: #22d3ee;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--highlight-powder-blue);
+            background-color: var(--bg-dark);
+            overflow: hidden;
+        }
+        .glass-panel {
+            background: rgba(29, 29, 29, 0.45);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--shadow-dark-grey);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5);
+        }
+        .glass-button {
+            background: rgba(34, 211, 238, 0.15);
+            border: 1px solid rgba(34, 211, 238, 0.4);
+            color: var(--highlight-powder-blue);
+            transition: all 0.2s ease-in-out;
+        }
+        .glass-button:not(:disabled):hover {
+            background: rgba(34, 211, 238, 0.3);
+            border-color: var(--accent-cyan);
+        }
+        .glass-button:disabled {
+            background: rgba(50, 50, 50, 0.3);
+            border-color: rgba(100, 100, 100, 0.5);
+            color: rgba(202, 233, 234, 0.5);
+            cursor: not-allowed;
+        }
+        
+        .modal-view {
+            position: fixed; inset: 0; z-index: 40;
+            background-color: var(--bg-dark);
+        }
+        #hex-map-container {
+            width: 100%; height: 100%;
+            position: absolute;
+            inset: 0;
+        }
+        #map-canvas, #bastion-canvas { 
+            cursor: grab; 
+            touch-action: none;
+            width: 100%;
+            height: 100%;
+        }
+        #map-canvas:active, #bastion-canvas:active { cursor: grabbing; }
+
+        #bastion-manager-container {
+            background-color: #1a1c23;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+        }
+        #bastion-title {
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+            font-family: 'Cinzel', serif;
+        }
+
+        #loading-overlay { z-index: 99; }
+        #loading-progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #loading-progress-inner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--highlight-powder-blue), transparent);
+            background-size: 200% 100%;
+            animation: loading-scan 2s linear infinite;
+        }
+
+        @keyframes loading-scan {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .modal-content-area {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #resource-sidebar {
+            background: rgba(12, 16, 29, 0.6);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--shadow-dark-grey);
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(0);
+            width: 25%;
+            max-width: 320px;
+            min-width: 240px;
+        }
+        #resource-sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        #resource-sidebar.collapsed #resource-bar-content {
+            opacity: 0;
+        }
+        #toggle-sidebar-btn {
+            transition: transform 0.3s ease-in-out, left 0.3s ease-in-out;
+        }
+        #resource-sidebar.collapsed + #toggle-sidebar-btn {
+             transform: translateY(-50%) rotate(180deg);
+             left: 0;
+        }
+        .tab-button.active {
+            background-color: rgba(34, 211, 238, 0.2);
+            border-bottom-color: var(--accent-cyan);
+        }
+        select.glass-button {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="world-map-modal" class="modal-view hidden">
+        <div class="w-full h-full relative">
+            <div id="hex-map-container" class="absolute inset-0">
+                <canvas id="map-canvas" tabindex="0"></canvas>
+                <div id="hex-tooltip" class="absolute z-30 glass-panel p-3 rounded-lg text-sm hidden w-64 text-center">
+                    <h4 id="tooltip-name" class="font-cinzel font-bold"></h4>
+                    <p id="tooltip-owner" class="text-xs text-cyan-300"></p>
+                    <p id="tooltip-bonus" class="text-xs italic opacity-70 mt-1"></p>
+                    <p id="tooltip-resource" class="text-xs mt-1"></p>
+                    <button id="tooltip-harvest-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Harvest</button>
+                    <button id="tooltip-enter-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Enter Bastion</button>
+                    <button id="tooltip-settle-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Settle Capital Here</button>
+                    <button id="tooltip-declare-war-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden bg-red-500/20 border-red-500/40 hover:bg-red-500/40">Declare War</button>
+                </div>
+            </div>
+            <div id="resource-sidebar" class="absolute top-0 left-0 h-full p-4 flex flex-col z-20">
+                <div id="resource-bar-content" class="flex-grow overflow-y-auto transition-opacity duration-300">
+                    <!-- Content will be injected by JS -->
+                </div>
+            </div>
+            <button id="toggle-sidebar-btn" class="absolute top-1/2 left-[25%] -translate-y-1/2 w-8 h-12 rounded-r-lg bg-gray-800/80 border-t border-b border-r border-gray-600 flex items-center justify-center text-white z-30">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <div class="absolute top-4 right-4 z-20 flex gap-4">
+                 <button id="clan-menu-btn" class="glass-button text-lg px-4 py-2 rounded-lg">Clan</button>
+            </div>
+            <div class="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
+                 <button id="simulate-gem-btn" class="glass-button text-xs px-3 py-2 rounded-lg">Simulate Gem Find</button>
+                 <button id="simulate-kill-btn" class="glass-button text-xs px-3 py-2 rounded-lg">Simulate Enemy Kill</button>
+                 <button id="simulate-gold-btn" class="glass-button text-xs px-3 py-2 rounded-lg">Simulate Loot Sale</button>
+                 <div class="flex gap-2">
+                    <button id="pan-to-bastion-btn" class="glass-button w-12 h-12 rounded-full text-2xl flex items-center justify-center">🏰</button>
+                    <button id="recenter-btn" class="glass-button w-12 h-12 rounded-full text-2xl flex items-center justify-center">🎯</button>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bastion-manager-container" class="modal-view hidden flex items-center justify-center">
+        <div id="bastion-title" class="absolute top-5 left-1/2 -translate-x-1/2 text-4xl text-white z-10 pointer-events-none"></div>
+        <canvas id="bastion-canvas"></canvas>
+        <div class="absolute top-4 left-4 z-20">
+             <select id="bastion-bg-select" class="glass-button text-lg px-4 py-2 rounded-lg"></select>
+        </div>
+        <div class="absolute top-4 right-4 z-20">
+            <button id="bastion-exit-btn" class="glass-button text-lg px-4 py-2 rounded-lg">[ Exit to World ]</button>
+        </div>
+        <div id="bastion-message-box" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 text-white px-6 py-3 rounded-lg opacity-0 transition-opacity duration-500 pointer-events-none z-20"></div>
+    </div>
+    
+    <div id="building-upgrade-modal" class="modal-view hidden items-center justify-center bg-black/70 z-50">
+        <div class="glass-panel p-6 rounded-lg w-full max-w-md relative modal-content-area">
+            <button id="close-upgrade-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="upgrade-modal-content"></div>
+        </div>
+    </div>
+    
+    <div id="clan-bonuses-modal" class="modal-view hidden items-center justify-center bg-black/80 z-40">
+        <div class="glass-panel p-8 rounded-lg w-full max-w-2xl relative flex flex-col modal-content-area">
+            <button id="close-clan-bonuses-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="clan-bonuses-content"></div>
+        </div>
+    </div>
+
+    <div id="clan-hub-modal" class="modal-view hidden items-center justify-center bg-black/80 z-50">
+        <div class="glass-panel p-6 rounded-lg w-full max-w-4xl relative modal-content-area">
+            <button id="close-clan-hub-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="clan-hub-content"></div>
+        </div>
+    </div>
+
+    <div id="create-clan-modal" class="modal-view hidden items-center justify-center bg-black/80 z-50">
+        <div class="glass-panel p-8 rounded-lg w-full max-w-md text-center">
+            <h2 class="text-3xl font-cinzel mb-4">Found a New Clan</h2>
+            <p class="text-gray-400 mb-6">Enter a name for your new clan. This will cost 100,000 Gold.</p>
+            <input type="text" id="create-clan-name-input" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" placeholder="Clan Name...">
+            <div class="flex gap-4">
+                <button id="confirm-create-clan-btn" class="glass-button py-2 rounded-lg w-full">Create Clan</button>
+                <button id="cancel-create-clan-btn" class="glass-button py-2 rounded-lg w-full bg-red-500/20 border-red-500/40 hover:bg-red-500/40">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="modal-view hidden items-center justify-center bg-black/70">
+        <div class="glass-panel p-8 rounded-lg text-center w-full max-w-md">
+            <h2 id="loading-message" class="text-2xl font-cinzel mb-4">Loading...</h2>
+            <div id="loading-progress-bar">
+                <div id="loading-progress-inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & STATE ---
+        let GDD = {
+            WarMaterials: {
+                HeartwoodLog: { name: "Heartwood Log", icon: "🪵", tier: 1 },
+                QuarryStone: { name: "Quarry Stone", icon: "🗿", tier: 1 },
+                SiegeGradeTimber: { name: "Siege-Grade Timber", icon: "🌲", tier: 2 },
+                FortressGranite: { name: "Fortress Granite", icon: "🏔️", tier: 2 },
+                BloodsteelIngot: { name: "Bloodsteel Ingot", icon: "🩸", tier: 3 },
+                AdamantOre: { name: "Adamant Ore", icon: "💎", tier: 3 },
+            },
+            Buildings: {
+                // Triumvirate (PvE, Gold Cost)
+                ForceOfFriendship: { name: "Force of Friendship", icon: "⚔️", description: "Provides fundamental combat stats to all clan members." },
+                TrackerAcademy: { name: "Tracker Academy", icon: "🎯", description: "Increases the spawn rate of rare and valuable 'Special Monsters'." },
+                BlackMarket: { name: "Black Market", icon: "💰", description: "Provides a percentage bonus to all Gold received from selling items." },
+                ClanMine: { name: "Clan Mine", icon: "⛏️", description: "Enables the 'Hunter's Quarry' special loot system for all members." },
+                // PvP Buildings (War Material Cost)
+                BastionWalls: { name: "Bastion Walls", icon: "🛡️", description: "Provides damage reduction to members defending your territory." },
+                WarCamp: { name: "War Camp", icon: "⚔️", description: "Increases damage dealt for members attacking enemy territory." },
+                // Core
+                GreatHall: { name: "Great Hall", icon: "🏛️", description: "The heart of your bastion. Unlocks other functions." }
+            },
+            ClanBonuses: [
+                { id: "ac2", name: "+2% Armor Class", powerRequired: 3 },
+                { id: "ac4", name: "+4% Armor Class", powerRequired: 15 },
+                { id: "ac6", name: "+6% Armor Class", powerRequired: 30 },
+                { id: "ac8", name: "+8% Armor Class", powerRequired: 50 },
+                { id: "ac10", name: "+10% Armor Class", powerRequired: 80 },
+                { id: "ic2", name: "+2% Item Class", powerRequired: 3 },
+                { id: "ic4", name: "+4% Item Class", powerRequired: 15 },
+                { id: "ic6", name: "+6% Item Class", powerRequired: 30 },
+                { id: "ic8", name: "+8% Item Class", powerRequired: 50 },
+                { id: "ic10", name: "+10% Item Class", powerRequired: 80 },
+                { id: "qt5", name: "-5% Quest Time (Passive)", powerRequired: 50 },
+                { id: "qt10", name: "-10% Quest Time (Passive)", powerRequired: 100 },
+                { id: "qt15", name: "-15% Quest Time (Passive)", powerRequired: 200 },
+            ],
+            WorldZones: {
+                GildedDesert: { 
+                    name: "The Gilded Desert", icon: "🏜️", 
+                    bonus: { type: "goldBonus", value: 0.10, description: "+10% Gold from sales" },
+                    territories: {
+                        DuneSea: { name: "Dune Sea", bonus: { type: "goldBonus", value: 0.03 } },
+                        MirageOasis: { name: "Mirage Oasis", bonus: { type: "goldBonus", value: 0.03 } },
+                        SunkenCity: { name: "Sunken City", bonus: { type: "goldBonus", value: 0.05 } }
+                    }
+                },
+                IronfangMountains: {
+                    name: "The Ironfang Mountains", icon: "🏔️",
+                    bonus: { type: "fofBoost", value: 0.05, description: "+5% boost to Force of Friendship stats" },
+                    territories: {
+                        HighPass: { name: "High Pass", bonus: { type: "fofBoost", value: 0.015 } },
+                        Foothills: { name: "Foothills", bonus: { type: "fofBoost", value: 0.015 } },
+                        ThePeak: { name: "The Peak", bonus: { type: "fofBoost", value: 0.025 } }
+                    }
+                },
+                Whisperwood: {
+                    name: "The Whisperwood", icon: "🌳",
+                    bonus: { type: "spawnRate", value: 0.15, description: "+15% Special Monster spawn rate" },
+                     territories: {
+                        OuterGrove: { name: "Outer Grove", bonus: { type: "spawnRate", value: 0.04 } },
+                        Deepwood: { name: "Deepwood", bonus: { type: "spawnRate", value: 0.04 } },
+                        HeartOfTheForest: { name: "Heart of the Forest", bonus: { type: "spawnRate", value: 0.07 } }
+                    }
+                },
+                CrystalWastes: {
+                    name: "The Crystal Wastes", icon: "💎",
+                    bonus: { type: "mineDrop", value: 0.0001, description: "+0.01% Clan Mine drop chance" },
+                    territories: {
+                        ShardStormFlats: { name: "Shard-Storm Flats", bonus: { type: "mineDrop", value: 0.00003 } },
+                        GeodeCaverns: { name: "Geode Caverns", bonus: { type: "mineDrop", value: 0.00003 } },
+                        HeartCrystalLode: { name: "Heart-Crystal Lode", bonus: { type: "mineDrop", value: 0.00005 } }
+                    }
+                }
+            },
+            Gems: {
+                Caster: ["LoreStone", "Mindrite", "Drainrite"],
+                Fighter: ["WarStone", "Agilite", "Siphilite"],
+                Misc: ["Obsidian Heart", "Spike-Core", "Treasure-Core", "Ascend-Core"]
+            },
+            BastionBackgrounds: {
+                "Magi-Tech": "https://i.ibb.co/HTxvmv8Q/IMG-1924.jpg",
+                "Serene": "https://i.ibb.co/7thRKXdB/IMG-1925.jpg",
+                "Stronghold": "https://i.ibb.co/Z626jsvz/IMG-1926.jpg",
+                "Dark": "https://i.ibb.co/ZzX1rMBy/IMG-1927.jpg",
+                "Fantastical": "https://i.ibb.co/nMPgNCHw/IMG-1928.jpg"
+            },
+            GameConstants: { PLAYER_STARTING_LEVEL: 1, CLAN_STARTING_GOLD: 10000, CLAN_CREATE_COST: 100000 }
+        };
+
+        const ClanGameData = {
+            buildings: {
+                ForceOfFriendship: { 2: { cost: { Gold: 50000 }, time: 1800 }, 3: { cost: { Gold: 150000 }, time: 3600 } },
+                TrackerAcademy: { 2: { cost: { Gold: 50000 }, time: 1800 }, 3: { cost: { Gold: 150000 }, time: 3600 } },
+                BlackMarket: { 
+                    1: { cost: { Gold: 25000 }, time: 900, bonus: 0.02 },
+                    2: { cost: { Gold: 50000 }, time: 1800, bonus: 0.04 }, 
+                    3: { cost: { Gold: 150000 }, time: 3600, bonus: 0.06 } 
+                },
+                ClanMine: { 
+                    1: { cost: { Gold: 35000 }, time: 1200, bonus: 0.00005 },
+                    2: { cost: { Gold: 75000 }, time: 2700, bonus: 0.00010 }, 
+                    3: { cost: { Gold: 225000 }, time: 5400, bonus: 0.00015 } 
+                },
+                GreatHall: { 2: { cost: { Gold: 100000 }, time: 7200 }, 3: { cost: { Gold: 500000 }, time: 14400 } },
+                BastionWalls: { 
+                    1: { cost: { HeartwoodLog: 500, QuarryStone: 500 }, time: 3600 },
+                    2: { cost: { HeartwoodLog: 2000, QuarryStone: 2000 }, time: 7200 },
+                    3: { cost: { HeartwoodLog: 5000, QuarryStone: 5000, SiegeGradeTimber: 500, FortressGranite: 500 }, time: 14400 },
+                    4: { cost: { SiegeGradeTimber: 10000, FortressGranite: 10000 }, time: 28800 },
+                    5: { cost: { SiegeGradeTimber: 25000, FortressGranite: 25000, BloodsteelIngot: 2500, AdamantOre: 2500 }, time: 86400 }
+                },
+                WarCamp: {
+                    1: { cost: { HeartwoodLog: 500, QuarryStone: 500 }, time: 3600 },
+                    2: { cost: { HeartwoodLog: 2000, QuarryStone: 2000 }, time: 7200 },
+                    3: { cost: { HeartwoodLog: 5000, QuarryStone: 5000, SiegeGradeTimber: 500, FortressGranite: 500 }, time: 14400 },
+                    4: { cost: { SiegeGradeTimber: 10000, FortressGranite: 10000 }, time: 28800 },
+                    5: { cost: { SiegeGradeTimber: 25000, FortressGranite: 25000, BloodsteelIngot: 2500, AdamantOre: 2500 }, time: 86400 }
+                },
+            }
+        };
+
+        let game = { 
+            player: { name: "Chieftain", level: 1, gold: 200000, clanName: null, killsSinceDrop: 0, inventory: [] }, 
+            clans: [], // Array to hold all clans
+            worldMap: { q: 0, r: 0, selectedHex: null }, 
+            bastionMap: { q: 0, r: 0, selectedHex: null }, 
+            currentView: 'world' // Start directly in the world
+        };
+        let ui, worldManager, bastionManager, gameTickInterval;
+
+
+        // --- ALL CLASS DEFINITIONS ---
+        class ClanManager {
+            constructor() { this.clanState = null; }
+            loadClanData(clan) { this.clanState = clan; console.log("ClanManager: Clan data loaded for", clan.name); }
+            getGameState() { return this.clanState; }
+            startBuildingUpgrade(buildingId) {
+                if (!this.clanState) return { success: false, reason: "No clan founded." };
+                const currentLevel = this.clanState.buildings[buildingId]?.level || 0;
+                const nextLevel = currentLevel + 1;
+                const upgradeData = ClanGameData.buildings[buildingId]?.[nextLevel];
+
+                if (!upgradeData) {
+                    if (nextLevel === 1 && ClanGameData.buildings[buildingId]?.[1]) {
+                         // This is the first build, not an upgrade
+                    } else {
+                        return { success: false, reason: "Already at max level or definition missing." };
+                    }
+                }
+                if (this.clanState.activeTimers.some(t => t.id === buildingId)) return { success: false, reason: "Already being upgraded." };
+                for (const resource in upgradeData.cost) {
+                    let required = upgradeData.cost[resource];
+                    let available = (resource === 'Gold' ? this.clanState.treasury.Gold : this.clanState.treasury[resource]) || 0;
+                    if (available < required) return { success: false, reason: `Not enough ${resource}.` };
+                }
+                for (const resource in upgradeData.cost) {
+                     if (resource === 'Gold') this.clanState.treasury.Gold -= upgradeData.cost[resource];
+                     else this.clanState.treasury[resource] -= upgradeData.cost[resource];
+                }
+                const completionTimestamp = Math.floor(Date.now() / 1000) + upgradeData.time;
+                this.clanState.activeTimers.push({ timerId: `${buildingId}_${Date.now()}`, type: 'building', id: buildingId, targetLevel: nextLevel, completionTimestamp: completionTimestamp });
+                return { success: true };
+            }
+            processOfflineProgress() {
+                if (!this.clanState) return;
+                const currentTime = Math.floor(Date.now() / 1000);
+                 const lastLogin = this.clanState.lastLoginTimestamp || currentTime;
+                const timeElapsed = currentTime - lastLogin;
+                if (timeElapsed <= 0) return;
+                
+                this._processFinishedTimers(currentTime);
+                this.clanState.lastLoginTimestamp = currentTime;
+            }
+            _processFinishedTimers(currentTime) {
+                if(!this.clanState.activeTimers) return;
+                const completedTimerIds = new Set();
+                this.clanState.activeTimers.forEach(timer => {
+                    if (currentTime >= timer.completionTimestamp) {
+                        if (timer.type === 'building') { 
+                            if (!this.clanState.buildings[timer.id]) this.clanState.buildings[timer.id] = {};
+                            this.clanState.buildings[timer.id].level = timer.targetLevel; 
+                        }
+                        completedTimerIds.add(timer.timerId);
+                    }
+                });
+                if (completedTimerIds.size > 0) this.clanState.activeTimers = this.clanState.activeTimers.filter(timer => !completedTimerIds.has(timer.timerId));
+            }
+        }
+        
+        class MapManager {
+            constructor(canvas, hexSize) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.hexSize = hexSize; this.grid = new Map(); this.zoom = 1; this.minZoom = 0.2; this.maxZoom = 5; this.offsetX = 0; this.offsetY = 0; this.isCameraLocked = true; this.isPointerDown = false; this.startPanCoords = { x: 0, y: 0 }; this.dragThreshold = 5; this.hasDragged = false; this.initialPinchDistance = 0; }
+            init(grid) { this.grid = grid; this.bindEventListeners(); this.resizeAndCenter(); }
+            bindEventListeners() {
+                this.canvas.parentElement.addEventListener('pointerdown', this.handlePointerDown.bind(this));
+                this.canvas.parentElement.addEventListener('pointermove', this.handlePointerMove.bind(this));
+                this.canvas.parentElement.addEventListener('pointerup', this.handlePointerUp.bind(this));
+                this.canvas.parentElement.addEventListener('pointercancel', this.handlePointerUp.bind(this));
+                this.canvas.addEventListener('wheel', this.handleWheelZoom.bind(this), { passive: false });
+                this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+                this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+                window.addEventListener('resize', this.resizeAndCenter.bind(this));
+            }
+            centerOnPlayer() {
+                const playerPos = game.currentView === 'world' ? game.worldMap : game.bastionMap;
+                const { x, y } = Hex.hexToPixel(playerPos.q, playerPos.r, this.hexSize);
+                this.offsetX = (this.canvas.width / 2) - (x * this.zoom);
+                this.offsetY = (this.canvas.height / 2) - (y * this.zoom);
+            }
+            centerOnHex(q, r) {
+                const { x, y } = Hex.hexToPixel(q, r, this.hexSize);
+                this.offsetX = (this.canvas.width / 2) - (x * this.zoom);
+                this.offsetY = (this.canvas.height / 2) - (y * this.zoom);
+                this.isCameraLocked = false;
+            }
+            draw() {
+                if(this.isCameraLocked) this.centerOnPlayer();
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.save();
+                this.ctx.translate(this.offsetX, this.offsetY); this.ctx.scale(this.zoom, this.zoom);
+                this.drawBackground(); this.grid.forEach(hex => this.drawHex(hex));
+                const playerPos = game.currentView === 'world' ? game.worldMap : game.bastionMap;
+                this.drawPlayer(playerPos.q, playerPos.r); this.ctx.restore();
+            }
+            drawBackground() {}
+            drawHex(hex) {}
+            drawPlayer(q, r) {
+                const { x, y } = Hex.hexToPixel(q, r, this.hexSize);
+                this.ctx.save(); this.ctx.globalAlpha = 1.0; this.ctx.font = `${this.hexSize * 1.2}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText("👤", x, y); this.ctx.restore();
+            }
+            resizeAndCenter() { this.canvas.width = this.canvas.parentElement.clientWidth; this.canvas.height = this.canvas.parentElement.clientHeight; this.centerOnPlayer(); }
+            handlePointerDown(e) { if (e.target.closest('#hex-tooltip')) return; this.isPointerDown = true; this.hasDragged = false; this.canvas.style.cursor = 'grabbing'; this.startPanCoords = { x: e.clientX, y: e.clientY }; }
+            handlePointerMove(e) { if (!this.isPointerDown) return; const dx = e.clientX - this.startPanCoords.x; const dy = e.clientY - this.startPanCoords.y; if (!this.hasDragged && (Math.abs(dx) > this.dragThreshold || Math.abs(dy) > this.dragThreshold)) { this.hasDragged = true; this.isCameraLocked = false; } if(this.hasDragged) { this.offsetX += dx; this.offsetY += dy; this.startPanCoords = { x: e.clientX, y: e.clientY }; } }
+            handlePointerUp(e) { if(!this.isPointerDown) return; this.isPointerDown = false; this.canvas.style.cursor = 'grab'; if (!this.hasDragged) { this.processClick(e); } }
+            handleWheelZoom(e) { e.preventDefault(); const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9; this.zoomAtPoint(zoomFactor, e.clientX, e.clientY); }
+            handleTouchStart(e) { if (e.touches.length === 2) { e.preventDefault(); this.initialPinchDistance = this.getTouchDistance(e.touches); } }
+            handleTouchMove(e) { if (e.touches.length === 2) { e.preventDefault(); const currentDist = this.getTouchDistance(e.touches); const zoomFactor = currentDist / this.initialPinchDistance; const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2; const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2; this.zoomAtPoint(zoomFactor, midX, midY); this.initialPinchDistance = currentDist; } }
+            getTouchDistance(touches) { const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+            zoomAtPoint(zoomFactor, x, y) { const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * zoomFactor)); const rect = this.canvas.getBoundingClientRect(); const mouseX = x - rect.left; const mouseY = y - rect.top; const worldX = (mouseX - this.offsetX) / this.zoom; const worldY = (mouseY - this.offsetY) / this.zoom; this.zoom = newZoom; this.offsetX = mouseX - worldX * this.zoom; this.offsetY = mouseY - worldY * this.zoom; }
+            processClick(e) { const rect = this.canvas.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const worldX = (mouseX - this.offsetX) / this.zoom; const worldY = (mouseY - this.offsetY) / this.zoom; const { q, r } = Hex.pixelToHex(worldX, worldY, this.hexSize); this.handleClickOnHex(q, r, {x: e.clientX, y: e.clientY}); }
+            handleClickOnHex(q, r, screenPos) {}
+        }
+
+        // --- HELPER FUNCTIONS & OBJECTS ---
+        const Hex = { hexToPixel: (q, r, size) => ({ x: size * Math.sqrt(3) * (q + r / 2), y: size * 1.5 * r }), pixelToHex(x, y, size) { const q = (Math.sqrt(3)/3 * x - 1/3 * y) / size; const r = (2/3 * y) / size; return this.hexRound(q, r); }, hexRound(fq, fr) { const fs = -fq - fr; let q = Math.round(fq), r = Math.round(fr), s = Math.round(fs); const q_d = Math.abs(q - fq), r_d = Math.abs(r - fr), s_d = Math.abs(s - fs); if (q_d > r_d && q_d > s_d) q = -r - s; else if (r_d > s_d) r = -q - s; return { q, r }; }, distance(a, b) { return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2; } };
+        function formatTime(seconds) { if (seconds <= 0) return "0s"; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = Math.floor(seconds % 60); return [ h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : '', s > 0 ? `${s}s` : '' ].filter(Boolean).join(' '); }
+
+        // --- STORAGE MANAGER ---
+        const StorageManager = {
+            saveWorld(grid, imageUrl) { const data = { grid: Array.from(grid.entries()), imageUrl: imageUrl }; localStorage.setItem('clan_world_map', JSON.stringify(data)); },
+            loadWorld() { const data = localStorage.getItem('clan_world_map'); if (!data) return null; const parsed = JSON.parse(data); return { grid: new Map(parsed.grid), imageUrl: parsed.imageUrl }; },
+            saveGame() { localStorage.setItem('clan_game_data', JSON.stringify(game)); },
+            loadGame() { const data = localStorage.getItem('clan_game_data'); if(data) { const loadedGame = JSON.parse(data); game = { ...game, ...loadedGame }; } },
+            clearAllData() { localStorage.removeItem('clan_game_data'); localStorage.removeItem('clan_world_map'); }
+        };
+
+        // --- MAP GENERATION LOGIC ---
+        const MapGenerator = {
+            getBiomeFromColor(r, g, b) {
+                // New check for bright sky/clouds to prevent spawning hexes there
+                if (r > 200 && g > 200 && b > 200) return 'water'; // Treat sky as non-playable 'water'
+                
+                if (b > r + 20 && b > g + 20) return 'water'; // Water
+                if (r > g && g > b && r > 150) return 'volcanic'; // Volcanic
+                if (r > 150 && g > 120 && b < 100) return 'desert'; // Desert
+                if (g > r * 1.1 && g > b * 1.1) return 'forest'; // Forest
+                if (r > 80 && g > 80 && b > 80 && Math.abs(r-g) < 40 && Math.abs(g-b) < 40) return 'mountain'; // Mountain
+                return 'plains'; // Plains
+            },
+            assignTerritories(grid) {
+                const zones = Object.keys(GDD.WorldZones);
+                let zoneIndex = 0;
+                grid.forEach(hex => {
+                    if (hex.biome !== 'water') {
+                        hex.zoneId = zones[zoneIndex];
+                        hex.territoryId = Object.keys(GDD.WorldZones[zones[zoneIndex]].territories)[Math.floor(Math.random() * 3)];
+                        zoneIndex = (zoneIndex + 1) % zones.length;
+                    }
+                });
+            },
+            generateFromImage(grid, image, hexSize) {
+                grid.clear();
+                const tempCanvas = document.createElement('canvas'); tempCanvas.width = image.width; tempCanvas.height = image.height;
+                const ctx = tempCanvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+                const imageData = ctx.getImageData(0, 0, image.width, image.height).data;
+                // Adjusted step size for density
+                const step = Math.max(1, Math.floor(hexSize * 1.0)); 
+                for (let y = 0; y < image.height; y += step) {
+                    for (let x = 0; x < image.width; x += step) {
+                        const i = (y * image.width + x) * 4;
+                        const r = imageData[i], g = imageData[i+1], b = imageData[i+2];
+                        const worldX = x - image.width / 2; const worldY = y - image.height / 2;
+                        const hexCoords = Hex.pixelToHex(worldX, worldY, hexSize);
+                        const key = `${hexCoords.q},${hexCoords.r}`;
+                        if (!grid.has(key)) { 
+                            const biome = this.getBiomeFromColor(r, g, b);
+                            if (biome === 'water') continue; // This now also filters out the sky
+                            grid.set(key, { ...hexCoords, biome: biome }); 
+                        }
+                    }
+                }
+                this.assignTerritories(grid);
+            },
+            getWarMaterialForBiome(biome) {
+                switch(biome) {
+                    case 'forest': return Math.random() < 0.2 ? 'SiegeGradeTimber' : 'HeartwoodLog';
+                    case 'plains': return 'HeartwoodLog';
+                    case 'mountain': return Math.random() < 0.2 ? 'FortressGranite' : 'QuarryStone';
+                    case 'volcanic': return Math.random() < 0.2 ? 'BloodsteelIngot' : 'FortressGranite';
+                    case 'desert': return Math.random() < 0.1 ? 'AdamantOre' : null;
+                    default: return null;
+                }
+            },
+            placeFeatures(grid) {
+                const landHexes = Array.from(grid.values()).filter(h => h.biome !== 'water' && !h.feature);
+                const nodeCount = Math.floor(landHexes.length * 0.15);
+                for(let i = 0; i < nodeCount; i++) {
+                    if(landHexes.length === 0) break;
+                    const hexIndex = Math.floor(Math.random() * landHexes.length);
+                    const hex = landHexes.splice(hexIndex, 1)[0];
+                    if (hex) {
+                        const materialId = this.getWarMaterialForBiome(hex.biome);
+                        if (materialId) {
+                             const material = GDD.WarMaterials[materialId];
+                             hex.feature = { type: 'war_material_node', name: `${material.name} Deposit`, materialId: materialId, icon: material.icon };
+                        }
+                    }
+                }
+            },
+            generateBastionMap(grid) {
+                const radius = 3;
+                for (let q = -radius; q <= radius; q++) {
+                    for (let r = -radius; r <= radius; r++) {
+                        if ((Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2 > radius) continue;
+                        grid.set(`${q},${r}`, { q, r });
+                    }
+                }
+                const buildingTypes = Object.keys(GDD.Buildings);
+                const hexes = Array.from(grid.values());
+                for(let i = 0; i < hexes.length; i++) { if (buildingTypes[i]) hexes[i].buildingId = buildingTypes[i]; }
+            }
+        };
+
+        // --- WORLD MAP MANAGER ---
+        class WorldMap extends MapManager {
+            constructor(canvas) { super(canvas, 6); this.image = null; } // Adjusted hexSize for larger world feel
+            init(grid, image) { this.image = image; super.init(grid); }
+            drawBackground() { if (!this.image) return; const imgX = -this.image.width / 2; const imgY = -this.image.height / 2; this.ctx.drawImage(this.image, imgX, imgY); }
+            drawHex(hex) {
+                const { x, y } = Hex.hexToPixel(hex.q, hex.r, this.hexSize);
+                const zone = GDD.WorldZones[hex.zoneId];
+                if (!zone) return;
+
+                this.ctx.beginPath(); for (let i = 0; i < 6; i++) { const angle = Math.PI / 180 * (60 * i + 30); this.ctx[i === 0 ? 'moveTo' : 'lineTo'](x + this.hexSize * Math.cos(angle), y + this.hexSize * Math.sin(angle)); } this.ctx.closePath();
+                
+                let fillColor = 'rgba(100,100,100,0.1)';
+                if (hex.owner === game.player.clanName) { fillColor = 'rgba(34, 211, 238, 0.2)'; }
+                else if (hex.owner) { fillColor = 'rgba(239, 68, 68, 0.2)'; }
+                
+                this.ctx.fillStyle = fillColor;
+                this.ctx.fill();
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.stroke();
+
+                if (hex.isClanCapital) {
+                     this.ctx.font = `${this.hexSize * 1.5}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText("🏰", x, y);
+                } else if (hex.feature) {
+                    this.ctx.save();
+                    const isPlayersNode = hex.owner === game.player.clanName;
+                    if (!isPlayersNode) {
+                        this.ctx.globalAlpha = 0.5;
+                    }
+                    this.ctx.font = `${this.hexSize * 1.2}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText(hex.feature.icon, x, y);
+                    this.ctx.restore();
+                }
+            }
+            handleClickOnHex(q, r, screenPos) {
+                const hex = this.grid.get(`${q},${r}`);
+                if (!hex) return;
+                game.worldMap.selectedHex = hex; // Store the whole hex object
+                
+                const distanceToPlayer = Hex.distance(game.worldMap, hex);
+                 if (distanceToPlayer === 1) {
+                    game.worldMap.q = q;
+                    game.worldMap.r = r;
+                    ui.worldMap.tooltip.container.classList.add('hidden');
+                    return; 
+                }
+                this.showTooltip(hex, screenPos);
+            }
+            showTooltip(hex, screenPos) {
+                const tip = ui.worldMap.tooltip;
+                const territory = GDD.WorldZones[hex.zoneId]?.territories[hex.territoryId];
+                if (!territory) return;
+
+                tip.name.textContent = territory.name;
+                tip.owner.textContent = hex.owner ? `Controlled by: ${hex.owner}` : 'Unclaimed Territory';
+                tip.bonus.textContent = `Bonus: ${GDD.WorldZones[hex.zoneId].bonus.description}`;
+                tip.resource.textContent = '';
+                
+                tip.harvestBtn.classList.add('hidden');
+                tip.enterBtn.classList.add('hidden');
+                tip.settleBtn.classList.add('hidden');
+                tip.declareWarBtn.classList.add('hidden');
+
+                const isPlayerOnHex = game.worldMap.q === hex.q && game.worldMap.r === hex.r;
+
+                if (hex.isClanCapital && hex.owner === game.player.clanName && isPlayerOnHex) {
+                    tip.enterBtn.classList.remove('hidden');
+                } else if (hex.owner && hex.owner !== game.player.clanName && isPlayerOnHex) {
+                    tip.declareWarBtn.classList.remove('hidden');
+                } else if (!hex.owner && isPlayerOnHex) {
+                    const playerClan = ClanSystem.getClan(game.player.clanName);
+                    if (playerClan && playerClan.leader === game.player.name && !playerClan.hasCapital) {
+                        tip.settleBtn.classList.remove('hidden');
+                    }
+                }
+
+                if (hex.feature?.type === 'war_material_node' && hex.owner === game.player.clanName && isPlayerOnHex) {
+                    const material = GDD.WarMaterials[hex.feature.materialId];
+                    tip.resource.textContent = `Resource: ${material.name}`;
+                    tip.harvestBtn.classList.remove('hidden');
+                }
+
+                const mapRect = ui.worldMap.canvas.getBoundingClientRect();
+                tip.container.style.left = `${screenPos.x - mapRect.left - (tip.container.offsetWidth / 2)}px`;
+                tip.container.style.top = `${screenPos.y - mapRect.top + 20}px`;
+                tip.container.classList.remove('hidden');
+            }
+        }
+        
+        // --- BASTION MAP MANAGER ---
+        class BastionMap extends MapManager {
+            constructor(canvas) { super(canvas, 60); }
+            init(grid) { super.init(grid); this.isCameraLocked = true; }
+            drawHex(hex) {
+                const { x, y } = Hex.hexToPixel(hex.q, hex.r, this.hexSize);
+                this.ctx.beginPath(); for (let i = 0; i < 6; i++) { const angle = Math.PI / 180 * (60 * i + 30); this.ctx[i === 0 ? 'moveTo' : 'lineTo'](x + this.hexSize * Math.cos(angle), y + this.hexSize * Math.sin(angle)); } this.ctx.closePath();
+                
+                this.ctx.fillStyle = 'rgba(50, 50, 50, 0.5)'; this.ctx.fill();
+                this.ctx.strokeStyle = 'rgba(202, 233, 234, 0.3)'; this.ctx.lineWidth = 1; this.ctx.stroke();
+
+                if (hex.buildingId) {
+                    const building = GDD.Buildings[hex.buildingId];
+                    if (building) {
+                        this.ctx.font = `${this.hexSize * 0.5}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText(building.icon || '🏛️', x, y);
+                    }
+                }
+            }
+            handleClickOnHex(q, r, screenPos) {
+                const hex = this.grid.get(`${q},${r}`);
+                if (!hex) return;
+
+                if (!hex.buildingId) { // It's an empty hex
+                    const distance = Hex.distance(game.bastionMap, hex);
+                    if (distance === 1) {
+                        game.bastionMap.q = q;
+                        game.bastionMap.r = r;
+                    }
+                    return;
+                }
+
+                const buildingId = hex.buildingId;
+                if (buildingId === 'GreatHall') {
+                    ClanSystem.showClanBonusesModal();
+                } else {
+                    BuildingManager.showUpgradeModal(buildingId);
+                }
+            }
+             showMessage(text) { const box = ui.bastion.messageBox; box.textContent = text; box.style.opacity = '1'; setTimeout(() => { box.style.opacity = '0'; }, 3000); }
+        }
+
+        // --- GAME CONTROLLERS ---
+        const clanManager = new ClanManager();
+
+        function showLoading(message) { ui.loadingMessage.textContent = message; ui.loadingOverlay.classList.remove('hidden'); ui.loadingOverlay.classList.add('flex'); }
+        function hideLoading() { ui.loadingOverlay.classList.add('hidden'); ui.loadingOverlay.classList.remove('flex'); }
+
+        function startWorldGeneration(imageUrl) {
+            showLoading("Generating world...");
+            const image = new Image(); image.crossOrigin = "Anonymous";
+            image.onload = () => {
+                const grid = new Map();
+                MapGenerator.generateFromImage(grid, image, worldManager.hexSize);
+                MapGenerator.placeFeatures(grid);
+                StorageManager.saveWorld(grid, imageUrl);
+                worldManager.init(grid, image);
+                hideLoading(); showWorld();
+            };
+            image.src = imageUrl;
+        }
+
+        function loadExistingWorld() {
+            const savedData = StorageManager.loadWorld();
+            if (!savedData || savedData.imageUrl !== 'https://i.ibb.co/B506BgZS/IMG-1918.jpg') {
+                console.log("No saved world found or map image has changed, generating a new one.");
+                startWorldGeneration('https://i.ibb.co/B506BgZS/IMG-1918.jpg');
+                return;
+            }
+            showLoading("Loading saved world...");
+            const image = new Image(); image.crossOrigin = "Anonymous";
+            image.onload = () => { worldManager.init(savedData.grid, image); hideLoading(); showWorld(); };
+            image.onerror = () => {
+                console.error("Failed to load background image for saved world. Generating new world.");
+                startWorldGeneration('https://i.ibb.co/B506BgZS/IMG-1918.jpg');
+            };
+            image.src = savedData.imageUrl;
+        }
+
+        function showWorld() {
+            game.currentView = 'world';
+            ui.bastion.container.classList.add('hidden');
+            ui.worldMap.modal.classList.remove('hidden');
+            worldManager.resizeAndCenter();
+            updateGameUI();
+        }
+
+        function enterBastion() {
+            game.currentView = 'bastion';
+            const bastionGrid = new Map();
+            MapGenerator.generateBastionMap(bastionGrid);
+            bastionManager.init(bastionGrid);
+
+            const playerClan = ClanSystem.getClan(game.player.clanName);
+            if (playerClan && playerClan.backgroundUrl) {
+                ui.bastion.container.style.backgroundImage = `url(${playerClan.backgroundUrl})`;
+                ui.bastion.bgSelect.value = playerClan.backgroundUrl;
+            } else {
+                 ui.bastion.container.style.backgroundImage = `url(${GDD.BastionBackgrounds.Stronghold})`;
+                 ui.bastion.bgSelect.value = GDD.BastionBackgrounds.Stronghold;
+            }
+
+            ui.worldMap.modal.classList.add('hidden');
+            ui.bastion.container.classList.remove('hidden');
+            bastionManager.resizeAndCenter();
+            updateGameUI();
+        }
+        
+        function updateGameUI() {
+            const sidebar = ui.resourceBarContent;
+            sidebar.innerHTML = '';
+            const playerClan = ClanSystem.getClan(game.player.clanName);
+            if (!playerClan) {
+                sidebar.innerHTML = `<p class="text-center opacity-70">You are not in a clan.</p>
+                                     <p class="text-center text-xs mt-2">Player Gold: 💰${game.player.gold.toLocaleString()}</p>`;
+                return;
+            }
+            let content = `<h3 class="font-bold text-center text-xl mb-2">${playerClan.name}</h3>`;
+            content += `<div class="text-center mb-4"><span class="font-bold">Total Power:</span> ${playerClan.totalPower.toLocaleString()}</div>`;
+            content += `<div class="bg-black/20 p-2 rounded-md mb-4">
+                            <div class="font-bold text-center mb-1">Treasury</div>
+                            <div class="flex justify-between"><span>💰 Gold</span> <span>${Math.floor(playerClan.treasury.Gold || 0).toLocaleString()}</span></div>
+                        </div>`;
+            content += `<div class="bg-black/20 p-2 rounded-md">
+                            <div class="font-bold text-center mb-1">War Materials</div>`;
+            for(const matId in GDD.WarMaterials) {
+                const mat = GDD.WarMaterials[matId];
+                const amount = playerClan.treasury[matId] || 0;
+                if (amount > 0) content += `<div class="flex justify-between"><span>${mat.icon} ${mat.name}</span> <span>${amount.toLocaleString()}</span></div>`;
+            }
+            content += `</div>`;
+            sidebar.innerHTML = content;
+        }
+
+        const BuildingManager = {
+            showUpgradeModal(buildingId) {
+                const playerClan = ClanSystem.getClan(game.player.clanName);
+                if (!playerClan) return;
+                const buildingDef = GDD.Buildings[buildingId]; if(!buildingDef) return;
+                const currentLevel = playerClan.buildings[buildingId]?.level || 0;
+                const nextLevel = currentLevel + 1; 
+                const upgradeData = ClanGameData.buildings[buildingId]?.[nextLevel];
+                let content = `<h3 class="text-2xl font-cinzel mb-2">${buildingDef.name} ${buildingDef.icon}</h3>
+                               <p class="text-sm italic text-gray-400 mb-4">${buildingDef.description}</p>
+                               <p class="text-sm mb-4">Current Level: ${currentLevel}</p>`;
+
+                const activeTimer = playerClan.activeTimers.find(t => t.id === buildingId);
+                if (activeTimer) {
+                    const timeLeft = activeTimer.completionTimestamp - Math.floor(Date.now() / 1000);
+                    content += `<div class="text-center p-4 bg-black/30 rounded-lg">
+                                  <p class="text-cyan-300">Upgrade in progress...</p>
+                                  <p id="timer-${buildingId}" class="text-2xl font-bold">${formatTime(timeLeft)}</p>
+                               </div>`;
+                } else if (upgradeData) {
+                    content += `<h4 class="font-bold mb-2">Upgrade to Level ${nextLevel}</h4>`; let canUpgrade = true;
+                    content += `<p class="text-xs mb-1">Cost:</p><ul class="text-xs list-disc list-inside mb-4">`;
+                     for (const resKey in upgradeData.cost) {
+                        const requiredAmount = upgradeData.cost[resKey]; 
+                        const playerAmount = (resKey === 'Gold' ? playerClan.treasury.Gold : playerClan.treasury[resKey]) || 0;
+                        const hasRes = playerAmount >= requiredAmount; if (!hasRes) canUpgrade = false;
+                        content += `<li class="${hasRes ? 'text-green-400' : 'text-red-400'}">${resKey}: ${requiredAmount.toLocaleString()} / ${Math.floor(playerAmount).toLocaleString()}</li>`;
+                    } content += `</ul>`;
+                    content += `<p class="text-xs mb-1">Time: ${formatTime(upgradeData.time)}</p>`;
+                    content += `<button id="confirm-upgrade-btn" class="glass-button w-full mt-6 py-2 rounded-lg" ${!canUpgrade ? 'disabled' : ''}>Upgrade</button>`;
+                } else { content += `<p>This building is at its maximum level.</p>`; }
+                ui.buildingUpgrade.content.innerHTML = content;
+                if(document.getElementById('confirm-upgrade-btn')) { document.getElementById('confirm-upgrade-btn').onclick = () => this.performUpgrade(buildingId); }
+                ui.buildingUpgrade.modal.classList.remove('hidden');
+            },
+            performUpgrade(buildingId) {
+                const playerClan = ClanSystem.getClan(game.player.clanName);
+                if (!playerClan) return;
+                clanManager.loadClanData(playerClan);
+                const result = clanManager.startBuildingUpgrade(buildingId);
+                if (result.success) {
+                    StorageManager.saveGame();
+                    updateGameUI();
+                    this.showUpgradeModal(buildingId);
+                    bastionManager.showMessage(`${GDD.Buildings[buildingId].name} upgrade started!`);
+                } else {
+                    bastionManager.showMessage(`Upgrade failed: ${result.reason}`);
+                }
+            }
+        };
+
+        // --- GAME LOOP ---
+        function animate() {
+            if (game.currentView === 'world') worldManager.draw();
+            else if (game.currentView === 'bastion') bastionManager.draw();
+            requestAnimationFrame(animate);
+        }
+        function gameTick() {
+            const playerClan = ClanSystem.getClan(game.player.clanName);
+            if(playerClan && playerClan.activeTimers.length > 0) {
+                 const currentTime = Math.floor(Date.now() / 1000);
+                 clanManager.loadClanData(playerClan);
+                 clanManager._processFinishedTimers(currentTime);
+            }
+        }
+
+        // --- NEW CLAN SYSTEM OBJECT ---
+        const ClanSystem = {
+            getClan(clanName) {
+                return game.clans.find(c => c.name === clanName);
+            },
+
+            getPlayerBonuses(playerName, clanName) {
+                const bonuses = {
+                    goldBonus: 0,
+                    mineDropChance: 0.00005, // Base chance
+                };
+                const playerClan = this.getClan(clanName);
+                if (!playerClan) return bonuses;
+
+                // Black Market Bonus
+                const blackMarketLevel = playerClan.buildings.BlackMarket?.level || 0;
+                if (blackMarketLevel > 0) {
+                    bonuses.goldBonus += ClanGameData.buildings.BlackMarket[blackMarketLevel].bonus;
+                }
+
+                // Clan Mine Bonus
+                const clanMineLevel = playerClan.buildings.ClanMine?.level || 0;
+                if (clanMineLevel > 0) {
+                    bonuses.mineDropChance += ClanGameData.buildings.ClanMine[clanMineLevel].bonus;
+                }
+                
+                // Bad Luck Protection
+                bonuses.mineDropChance += (game.player.killsSinceDrop || 0) * 0.000001;
+
+                return bonuses;
+            },
+
+            showClanHub() {
+                const playerClan = this.getClan(game.player.clanName);
+                const contentDiv = ui.clanHub.content;
+                
+                if (playerClan) {
+                    // Player is in a clan, show management view
+                    contentDiv.innerHTML = `
+                        <h2 class="text-3xl font-cinzel mb-4 text-center">${playerClan.name}</h2>
+                        <div class="border-b-2 border-gray-700 mb-4 flex">
+                            <button class="tab-button flex-1 py-2 text-sm border-b-2 border-transparent hover:bg-gray-700/50 active" data-tab="roster">Roster</button>
+                            <button class="tab-button flex-1 py-2 text-sm border-b-2 border-transparent hover:bg-gray-700/50" data-tab="inventory">Inventory</button>
+                            <button class="tab-button flex-1 py-2 text-sm border-b-2 border-transparent hover:bg-gray-700/50" data-tab="ledger">Ledger</button>
+                            <button class="tab-button flex-1 py-2 text-sm border-b-2 border-transparent hover:bg-gray-700/50" data-tab="applicants">Applicants</button>
+                            <button class="tab-button flex-1 py-2 text-sm border-b-2 border-transparent hover:bg-gray-700/50" data-tab="settings">Settings</button>
+                        </div>
+                        <div id="clan-hub-tab-content"></div>
+                    `;
+                    this.showClanHubTab('roster');
+                    contentDiv.querySelectorAll('.tab-button').forEach(btn => {
+                        btn.addEventListener('click', () => this.showClanHubTab(btn.dataset.tab));
+                    });
+                } else {
+                    // Player is not in a clan, show create/join view
+                    contentDiv.innerHTML = `
+                        <h2 class="text-3xl font-cinzel mb-4 text-center">Join the Fray</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="glass-panel p-4 text-center">
+                                <h3 class="text-xl font-cinzel mb-2">Create a Clan</h3>
+                                <p class="text-xs text-gray-400 mb-4">Forge your own legacy. Costs ${GDD.GameConstants.CLAN_CREATE_COST.toLocaleString()} Gold.</p>
+                                <button id="show-create-clan-modal-btn" class="glass-button w-full py-2 rounded-md">Create</button>
+                            </div>
+                            <div class="glass-panel p-4">
+                                <h3 class="text-xl font-cinzel mb-2 text-center">Join a Clan</h3>
+                                <div id="clan-list" class="text-left space-y-2 max-h-64 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('show-create-clan-modal-btn').addEventListener('click', () => {
+                        ui.clanHub.modal.classList.add('hidden');
+                        ui.createClan.modal.classList.remove('hidden');
+                        ui.createClan.modal.classList.add('flex');
+                    });
+                    this.populateClanList();
+                }
+                ui.clanHub.modal.classList.remove('hidden');
+                ui.clanHub.modal.classList.add('flex');
+            },
+
+            showClanHubTab(tabId) {
+                const contentDiv = document.getElementById('clan-hub-tab-content');
+                document.querySelectorAll('#clan-hub-content .tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`#clan-hub-content .tab-button[data-tab="${tabId}"]`).classList.add('active');
+                const playerClan = this.getClan(game.player.clanName);
+
+                if (tabId === 'roster') {
+                    this.renderRoster(contentDiv, playerClan);
+                } else if (tabId === 'applicants') {
+                    this.renderApplicants(contentDiv, playerClan);
+                } else if (tabId === 'inventory') {
+                    this.renderInventory(contentDiv, playerClan);
+                } else if (tabId === 'ledger') {
+                    this.renderLedger(contentDiv, playerClan);
+                } else if (tabId === 'settings') {
+                    this.renderSettings(contentDiv, playerClan);
+                }
+            },
+
+            setTaxRate() {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan || playerClan.leader !== game.player.name) {
+                    alert("Only the clan leader can set the tax rate.");
+                    return;
+                }
+                const input = document.getElementById('tax-rate-input');
+                const newRate = parseInt(input.value, 10);
+                if (isNaN(newRate) || newRate < 0 || newRate > 100) {
+                    alert("Please enter a valid tax rate between 0 and 100.");
+                    return;
+                }
+                playerClan.taxRate = newRate / 100;
+                StorageManager.saveGame();
+                alert(`Tax rate set to ${newRate}%.`);
+            },
+
+            confirmCreateClan() {
+                const clanName = ui.createClan.nameInput.value.trim();
+                const cost = GDD.GameConstants.CLAN_CREATE_COST;
+
+                if (!clanName) { alert("Clan name cannot be empty."); return; }
+                if (this.getClan(clanName)) { alert("A clan with this name already exists."); return; }
+                if (game.player.gold < cost) { alert("You do not have enough gold to create a clan."); return; }
+
+                game.player.gold -= cost;
+                const newClan = {
+                    name: clanName,
+                    leader: game.player.name,
+                    members: [{ name: game.player.name, level: game.player.level, role: 'Leader' }],
+                    applicants: [],
+                    inventory: [],
+                    requests: [],
+                    ledger: [],
+                    totalPower: game.player.level,
+                    treasury: { Gold: GDD.GameConstants.CLAN_STARTING_GOLD },
+                    buildings: {},
+                    activeTimers: [],
+                    lastLoginTimestamp: Math.floor(Date.now() / 1000),
+                    hasCapital: false,
+                    taxRate: 0.05, // Default 5% tax rate
+                    activeBonusId: null,
+                    backgroundUrl: GDD.BastionBackgrounds.Stronghold // Default background
+                };
+                game.clans.push(newClan);
+                game.player.clanName = clanName;
+                
+                ui.createClan.modal.classList.add('hidden');
+                this.showClanHub(); // Re-render clan hub
+                updateGameUI();
+                StorageManager.saveGame();
+                alert(`Clan "${clanName}" has been founded! Now, find a place to settle your capital.`);
+            },
+
+            settleClan(hex) {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan || playerClan.leader !== game.player.name) {
+                    bastionManager.showMessage("Only the clan leader can settle the capital.");
+                    return;
+                }
+                if (playerClan.hasCapital) {
+                    bastionManager.showMessage("Your clan already has a capital.");
+                    return;
+                }
+
+                // Use the coordinates from the selected hex to get the definitive master copy
+                const masterHex = worldManager.grid.get(`${hex.q},${hex.r}`);
+                if (!masterHex) {
+                    console.error("Critical error: Could not find the hex to settle on the master grid.");
+                    return;
+                }
+
+                masterHex.owner = playerClan.name;
+                masterHex.isClanCapital = true;
+                playerClan.hasCapital = true;
+
+                // Now iterate and set the owner for the entire zone using the master hex's zoneId
+                worldManager.grid.forEach(h => {
+                    if (h.zoneId === masterHex.zoneId) {
+                        h.owner = playerClan.name;
+                    }
+                });
+
+                StorageManager.saveGame();
+                StorageManager.saveWorld(worldManager.grid, worldManager.image.src);
+                updateGameUI();
+                worldManager.draw();
+                ui.worldMap.tooltip.container.classList.add('hidden');
+            },
+            
+            harvestResource(hex) {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan) {
+                    bastionManager.showMessage("You must be in a clan to harvest resources.");
+                    return;
+                }
+                if (!hex.feature || hex.feature.type !== 'war_material_node') {
+                    bastionManager.showMessage("There is nothing to harvest here.");
+                    return;
+                }
+                
+                const materialId = hex.feature.materialId;
+                const amount = 5 + Math.floor(Math.random() * 11); // 5-15
+                
+                playerClan.treasury[materialId] = (playerClan.treasury[materialId] || 0) + amount;
+                
+                // Remove the node and respawn it elsewhere
+                delete hex.feature;
+                MapGenerator.placeFeatures(worldManager.grid);
+
+                bastionManager.showMessage(`Harvested ${amount} ${GDD.WarMaterials[materialId].name}!`);
+                updateGameUI();
+                worldManager.draw();
+                ui.worldMap.tooltip.container.classList.add('hidden');
+                StorageManager.saveGame();
+                StorageManager.saveWorld(worldManager.grid, worldManager.image.src);
+            },
+
+            simulateLootSale() {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan) {
+                    bastionManager.showMessage("You must be in a clan to earn gold for them.");
+                    return;
+                }
+
+                const bonuses = this.getPlayerBonuses(game.player.name, playerClan.name);
+                const baseSaleAmount = 1000;
+                
+                // Apply Black Market Bonus
+                const finalSaleAmount = Math.floor(baseSaleAmount * (1 + bonuses.goldBonus));
+                
+                const taxAmount = Math.floor(finalSaleAmount * playerClan.taxRate);
+                const playerAmount = finalSaleAmount - taxAmount;
+
+                playerClan.treasury.Gold += taxAmount;
+                game.player.gold += playerAmount;
+
+                let message = `Sold loot for ${baseSaleAmount} Gold. (+${(bonuses.goldBonus * 100).toFixed(0)}% from Black Market). Total: ${finalSaleAmount}. You earned ${playerAmount}, clan treasury gained ${taxAmount}.`;
+                
+                bastionManager.showMessage(message);
+                updateGameUI();
+                StorageManager.saveGame();
+            },
+
+            simulateEnemyKill() {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan) {
+                    bastionManager.showMessage("You must be in a clan.");
+                    return;
+                }
+                const bonuses = this.getPlayerBonuses(game.player.name, playerClan.name);
+                
+                game.player.killsSinceDrop = (game.player.killsSinceDrop || 0) + 1;
+                let message = "Enemy defeated. No special drop.";
+
+                if (Math.random() < bonuses.mineDropChance) {
+                    const allGems = [...GDD.Gems.Caster, ...GDD.Gems.Fighter, ...GDD.Gems.Misc];
+                    const foundGem = allGems[Math.floor(Math.random() * allGems.length)];
+                    message = `🎉 Hunter's Quarry! You found a ${foundGem}!`;
+                    game.player.killsSinceDrop = 0;
+                }
+
+                bastionManager.showMessage(message);
+                StorageManager.saveGame();
+            },
+
+            showClanBonusesModal() {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan) return;
+                const contentDiv = ui.clanBonuses.content;
+                let content = `<h1 class="text-4xl font-cinzel mb-2 text-center">Clan Power Bonuses</h1>
+                               <p class="text-center text-gray-400 mb-6">Choose one active bonus for your clan. Unlocked with Clan Power.</p>
+                               <div class="space-y-2">`;
+                
+                const currentPower = playerClan.totalPower;
+
+                GDD.ClanBonuses.forEach(bonus => {
+                    const isUnlocked = currentPower >= bonus.powerRequired;
+                    const isActive = playerClan.activeBonusId === bonus.id;
+                    
+                    let buttonHtml = '';
+                    if (isUnlocked && playerClan.leader === game.player.name) {
+                        buttonHtml = `<button class="glass-button text-xs px-3 py-1 rounded-md" onclick="ClanSystem.setActiveBonus('${bonus.id}')" ${isActive ? 'disabled' : ''}>${isActive ? 'Active' : 'Activate'}</button>`;
+                    } else if (isActive) {
+                        buttonHtml = `<span class="text-xs text-cyan-300 font-bold">Active</span>`;
+                    }
+
+                    content += `<div class="p-3 rounded-md flex justify-between items-center ${isActive ? 'bg-cyan-500/20 border border-cyan-400' : (isUnlocked ? 'bg-green-500/20' : 'bg-black/20')}">
+                                    <div>
+                                        <span class="font-bold">${bonus.name}</span>
+                                        <p class="text-xs text-gray-400">Requires: ${bonus.powerRequired.toLocaleString()} Power</p>
+                                    </div>
+                                    ${buttonHtml}
+                                </div>`;
+                });
+                content += '</div>';
+                contentDiv.innerHTML = content;
+                ui.clanBonuses.modal.classList.remove('hidden');
+            },
+
+            setActiveBonus(bonusId) {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan || playerClan.leader !== game.player.name) {
+                    alert("Only the clan leader can set the active bonus.");
+                    return;
+                }
+                playerClan.activeBonusId = bonusId;
+                this.showClanBonusesModal(); // Refresh the modal to show the change
+                StorageManager.saveGame();
+            },
+
+            simulateGemFind() {
+                const allGems = [...GDD.Gems.Caster, ...GDD.Gems.Fighter, ...GDD.Gems.Misc];
+                const foundGem = allGems[Math.floor(Math.random() * allGems.length)];
+                const item = {
+                    id: `gem_${Date.now()}`,
+                    name: foundGem,
+                    type: 'Gem'
+                };
+                game.player.inventory.push(item);
+                bastionManager.showMessage(`You found a ${foundGem}!`);
+                StorageManager.saveGame();
+            },
+            
+            // --- NEW FUNCTIONS FOR ROSTER & INVENTORY ---
+            
+            populateClanList() {
+                const listDiv = document.getElementById('clan-list');
+                if (!listDiv) return;
+                listDiv.innerHTML = '';
+                if (game.clans.length === 0) {
+                    listDiv.innerHTML = `<p class="text-xs text-gray-500 text-center">No clans have been formed yet.</p>`;
+                    return;
+                }
+                game.clans.forEach(clan => {
+                    const alreadyApplied = clan.applicants.some(a => a.name === game.player.name);
+                    const div = document.createElement('div');
+                    div.className = 'p-2 bg-black/20 rounded-md flex justify-between items-center';
+                    div.innerHTML = `
+                        <div>
+                            <p class="font-bold">${clan.name}</p>
+                            <p class="text-xs text-gray-400">${clan.members.length} Members | ${clan.totalPower.toLocaleString()} Power</p>
+                        </div>
+                        <button class="glass-button text-xs px-3 py-1 rounded-md" onclick="ClanSystem.applyToClan('${clan.name}')" ${alreadyApplied ? 'disabled' : ''}>${alreadyApplied ? 'Applied' : 'Apply'}</button>
+                    `;
+                    listDiv.appendChild(div);
+                });
+            },
+
+            applyToClan(clanName) {
+                const clan = this.getClan(clanName);
+                if (!clan) return;
+                const alreadyApplied = clan.applicants.some(a => a.name === game.player.name);
+                if (alreadyApplied) {
+                    alert("You have already applied to this clan.");
+                    return;
+                }
+                clan.applicants.push({ name: game.player.name, level: game.player.level });
+                StorageManager.saveGame();
+                this.populateClanList(); // Refresh the list to show the disabled button
+            },
+
+            renderRoster(container, clan) {
+                let content = '<div class="space-y-2">';
+                clan.members.forEach(member => {
+                    content += `
+                        <div class="p-2 bg-black/20 rounded-md flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">${member.name} <span class="text-xs text-cyan-400">${member.role}</span></p>
+                                <p class="text-xs text-gray-400">Level: ${member.level.toLocaleString()}</p>
+                            </div>
+                            ${clan.leader === game.player.name && member.name !== game.player.name ? `
+                            <div class="flex gap-2">
+                                <button class="glass-button text-xs px-2 py-1 rounded-md">Promote</button>
+                                <button class="glass-button text-xs px-2 py-1 rounded-md">Demote</button>
+                                <button class="glass-button bg-red-500/20 border-red-500/40 hover:bg-red-500/40 text-xs px-2 py-1 rounded-md">Kick</button>
+                            </div>` : ''}
+                        </div>
+                    `;
+                });
+                content += '</div>';
+                container.innerHTML = content;
+            },
+
+            renderApplicants(container, clan) {
+                let content = '<div class="space-y-2">';
+                if (clan.applicants.length === 0) {
+                    content += `<p class="text-center text-gray-500">No pending applications.</p>`;
+                }
+                clan.applicants.forEach(applicant => {
+                    content += `
+                        <div class="p-2 bg-black/20 rounded-md flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">${applicant.name}</p>
+                                <p class="text-xs text-gray-400">Level: ${applicant.level.toLocaleString()}</p>
+                            </div>
+                            ${clan.leader === game.player.name ? `
+                            <div class="flex gap-2">
+                                <button class="glass-button bg-green-500/20 border-green-500/40 hover:bg-green-500/40 text-xs px-2 py-1 rounded-md" onclick="ClanSystem.handleApplication('${clan.name}', '${applicant.name}', true)">Accept</button>
+                                <button class="glass-button bg-red-500/20 border-red-500/40 hover:bg-red-500/40 text-xs px-2 py-1 rounded-md" onclick="ClanSystem.handleApplication('${clan.name}', '${applicant.name}', false)">Decline</button>
+                            </div>` : ''}
+                        </div>
+                    `;
+                });
+                content += '</div>';
+                container.innerHTML = content;
+            },
+
+            handleApplication(clanName, applicantName, accepted) {
+                const clan = this.getClan(clanName);
+                if (!clan || clan.leader !== game.player.name) return;
+
+                const applicantIndex = clan.applicants.findIndex(a => a.name === applicantName);
+                if (applicantIndex === -1) return;
+
+                const [applicant] = clan.applicants.splice(applicantIndex, 1);
+
+                if (accepted) {
+                    clan.members.push({ ...applicant, role: 'Initiate' });
+                    clan.totalPower += applicant.level;
+                    this.logLedger(clan, `${game.player.name} accepted ${applicantName} into the clan.`);
+                } else {
+                    this.logLedger(clan, `${game.player.name} declined ${applicantName}'s application.`);
+                }
+                
+                StorageManager.saveGame();
+                this.renderApplicants(document.getElementById('clan-hub-tab-content'), clan);
+            },
+
+            renderInventory(container, clan) {
+                let content = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-cinzel mb-2">Your Inventory</h4>
+                        <div id="player-inventory-list" class="space-y-2"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-cinzel mb-2">Clan Vault</h4>
+                        <div id="clan-inventory-list" class="space-y-2"></div>
+                    </div>
+                </div>`;
+                container.innerHTML = content;
+                this.populatePlayerInventory(document.getElementById('player-inventory-list'), clan);
+                this.populateClanInventory(document.getElementById('clan-inventory-list'), clan);
+            },
+
+            populatePlayerInventory(container, clan) {
+                container.innerHTML = '';
+                if (game.player.inventory.length === 0) {
+                    container.innerHTML = `<p class="text-xs text-gray-500">Your inventory is empty.</p>`;
+                    return;
+                }
+                game.player.inventory.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'p-2 bg-black/20 rounded-md flex justify-between items-center';
+                    div.innerHTML = `<span>${item.name}</span>
+                                     <button class="glass-button text-xs px-2 py-1 rounded-md" onclick="ClanSystem.donateItem('${item.id}')">Donate</button>`;
+                    container.appendChild(div);
+                });
+            },
+
+            populateClanInventory(container, clan) {
+                container.innerHTML = '';
+                if (clan.inventory.length === 0) {
+                    container.innerHTML = `<p class="text-xs text-gray-500">The clan vault is empty.</p>`;
+                    return;
+                }
+                clan.inventory.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'p-2 bg-black/20 rounded-md flex justify-between items-center';
+                    div.innerHTML = `<span>${item.name}</span>
+                                     <button class="glass-button text-xs px-2 py-1 rounded-md" onclick="ClanSystem.requestItem('${item.id}')">Request</button>`;
+                    container.appendChild(div);
+                });
+            },
+
+            donateItem(itemId) {
+                const playerClan = this.getClan(game.player.clanName);
+                const itemIndex = game.player.inventory.findIndex(i => i.id === itemId);
+                if (!playerClan || itemIndex === -1) return;
+
+                const [item] = game.player.inventory.splice(itemIndex, 1);
+                playerClan.inventory.push(item);
+                this.logLedger(playerClan, `${game.player.name} donated ${item.name}.`);
+                
+                StorageManager.saveGame();
+                this.renderInventory(document.getElementById('clan-hub-tab-content'), playerClan);
+            },
+
+            requestItem(itemId) {
+                const playerClan = this.getClan(game.player.clanName);
+                if (!playerClan) return;
+                const item = playerClan.inventory.find(i => i.id === itemId);
+                if (!item) return;
+
+                playerClan.requests.push({ playerName: game.player.name, itemId: item.id, itemName: item.name });
+                this.logLedger(playerClan, `${game.player.name} requested ${item.name}.`);
+                
+                StorageManager.saveGame();
+                alert("Item requested. A leader must approve it.");
+                this.renderInventory(document.getElementById('clan-hub-tab-content'), playerClan);
+            },
+
+            logLedger(clan, entry) {
+                const timestamp = new Date().toLocaleString();
+                clan.ledger.unshift({ timestamp, entry }); // Add to the beginning
+                if (clan.ledger.length > 50) clan.ledger.pop(); // Keep ledger from getting too long
+            },
+
+            renderLedger(container, clan) {
+                let content = '<div class="space-y-1 text-xs">';
+                if (clan.ledger.length === 0) {
+                    content += `<p class="text-center text-gray-500">No ledger entries yet.</p>`;
+                }
+                clan.ledger.forEach(log => {
+                    content += `<p><span class="text-gray-500">[${log.timestamp}]</span> ${log.entry}</p>`;
+                });
+                content += '</div>';
+                container.innerHTML = content;
+            },
+
+            renderSettings(container, clan) {
+                if (clan.leader !== game.player.name) {
+                    container.innerHTML = `<p class="text-center text-red-400">Only the clan leader can change settings.</p>`;
+                    return;
+                }
+                container.innerHTML = `
+                    <h3 class="text-xl font-cinzel mb-4">Clan Settings</h3>
+                    <div class="flex items-center gap-4">
+                        <label for="tax-rate-input">Tax Rate (%):</label>
+                        <input type="number" id="tax-rate-input" min="0" max="100" value="${clan.taxRate * 100}" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1 w-24">
+                        <button id="set-tax-rate-btn" class="glass-button px-4 py-1 rounded-md">Set Rate</button>
+                    </div>
+                `;
+                document.getElementById('set-tax-rate-btn').addEventListener('click', () => this.setTaxRate());
+            },
+        };
+
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            ui = {
+                loadingOverlay: document.getElementById('loading-overlay'), 
+                loadingMessage: document.getElementById('loading-message'), 
+                resourceSidebar: document.getElementById('resource-sidebar'), 
+                resourceBarContent: document.getElementById('resource-bar-content'), 
+                toggleSidebarBtn: document.getElementById('toggle-sidebar-btn'), 
+                worldMap: { 
+                    modal: document.getElementById('world-map-modal'), 
+                    canvas: document.getElementById('map-canvas'), 
+                    clanMenuBtn: document.getElementById('clan-menu-btn'),
+                    tooltip: { 
+                        container: document.getElementById('hex-tooltip'), 
+                        name: document.getElementById('tooltip-name'), 
+                        owner: document.getElementById('tooltip-owner'), 
+                        bonus: document.getElementById('tooltip-bonus'), 
+                        resource: document.getElementById('tooltip-resource'), 
+                        harvestBtn: document.getElementById('tooltip-harvest-btn'), 
+                        enterBtn: document.getElementById('tooltip-enter-btn'), 
+                        settleBtn: document.getElementById('tooltip-settle-btn'), 
+                        declareWarBtn: document.getElementById('tooltip-declare-war-btn') 
+                    }, 
+                    panToBastionBtn: document.getElementById('pan-to-bastion-btn'), 
+                    recenterBtn: document.getElementById('recenter-btn'),
+                    simulateGoldBtn: document.getElementById('simulate-gold-btn'),
+                    simulateKillBtn: document.getElementById('simulate-kill-btn'),
+                    simulateGemBtn: document.getElementById('simulate-gem-btn')
+                },
+                bastion: { 
+                    container: document.getElementById('bastion-manager-container'), 
+                    canvas: document.getElementById('bastion-canvas'), 
+                    exitBtn: document.getElementById('bastion-exit-btn'), 
+                    title: document.getElementById('bastion-title'), 
+                    messageBox: document.getElementById('bastion-message-box'),
+                    bgSelect: document.getElementById('bastion-bg-select')
+                },
+                buildingUpgrade: { 
+                    modal: document.getElementById('building-upgrade-modal'), 
+                    content: document.getElementById('upgrade-modal-content'), 
+                    closeBtn: document.getElementById('close-upgrade-modal-btn') 
+                },
+                clanBonuses: { 
+                    modal: document.getElementById('clan-bonuses-modal'), 
+                    content: document.getElementById('clan-bonuses-content'), 
+                    closeBtn: document.getElementById('close-clan-bonuses-btn') 
+                },
+                clanHub: {
+                    modal: document.getElementById('clan-hub-modal'),
+                    content: document.getElementById('clan-hub-content'),
+                    closeBtn: document.getElementById('close-clan-hub-btn')
+                },
+                createClan: {
+                    modal: document.getElementById('create-clan-modal'),
+                    nameInput: document.getElementById('create-clan-name-input'),
+                    confirmBtn: document.getElementById('confirm-create-clan-btn'),
+                    cancelBtn: document.getElementById('cancel-create-clan-btn')
+                }
+            };
+            
+            worldManager = new WorldMap(ui.worldMap.canvas); 
+            bastionManager = new BastionMap(ui.bastion.canvas);
+            
+            // Populate background selector
+            for (const name in GDD.BastionBackgrounds) {
+                const url = GDD.BastionBackgrounds[name];
+                const option = document.createElement('option');
+                option.value = url;
+                option.textContent = name;
+                ui.bastion.bgSelect.appendChild(option);
+            }
+            
+            // --- Event Listeners ---
+            ui.bastion.exitBtn.addEventListener('click', showWorld); 
+            ui.buildingUpgrade.closeBtn.addEventListener('click', () => ui.buildingUpgrade.modal.classList.add('hidden'));
+            ui.clanBonuses.closeBtn.addEventListener('click', () => ui.clanBonuses.modal.classList.add('hidden'));
+            ui.worldMap.tooltip.enterBtn.addEventListener('click', enterBastion);
+            ui.worldMap.tooltip.settleBtn.addEventListener('click', () => ClanSystem.settleClan(game.worldMap.selectedHex));
+            ui.worldMap.tooltip.harvestBtn.addEventListener('click', () => ClanSystem.harvestResource(game.worldMap.selectedHex));
+            ui.toggleSidebarBtn.addEventListener('click', () => { 
+                ui.resourceSidebar.classList.toggle('collapsed'); 
+                localStorage.setItem('sidebarCollapsed', ui.resourceSidebar.classList.contains('collapsed')); 
+            });
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                ui.resourceSidebar.classList.add('collapsed');
+            }
+
+            ui.worldMap.recenterBtn.addEventListener('click', () => { worldManager.isCameraLocked = true; });
+            ui.worldMap.panToBastionBtn.addEventListener('click', () => {
+                const capital = Array.from(worldManager.grid.values()).find(h => h.isClanCapital && h.owner === game.player.clanName);
+                if(capital) worldManager.centerOnHex(capital.q, capital.r);
+                else alert("Your clan has not settled a capital yet!");
+            });
+
+            ui.worldMap.clanMenuBtn.addEventListener('click', ClanSystem.showClanHub.bind(ClanSystem));
+            ui.clanHub.closeBtn.addEventListener('click', () => ui.clanHub.modal.classList.add('hidden'));
+            ui.createClan.cancelBtn.addEventListener('click', () => ui.createClan.modal.classList.add('hidden'));
+            ui.createClan.confirmBtn.addEventListener('click', ClanSystem.confirmCreateClan.bind(ClanSystem));
+            ui.worldMap.simulateGoldBtn.addEventListener('click', ClanSystem.simulateLootSale.bind(ClanSystem));
+            ui.worldMap.simulateKillBtn.addEventListener('click', ClanSystem.simulateEnemyKill.bind(ClanSystem));
+            ui.worldMap.simulateGemBtn.addEventListener('click', ClanSystem.simulateGemFind.bind(ClanSystem));
+            ui.bastion.bgSelect.addEventListener('change', (e) => {
+                const newBgUrl = e.target.value;
+                ui.bastion.container.style.backgroundImage = `url(${newBgUrl})`;
+                const playerClan = ClanSystem.getClan(game.player.clanName);
+                if (playerClan) {
+                    playerClan.backgroundUrl = newBgUrl;
+                    StorageManager.saveGame();
+                }
+            });
+
+
+            // --- Initial Load Logic ---
+            StorageManager.loadGame();
+            
+            // Create dummy data for testing if none exists
+            if (game.clans.length === 0) {
+                game.clans.push({
+                    name: "The Silver Blades",
+                    leader: "Aelar",
+                    members: [{ name: "Aelar", level: 50, role: "Leader" }],
+                    applicants: [], inventory: [], requests: [], ledger: [],
+                    totalPower: 50, treasury: { Gold: 50000 }, buildings: {}, activeTimers: [],
+                    hasCapital: false, taxRate: 0.10, activeBonusId: null, backgroundUrl: GDD.BastionBackgrounds.Serene
+                });
+                const testPlayer = { name: "TestPlayer", level: 5 };
+                game.clans[0].applicants.push(testPlayer);
+            }
+
+            loadExistingWorld(); // This will now handle both loading and generating a new world
+            
+            animate();
+            gameTickInterval = setInterval(gameTick, 1000);
+        });
+    </script>
+</body>
+</html>

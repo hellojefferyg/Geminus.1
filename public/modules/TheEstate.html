@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Estate & Kingdom Builder</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0c101d;
+            --highlight-powder-blue: #cae9ea;
+            --shadow-dark-grey: #3c4748;
+            --accent-cyan: #22d3ee;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--highlight-powder-blue);
+            background-color: var(--bg-dark);
+            overflow: hidden;
+        }
+        .glass-panel {
+            background: rgba(29, 29, 29, 0.45);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--shadow-dark-grey);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5);
+        }
+        .glass-button {
+            background: rgba(34, 211, 238, 0.15);
+            border: 1px solid rgba(34, 211, 238, 0.4);
+            color: var(--highlight-powder-blue);
+            transition: all 0.2s ease-in-out;
+        }
+        .glass-button:not(:disabled):hover {
+            background: rgba(34, 211, 238, 0.3);
+            border-color: var(--accent-cyan);
+        }
+        .glass-button:disabled {
+            background: rgba(50, 50, 50, 0.3);
+            border-color: rgba(100, 100, 100, 0.5);
+            color: rgba(202, 233, 234, 0.5);
+            cursor: not-allowed;
+        }
+        
+        .modal-view {
+            position: fixed; inset: 0; z-index: 40;
+            background-color: var(--bg-dark);
+        }
+        #hex-map-container {
+            width: 100%; height: 100%;
+            position: absolute;
+            inset: 0;
+        }
+        #map-canvas, #estate-canvas { 
+            cursor: grab; 
+            touch-action: none;
+            width: 100%;
+            height: 100%;
+        }
+        #map-canvas:active, #estate-canvas:active { cursor: grabbing; }
+
+        #estate-manager-container {
+            background-color: #1a1c23;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+        }
+        #estate-title {
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+            font-family: 'Cinzel', serif;
+        }
+
+        #loading-overlay { z-index: 99; }
+        #loading-progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #loading-progress-inner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--highlight-powder-blue), transparent);
+            background-size: 200% 100%;
+            animation: loading-scan 2s linear infinite;
+        }
+
+        @keyframes loading-scan {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        #research-lab-modal .glass-panel, #estate-bank-modal .glass-panel, #quest-board-modal .glass-panel, #estate-setup-modal .glass-panel {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #resource-sidebar {
+            background: rgba(12, 16, 29, 0.6);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--shadow-dark-grey);
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(0);
+            width: 25%;
+            max-width: 280px;
+            min-width: 220px;
+        }
+        #resource-sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        #resource-sidebar.collapsed #resource-bar-content {
+            opacity: 0;
+        }
+        #toggle-sidebar-btn {
+            transition: transform 0.3s ease-in-out, left 0.3s ease-in-out;
+        }
+        #resource-sidebar.collapsed + #toggle-sidebar-btn {
+             transform: translateY(-50%) rotate(180deg);
+             left: 0;
+        }
+        
+        /* --- GDD Editor Styles --- */
+        #gdd-editor-modal {
+            z-index: 100;
+            background: rgba(12, 16, 29, 0.7);
+            backdrop-filter: blur(5px);
+        }
+        #gdd-editor-container {
+            display: grid;
+            grid-template-columns: 25% 1fr;
+            height: 90vh;
+            width: 95vw;
+        }
+        #gdd-sidebar {
+            border-right: 1px solid var(--shadow-dark-grey);
+            overflow-y: auto;
+        }
+        #gdd-sidebar .gdd-tab.active {
+            background: rgba(34, 211, 238, 0.2);
+            border-right-color: var(--accent-cyan);
+            font-weight: 700;
+        }
+        #gdd-content-area {
+            display: flex;
+            flex-direction: column;
+            min-height: 0; 
+        }
+        #gdd-content-scroll {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .gdd-accordion-header {
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .gdd-accordion-header:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .gdd-accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .gdd-accordion-content.open {
+            max-height: 2000px;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .gdd-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .gdd-input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .gdd-input, .gdd-textarea, .gdd-select {
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--shadow-dark-grey);
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .gdd-input:focus, .gdd-textarea:focus, .gdd-select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        .gdd-checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--shadow-dark-grey);
+        }
+        .ai-button {
+            background: none; border: none; padding: 0.25rem; cursor: pointer;
+        }
+        .dev-toggle.active {
+            background: rgba(34, 211, 238, 0.4);
+            border-color: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+
+    <main id="main-screen" class="flex items-center justify-center min-h-screen">
+        <div class="glass-panel p-8 rounded-lg text-center w-full max-w-2xl">
+            <div id="main-menu-content"></div>
+        </div>
+    </main>
+
+    <div id="world-map-modal" class="modal-view hidden">
+        <div class="w-full h-full relative">
+            <div id="hex-map-container" class="absolute inset-0">
+                <canvas id="map-canvas" tabindex="0"></canvas>
+                <div id="hex-tooltip" class="absolute z-30 glass-panel p-3 rounded-lg text-sm hidden w-56 text-center">
+                    <h4 id="tooltip-name" class="font-cinzel font-bold"></h4>
+                    <p id="tooltip-biome" class="text-xs italic opacity-70"></p>
+                    <p id="tooltip-resource" class="text-xs mt-1"></p>
+                    <button id="tooltip-gather-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Gather</button>
+                    <button id="tooltip-enter-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Enter Estate</button>
+                    <button id="tooltip-move-estate-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Move Estate Here</button>
+                    <button id="tooltip-found-estate-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Found Estate Here</button>
+                    <button id="tooltip-harvest-shard-btn" class="glass-button text-xs px-4 py-1 rounded-md w-full mt-2 hidden">Harvest Shard</button>
+                </div>
+            </div>
+            <div id="resource-sidebar" class="absolute top-0 left-0 h-full p-4 flex flex-col z-20">
+                <div id="resource-bar-content" class="flex-grow overflow-y-auto transition-opacity duration-300">
+                    <!-- Content will be injected by JS -->
+                </div>
+            </div>
+            <button id="toggle-sidebar-btn" class="absolute top-1/2 left-[25%] -translate-y-1/2 w-8 h-12 rounded-r-lg bg-gray-800/80 border-t border-b border-r border-gray-600 flex items-center justify-center text-white z-30">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <div class="absolute top-4 right-4 z-20 flex gap-4">
+                <button id="map-exit-btn" class="glass-button text-lg px-4 py-2 rounded-lg">[ Main Menu ]</button>
+            </div>
+            <div class="absolute bottom-4 right-4 z-20 flex gap-2">
+                 <button id="map-analysis-btn" class="glass-button w-12 h-12 rounded-full text-2xl flex items-center justify-center">🔍</button>
+                 <button id="pan-to-estate-btn" class="glass-button w-12 h-12 rounded-full text-2xl flex items-center justify-center">🏡</button>
+                 <button id="recenter-btn" class="glass-button w-12 h-12 rounded-full text-2xl flex items-center justify-center">🎯</button>
+                 <button id="dev-tools-btn" class="glass-button w-12 h-12 rounded-full text-2xl flex items-center justify-center">⚙️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New GDD Editor -->
+    <div id="gdd-editor-modal" class="modal-view hidden items-center justify-center">
+        <div id="gdd-editor-container" class="glass-panel rounded-lg overflow-hidden">
+            <div id="gdd-sidebar" class="p-2">
+                <!-- Sidebar tabs will be generated here -->
+            </div>
+            <div id="gdd-content-area">
+                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                    <h2 id="gdd-content-title" class="text-2xl font-cinzel">Editor</h2>
+                    <div class="flex gap-2">
+                        <button id="gdd-save-btn" class="glass-button px-4 py-2 rounded-md">💾 Save Changes</button>
+                        <button id="gdd-close-btn" class="glass-button bg-red-500/20 border-red-500/40 hover:bg-red-500/40 px-4 py-2 rounded-md">&times;</button>
+                    </div>
+                </div>
+                <div id="gdd-content-scroll" class="p-4">
+                    <!-- Content will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="estate-manager-container" class="modal-view hidden flex items-center justify-center">
+        <div id="estate-title" class="absolute top-5 left-1/2 -translate-x-1/2 text-4xl text-white z-10 pointer-events-none"></div>
+        <canvas id="estate-canvas"></canvas>
+        <div id="estate-tooltip" class="absolute z-30 glass-panel p-3 rounded-lg text-sm hidden w-56 text-center">
+            <h4 id="estate-tooltip-name" class="font-cinzel font-bold"></h4>
+            <p id="estate-tooltip-level" class="text-xs italic opacity-70"></p>
+        </div>
+        <div class="absolute top-4 right-4 z-20">
+            <button id="estate-exit-btn" class="glass-button text-lg px-4 py-2 rounded-lg">[ Exit to World ]</button>
+        </div>
+        <div id="estate-message-box" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 text-white px-6 py-3 rounded-lg opacity-0 transition-opacity duration-500 pointer-events-none z-20"></div>
+    </div>
+    
+    <div id="building-upgrade-modal" class="modal-view hidden items-center justify-center bg-black/70 z-50">
+        <div class="glass-panel p-6 rounded-lg w-full max-w-md relative">
+            <button id="close-upgrade-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="upgrade-modal-content"></div>
+        </div>
+    </div>
+
+    <div id="refinement-modal" class="modal-view hidden items-center justify-center bg-black/70 z-50">
+        <div class="glass-panel p-6 rounded-lg w-full max-w-md relative">
+            <button id="close-refinement-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="refinement-modal-content"></div>
+        </div>
+    </div>
+    
+    <div id="generator-modal" class="modal-view hidden items-center justify-center bg-black/70 z-50">
+        <div class="glass-panel p-6 rounded-lg w-full max-w-md relative">
+            <button id="close-generator-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="generator-modal-content"></div>
+        </div>
+    </div>
+
+    <div id="research-lab-modal" class="modal-view hidden items-center justify-center bg-black/80 z-40">
+        <div class="glass-panel p-8 rounded-lg w-full max-w-6xl relative flex flex-col">
+            <button id="close-research-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <div id="research-lab-content"></div>
+        </div>
+    </div>
+    
+    <div id="estate-bank-modal" class="modal-view hidden items-center justify-center bg-black/80 z-50">
+        <div class="glass-panel p-8 rounded-lg w-full max-w-4xl relative flex flex-col">
+            <button id="close-bank-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <h1 class="text-4xl font-cinzel mb-6 text-center">Estate Bank</h1>
+            <div id="bank-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        </div>
+    </div>
+
+    <div id="quest-board-modal" class="modal-view hidden items-center justify-center bg-black/80 z-50">
+        <div class="glass-panel p-8 rounded-lg w-full max-w-2xl relative">
+             <button id="close-quest-board-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+             <div id="quest-board-content"></div>
+        </div>
+    </div>
+
+    <div id="estate-setup-modal" class="modal-view hidden items-center justify-center bg-black/80">
+        <div class="glass-panel p-8 rounded-lg w-full max-w-2xl text-center">
+            <h1 class="text-4xl font-cinzel mb-4">Found Your Estate</h1>
+            <p class="mb-6 text-gray-300">Give your new home a name and description to create its identity.</p>
+            <div class="mb-4 text-left">
+                <label for="estate-name-input" class="block mb-2 text-sm font-bold">Estate Name</label>
+                <input type="text" id="estate-name-input" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" value="My First Estate">
+            </div>
+            <div class="mb-6 text-left">
+                <label for="estate-desc-input" class="block mb-2 text-sm font-bold">Description</label>
+                <textarea id="estate-desc-input" rows="4" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="e.g., A towering keep on a misty cliffside, overlooking a dense, ancient forest..."></textarea>
+            </div>
+            <div class="flex gap-4 mb-6">
+                <button id="ai-desc-btn" class="glass-button py-2 rounded-lg w-full">✨ Generate AI Description</button>
+                <button id="ai-name-btn" class="glass-button py-2 rounded-lg w-full">✨ Suggest Names</button>
+            </div>
+            <div id="name-suggestions" class="flex flex-wrap gap-2 mb-4"></div>
+            <button id="confirm-estate-setup-btn" class="glass-button text-2xl font-cinzel px-8 py-4 rounded-lg w-full">Confirm & Build</button>
+            <p id="setup-status-message" class="text-cyan-300 mt-4 h-6"></p>
+        </div>
+    </div>
+
+    <div id="analysis-report-modal" class="modal-view hidden items-center justify-center bg-black/70 z-50">
+        <div class="glass-panel p-6 rounded-lg w-full max-w-md relative">
+            <button id="close-analysis-modal-btn" class="absolute top-2 right-3 text-2xl hover:text-red-400">&times;</button>
+            <h3 class="text-2xl font-cinzel mb-4">Map Analysis Report</h3>
+            <div id="analysis-report-content" class="space-y-2"></div>
+        </div>
+    </div>
+
+
+    <div id="loading-overlay" class="modal-view hidden items-center justify-center bg-black/70">
+        <div class="glass-panel p-8 rounded-lg text-center w-full max-w-md">
+            <h2 id="loading-message" class="text-2xl font-cinzel mb-4">Loading...</h2>
+            <div id="loading-progress-bar">
+                <div id="loading-progress-inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventory-ui" class="absolute bottom-4 left-4 glass-panel p-3 rounded-lg text-sm w-56 hidden">
+        <h4 class="font-bold text-center mb-2">Inventory (At Risk)</h4>
+        <div id="inventory-list" class="space-y-1"></div>
+    </div>
+    <div id="storage-ui" class="absolute bottom-4 right-4 glass-panel p-3 rounded-lg text-sm w-56 hidden">
+        <h4 class="font-bold text-center mb-2">Estate Storage</h4>
+        <div id="storage-list" class="space-y-1 overflow-y-auto max-h-32"></div>
+    </div>
+    <div id="production-ui" class="absolute bottom-4 left-1/2 -translate-x-1/2 glass-panel p-3 rounded-lg text-sm w-64 hidden">
+        <h4 class="font-bold text-center mb-2">Production Per Hour</h4>
+        <div id="production-list" class="space-y-1"></div>
+    </div>
+
+
+    <script>
+        // --- DATA & STATE ---
+        const BIOMES = { land: { name: 'Land' }, water: { name: 'Water' } };
+        
+        let GDD = {
+            Resources: {
+                DragonboneTimber: { name: "Dragonbone Timber", icon: "🌲", rarity: "Common" },
+                PrimordialMire:   { name: "Primordial Mire",   icon: "🧱", rarity: "Common" },
+                EarthRootRock:    { name: "Earth-Root Rock",   icon: "🗿", rarity: "Common" },
+                DwarfForgedIron:  { name: "Dwarf-Forged Iron", icon: "⚙️", rarity: "Common" },
+                Rawhide:          { name: "Rawhide",           icon: "🐄", rarity: "Common" },
+                DuneTitanDust:     { name: "Dune-Titan Dust",     icon: "⏳", rarity: "Rare" },
+                InfernalEmberlump: { name: "Infernal Emberlump", icon: "🔥", rarity: "Rare" },
+                AstralDust:        { name: "Astral Dust",         icon: "✨", rarity: "Rare" },
+                VoidHeartAdamant:  { name: "Void-Heart Adamant",  icon: "🌑", rarity: "Epic" },
+                TitansBloodOre:    { name: "Titans-Blood Ore",    icon: "🩸", rarity: "Epic" },
+                NightWhisperEssence: { name: "Night Whisper Essence", icon: "👻", rarity: "Epic" },
+                SeraphicPlatinum:  { name: "Seraphic Platinum",   icon: "🕊️", rarity: "Epic" },
+                WorldShards:        { name: "World Shard",         icon: "💠", rarity: "Epic" },
+                IronIngot:         { name: "Iron Ingot",          icon: "🔩", rarity: "Refined" },
+                TannedLeather:     { name: "Tanned Leather",      icon: "📜", rarity: "Refined" },
+                ArcaneResin:       { name: "Arcane Resin",        icon: "💧", rarity: "Refined" },
+                FociStone:         { name: "Foci Stone",          icon: "💎", rarity: "Refined" },
+            },
+            RarityWeights: { Common: 100, Rare: 20, Epic: 5, Refined: 0 },
+            NodeDefinitions: {
+                resource_node: { name_template: "{resourceName} Node", base_amount_min: 500, base_amount_max: 1000 },
+                world_shard_node: { name: "World Shard Locus", icon: "💠", cooldown_hours: 1 }
+            },
+            Buildings: {
+                estateHall: { name: "Estate Hall", icon: "🏛️" },
+                researchCottage: { name: "Research Cottage", icon: "🔬" },
+                storehouse: { name: "Storehouse", icon: "📦" },
+                blacksmith: { name: "Blacksmith", icon: "🔥" },
+                tannery: { name: "Tannery", icon: "📜" },
+                arcanistsAltar: { name: "Arcanist's Altar", icon: "🔮" },
+                dragonwoodGrove: { name: "Dragonwood Grove", icon: "🌲", type: "GENERATOR" },
+                bedrockQuarry: { name: "Bedrock Quarry", icon: "🗿", type: "GENERATOR" },
+                estateMine: { name: "Estate Mine", icon: "⚙️", type: "GENERATOR" },
+                huntingPreserve: { name: "Hunting Preserve", icon: "🏹", type: "GENERATOR" },
+                questBoard: { name: "Quest Board", icon: "📜" },
+                bank: { name: "Estate Bank", icon: "🏦" },
+            },
+            BiomeMappings: {
+                forest: { resources: ['DragonboneTimber', 'Rawhide', 'NightWhisperEssence'] },
+                mountain: { resources: ['EarthRootRock', 'DwarfForgedIron', 'TitansBloodOre'] },
+                desert: { resources: ['DuneTitanDust', 'SeraphicPlatinum'] },
+                volcanic: { resources: ['InfernalEmberlump', 'VoidHeartAdamant'] },
+                plains: { resources: ['PrimordialMire', 'AstralDust'] }
+            },
+            WorldEvents: [],
+            GameConstants: { PLAYER_STARTING_HEALTH: 100, MAX_PARTY_SIZE: 4, ESTATE_MOVE_COST: 1, GATHER_DURATION_MS: 5000 }
+        };
+        let RESOURCES = GDD.Resources;
+
+        let game = { 
+            player: { name: "Hero", level: 250, icon: '👾', inventory: {}, worldShards: 5, hasPlacedFirstEstate: false }, 
+            worldMap: { q: 0, r: 0, selectedHex: null }, 
+            estateMap: { q: 0, r: 0, selectedHex: null }, 
+            currentView: 'menu',
+            dev: { freeMove: false }
+        };
+        let ui, worldManager, estateManager, estateMapManager, gameTickInterval;
+
+        const EstateGameData = {
+            buildings: {
+                estateHall: {
+                    2: { cost: { DragonboneTimber: 581, EarthRootRock: 581, DwarfForgedIron: 581 }, time: 1800 }, 3: { cost: { DragonboneTimber: 1162, EarthRootRock: 1162, DwarfForgedIron: 1162 }, time: 3600 }, 4: { cost: { DragonboneTimber: 1743, EarthRootRock: 1743, DwarfForgedIron: 1743 }, time: 7200 }, 5: { cost: { DragonboneTimber: 2905, EarthRootRock: 2905, DwarfForgedIron: 2905 }, time: 14400 }, 6: { cost: { DragonboneTimber: 4358, EarthRootRock: 4358, DwarfForgedIron: 4358 }, time: 28800 }, 7: { cost: { DragonboneTimber: 5810, EarthRootRock: 5810, DwarfForgedIron: 5810 }, time: 43200 }, 8: { cost: { DragonboneTimber: 17430, EarthRootRock: 17430, DwarfForgedIron: 17430 }, time: 86400 }, 9: { cost: { DragonboneTimber: 37765, EarthRootRock: 37765, DwarfForgedIron: 37765 }, time: 172800 }, 10: { cost: { DragonboneTimber: 52290, EarthRootRock: 52290, DwarfForgedIron: 52290 }, time: 259200 }
+                },
+                dragonwoodGrove: {
+                    2: { cost: { DragonboneTimber: 332, DwarfForgedIron: 249, EarthRootRock: 249, Rawhide: 249 }, time: 600 }, 3: { cost: { DragonboneTimber: 664, DwarfForgedIron: 498, EarthRootRock: 498, Rawhide: 498 }, time: 1200 }, 4: { cost: { DragonboneTimber: 996, DwarfForgedIron: 747, EarthRootRock: 747, Rawhide: 747 }, time: 2400 }, 5: { cost: { DragonboneTimber: 1660, DwarfForgedIron: 1245, EarthRootRock: 1245, Rawhide: 1245 }, time: 4800 }, 6: { cost: { DragonboneTimber: 2490, DwarfForgedIron: 1868, EarthRootRock: 1868, Rawhide: 1868 }, time: 9600 }, 7: { cost: { DragonboneTimber: 3320, DwarfForgedIron: 2490, EarthRootRock: 2490, Rawhide: 2490 }, time: 19200 }, 8: { cost: { DragonboneTimber: 9960, DwarfForgedIron: 7470, EarthRootRock: 7470, Rawhide: 7470 }, time: 38400 }, 9: { cost: { DragonboneTimber: 21580, DwarfForgedIron: 16185, EarthRootRock: 16185, Rawhide: 16185 }, time: 76800 }, 10: { cost: { DragonboneTimber: 29880, DwarfForgedIron: 22410, EarthRootRock: 22410, Rawhide: 22410 }, time: 153600 }
+                },
+                bedrockQuarry: {
+                    2: { cost: { EarthRootRock: 332, DwarfForgedIron: 249, DragonboneTimber: 249, Rawhide: 249 }, time: 600 }, 3: { cost: { EarthRootRock: 664, DwarfForgedIron: 498, DragonboneTimber: 498, Rawhide: 498 }, time: 1200 }, 4: { cost: { EarthRootRock: 996, DwarfForgedIron: 747, DragonboneTimber: 747, Rawhide: 747 }, time: 2400 }, 5: { cost: { EarthRootRock: 1660, DwarfForgedIron: 1245, DragonboneTimber: 1245, Rawhide: 1245 }, time: 4800 }, 6: { cost: { EarthRootRock: 2490, DwarfForgedIron: 1868, DragonboneTimber: 1868, Rawhide: 1868 }, time: 9600 }, 7: { cost: { EarthRootRock: 3320, DwarfForgedIron: 2490, DragonboneTimber: 2490, Rawhide: 2490 }, time: 19200 }, 8: { cost: { EarthRootRock: 9960, DwarfForgedIron: 7470, DragonboneTimber: 7470, Rawhide: 7470 }, time: 38400 }, 9: { cost: { EarthRootRock: 21580, DwarfForgedIron: 16185, DragonboneTimber: 16185, Rawhide: 16185 }, time: 76800 }, 10: { cost: { EarthRootRock: 29880, DwarfForgedIron: 22410, DragonboneTimber: 22410, Rawhide: 22410 }, time: 153600 }
+                },
+                estateMine: {
+                    2: { cost: { DwarfForgedIron: 332, DragonboneTimber: 249, EarthRootRock: 249, Rawhide: 249 }, time: 600 }, 3: { cost: { DwarfForgedIron: 664, DragonboneTimber: 498, EarthRootRock: 498, Rawhide: 498 }, time: 1200 }, 4: { cost: { DwarfForgedIron: 996, DragonboneTimber: 747, EarthRootRock: 747, Rawhide: 747 }, time: 2400 }, 5: { cost: { DwarfForgedIron: 1660, DragonboneTimber: 1245, EarthRootRock: 1245, Rawhide: 1245 }, time: 4800 }, 6: { cost: { DwarfForgedIron: 2490, DragonboneTimber: 1868, EarthRootRock: 1868, Rawhide: 1868 }, time: 9600 }, 7: { cost: { DwarfForgedIron: 3320, DragonboneTimber: 2490, EarthRootRock: 2490, Rawhide: 2490 }, time: 19200 }, 8: { cost: { DwarfForgedIron: 9960, DragonboneTimber: 7470, EarthRootRock: 7470, Rawhide: 7470 }, time: 38400 }, 9: { cost: { DwarfForgedIron: 21580, DragonboneTimber: 16185, EarthRootRock: 16185, Rawhide: 16185 }, time: 76800 }, 10: { cost: { DwarfForgedIron: 29880, DragonboneTimber: 22410, EarthRootRock: 22410, Rawhide: 22410 }, time: 153600 }
+                },
+                huntingPreserve: {
+                    2: { cost: { Rawhide: 332, DwarfForgedIron: 249, DragonboneTimber: 249, EarthRootRock: 249 }, time: 600 }, 3: { cost: { Rawhide: 664, DwarfForgedIron: 498, DragonboneTimber: 498, EarthRootRock: 498 }, time: 1200 }, 4: { cost: { Rawhide: 996, DwarfForgedIron: 747, DragonboneTimber: 747, EarthRootRock: 747 }, time: 2400 }, 5: { cost: { Rawhide: 1660, DwarfForgedIron: 1245, DragonboneTimber: 1245, EarthRootRock: 1245 }, time: 4800 }, 6: { cost: { Rawhide: 2490, DwarfForgedIron: 1868, DragonboneTimber: 1868, EarthRootRock: 1868 }, time: 9600 }, 7: { cost: { Rawhide: 3320, DwarfForgedIron: 2490, DragonboneTimber: 2490, EarthRootRock: 2490 }, time: 19200 }, 8: { cost: { Rawhide: 9960, DwarfForgedIron: 7470, DragonboneTimber: 7470, EarthRootRock: 7470 }, time: 38400 }, 9: { cost: { Rawhide: 21580, DwarfForgedIron: 16185, DragonboneTimber: 16185, EarthRootRock: 16185 }, time: 76800 }, 10: { cost: { Rawhide: 29880, DwarfForgedIron: 22410, DragonboneTimber: 22410, EarthRootRock: 22410 }, time: 153600 }
+                },
+            },
+            research: {
+                // --- Path of Providence ---
+                reinforcedTools: { name: "Reinforced Tools", description: "Increases gathering speed.", levels: { 1: { cost: { IronIngot: 200, DragonboneTimber: 200 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 2: { cost: { IronIngot: 300, DragonboneTimber: 300 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 3: { cost: { IronIngot: 450, DragonboneTimber: 450 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 4: { cost: { IronIngot: 675, DragonboneTimber: 675 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 5: { cost: { IronIngot: 1013, DragonboneTimber: 1013 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 6: { cost: { IronIngot: 1520, DragonboneTimber: 1520 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 7: { cost: { IronIngot: 2280, DragonboneTimber: 2280 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 8: { cost: { IronIngot: 3420, DragonboneTimber: 3420 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 9: { cost: { IronIngot: 5130, DragonboneTimber: 5130 }, effect: { type: 'gatheringSpeed', value: 0.05 } }, 10: { cost: { IronIngot: 7695, DragonboneTimber: 7695 }, effect: { type: 'gatheringSpeed', value: 0.05 } } } },
+                dwarvenTechnique: { name: "Dwarven Technique", description: "Increases resource yield per gather.", levels: { 1: { cost: { DwarfForgedIron: 1000, EarthRootRock: 500 }, effect: { type: 'bonusYield', value: 2 } }, 2: { cost: { DwarfForgedIron: 1500, EarthRootRock: 750 }, effect: { type: 'bonusYield', value: 4 } }, 3: { cost: { DwarfForgedIron: 2250, EarthRootRock: 1125 }, effect: { type: 'bonusYield', value: 6 } }, 4: { cost: { DwarfForgedIron: 3375, EarthRootRock: 1688 }, effect: { type: 'bonusYield', value: 8 } }, 5: { cost: { DwarfForgedIron: 5063, EarthRootRock: 2531 }, effect: { type: 'bonusYield', value: 10 } }, 6: { cost: { DwarfForgedIron: 7594, EarthRootRock: 3797 }, effect: { type: 'bonusYield', value: 12 } }, 7: { cost: { DwarfForgedIron: 11391, EarthRootRock: 5695 }, effect: { type: 'bonusYield', value: 14 } }, 8: { cost: { DwarfForgedIron: 17086, EarthRootRock: 8543 }, effect: { type: 'bonusYield', value: 16 } }, 9: { cost: { DwarfForgedIron: 25629, EarthRootRock: 12815 }, effect: { type: 'bonusYield', value: 18 } }, 10: { cost: { DwarfForgedIron: 38443, EarthRootRock: 19222 }, effect: { type: 'bonusYield', value: 20 } } } },
+                heartOfTheManor: { name: "Heart of the Manor", description: "Increases all passive resource generation by 2% for each level of your Estate Hall.", levels: { 1: { cost: { DragonboneTimber: 25000, EarthRootRock: 25000, DwarfForgedIron: 25000, WorldShards: 10 }, effect: { type: 'estateSynergy', value: 0.02 } } } },
+                quartermastersLogistics: { name: "Quartermaster's Logistics", description: "Increases resource gain from offline time by 10% per level.", levels: { 1: { cost: { DragonboneTimber: 1000, EarthRootRock: 1000 }, effect: { type: 'offlineBonus', value: 0.1 } }, 2: { cost: { DragonboneTimber: 1500, EarthRootRock: 1500 }, effect: { type: 'offlineBonus', value: 0.1 } }, 3: { cost: { DragonboneTimber: 2250, EarthRootRock: 2250 }, effect: { type: 'offlineBonus', value: 0.1 } }, 4: { cost: { DragonboneTimber: 3375, EarthRootRock: 3375 }, effect: { type: 'offlineBonus', value: 0.1 } }, 5: { cost: { DragonboneTimber: 5063, EarthRootRock: 5063 }, effect: { type: 'offlineBonus', value: 0.1 } }, 6: { cost: { DragonboneTimber: 7594, EarthRootRock: 7594 }, effect: { type: 'offlineBonus', value: 0.1 } }, 7: { cost: { DragonboneTimber: 11391, EarthRootRock: 11391 }, effect: { type: 'offlineBonus', value: 0.1 } }, 8: { cost: { DragonboneTimber: 17086, EarthRootRock: 17086 }, effect: { type: 'offlineBonus', value: 0.1 } }, 9: { cost: { DragonboneTimber: 25629, EarthRootRock: 25629 }, effect: { type: 'offlineBonus', value: 0.1 } }, 10: { cost: { DragonboneTimber: 38443, EarthRootRock: 38443 }, effect: { type: 'offlineBonus', value: 0.1 } } } },
+                
+                // --- Path of Prowess ---
+                ironWeave: { name: "Iron Weave", description: "Increases Armor Class.", levels: { 1: { cost: { IronIngot: 200, Rawhide: 200 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 2: { cost: { IronIngot: 300, Rawhide: 300 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 3: { cost: { IronIngot: 450, Rawhide: 450 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 4: { cost: { IronIngot: 675, Rawhide: 675 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 5: { cost: { IronIngot: 1013, Rawhide: 1013 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 6: { cost: { IronIngot: 1520, Rawhide: 1520 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 7: { cost: { IronIngot: 2280, Rawhide: 2280 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 8: { cost: { IronIngot: 3420, Rawhide: 3420 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 9: { cost: { IronIngot: 5130, Rawhide: 5130 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } }, 10: { cost: { IronIngot: 7695, Rawhide: 7695 }, effect: { type: 'bonus', stat: 'armorClass', value: 0.02 } } } },
+                fightersProwess: { name: "Fighter's Prowess", description: "Increases the power of all physical attacks.", levels: { 1: { cost: { IronIngot: 200, TannedLeather: 200 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 2: { cost: { IronIngot: 300, TannedLeather: 300 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 3: { cost: { IronIngot: 450, TannedLeather: 450 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 4: { cost: { IronIngot: 675, TannedLeather: 675 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 5: { cost: { IronIngot: 1013, TannedLeather: 1013 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 6: { cost: { IronIngot: 1520, TannedLeather: 1520 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 7: { cost: { IronIngot: 2280, TannedLeather: 2280 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 8: { cost: { IronIngot: 3420, TannedLeather: 3420 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 9: { cost: { IronIngot: 5130, TannedLeather: 5130 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } }, 10: { cost: { IronIngot: 7695, TannedLeather: 7695 }, effect: { type: 'bonus', stat: 'wc', value: 0.02 } } } },
+                castersAcuity: { name: "Caster's Acuity", description: "Increases the power of all spells.", levels: { 1: { cost: { ArcaneResin: 200, FociStone: 200 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 2: { cost: { ArcaneResin: 300, FociStone: 300 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 3: { cost: { ArcaneResin: 450, FociStone: 450 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 4: { cost: { ArcaneResin: 675, FociStone: 675 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 5: { cost: { ArcaneResin: 1013, FociStone: 1013 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 6: { cost: { ArcaneResin: 1520, FociStone: 1520 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 7: { cost: { ArcaneResin: 2280, FociStone: 2280 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 8: { cost: { ArcaneResin: 3420, FociStone: 3420 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 9: { cost: { ArcaneResin: 5130, FociStone: 5130 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } }, 10: { cost: { ArcaneResin: 7695, FociStone: 7695 }, effect: { type: 'bonus', stat: 'sc', value: 0.02 } } } },
+                keenEyeTraining: { name: "Keen Eye Training", description: "Increases the chance to land an attack.", levels: { 1: { cost: { IronIngot: 500, TannedLeather: 500 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 2: { cost: { IronIngot: 750, TannedLeather: 750 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 3: { cost: { IronIngot: 1125, TannedLeather: 1125 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 4: { cost: { IronIngot: 1688, TannedLeather: 1688 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 5: { cost: { IronIngot: 2531, TannedLeather: 2531 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 6: { cost: { IronIngot: 3797, TannedLeather: 3797 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 7: { cost: { IronIngot: 5695, TannedLeather: 5695 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 8: { cost: { IronIngot: 8543, TannedLeather: 8543 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 9: { cost: { IronIngot: 12814, TannedLeather: 12814 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } }, 10: { cost: { IronIngot: 19221, TannedLeather: 19221 }, effect: { type: 'bonus', stat: 'hitChance', value: 0.01 } } }, prereq: { research: ['fightersProwess', 'castersAcuity'], level: 5, condition: 'OR' } },
+                anatomyStudies: { name: "Anatomy Studies", description: "Reveals weak points for devastating strikes.", levels: { 1: { cost: { TannedLeather: 500, NightWhisperEssence: 250 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 2: { cost: { TannedLeather: 750, NightWhisperEssence: 375 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 3: { cost: { TannedLeather: 1125, NightWhisperEssence: 563 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 4: { cost: { TannedLeather: 1688, NightWhisperEssence: 844 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 5: { cost: { TannedLeather: 2531, NightWhisperEssence: 1266 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 6: { cost: { TannedLeather: 3797, NightWhisperEssence: 1898 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 7: { cost: { TannedLeather: 5695, NightWhisperEssence: 2848 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 8: { cost: { TannedLeather: 8543, NightWhisperEssence: 4271 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 9: { cost: { TannedLeather: 12814, NightWhisperEssence: 6407 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } }, 10: { cost: { TannedLeather: 19221, NightWhisperEssence: 9611 }, effect: { type: 'bonus', stat: 'critChance', value: 0.005 } } }, prereq: { research: ['fightersProwess', 'castersAcuity'], level: 5, condition: 'OR' } },
+                footworkDrills: { name: "Footwork Drills", description: "Increases the chance to dodge an incoming attack.", levels: { 1: { cost: { TannedLeather: 500, Rawhide: 500 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 2: { cost: { TannedLeather: 750, Rawhide: 750 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 3: { cost: { TannedLeather: 1125, Rawhide: 1125 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 4: { cost: { TannedLeather: 1688, Rawhide: 1688 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 5: { cost: { TannedLeather: 2531, Rawhide: 2531 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 6: { cost: { TannedLeather: 3797, Rawhide: 3797 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 7: { cost: { TannedLeather: 5695, Rawhide: 5695 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 8: { cost: { TannedLeather: 8543, Rawhide: 8543 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 9: { cost: { TannedLeather: 12814, Rawhide: 12814 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } }, 10: { cost: { TannedLeather: 19221, Rawhide: 19221 }, effect: { type: 'bonus', stat: 'dodgeChance', value: 0.005 } } }, prereq: { research: 'ironWeave', level: 5 } },
+                ironWill: { name: "Iron Will", description: "Reduces the effects of stuns, slows, and other debilitating effects.", levels: { 1: { cost: { DwarfForgedIron: 500, EarthRootRock: 500 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 2: { cost: { DwarfForgedIron: 750, EarthRootRock: 750 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 3: { cost: { DwarfForgedIron: 1125, EarthRootRock: 1125 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 4: { cost: { DwarfForgedIron: 1688, EarthRootRock: 1688 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 5: { cost: { DwarfForgedIron: 2531, EarthRootRock: 2531 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 6: { cost: { DwarfForgedIron: 3797, EarthRootRock: 3797 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 7: { cost: { DwarfForgedIron: 5695, EarthRootRock: 5695 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 8: { cost: { DwarfForgedIron: 8543, EarthRootRock: 8543 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 9: { cost: { DwarfForgedIron: 12814, EarthRootRock: 12814 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } }, 10: { cost: { DwarfForgedIron: 19221, EarthRootRock: 19221 }, effect: { type: 'bonus', stat: 'ccResist', value: 0.02 } } }, prereq: { research: 'ironWeave', level: 5 } },
+                
+                // --- Path of Fortune ---
+                fortuneHuntersIntuition: { name: "Fortune Hunter's Intuition", description: "Increases gold, experience, and general gem drop rate.", levels: { 1: { cost: { DwarfForgedIron: 500 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 2: { cost: { DwarfForgedIron: 750 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 3: { cost: { DwarfForgedIron: 1125 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 4: { cost: { DwarfForgedIron: 1688 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 5: { cost: { DwarfForgedIron: 2531 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 6: { cost: { DwarfForgedIron: 3797 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 7: { cost: { DwarfForgedIron: 5695 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 8: { cost: { DwarfForgedIron: 8543 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 9: { cost: { DwarfForgedIron: 12814 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } }, 10: { cost: { DwarfForgedIron: 19221 }, effect: { type: 'multiBonus', stats: ['goldFind', 'xpGain', 'gemDropRate'], values: [0.02, 0.02, 0.01] } } } },
+                classGemAttunement: { name: "Class Gem Attunement", description: "Increases the drop chance of class-specific gems.", levels: { 1: { cost: { ArcaneResin: 250, FociStone: 250 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 2: { cost: { ArcaneResin: 375, FociStone: 375 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 3: { cost: { ArcaneResin: 563, FociStone: 563 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 4: { cost: { ArcaneResin: 844, FociStone: 844 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 5: { cost: { ArcaneResin: 1266, FociStone: 1266 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 6: { cost: { ArcaneResin: 1898, FociStone: 1898 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 7: { cost: { ArcaneResin: 2848, FociStone: 2848 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 8: { cost: { ArcaneResin: 4271, FociStone: 4271 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 9: { cost: { ArcaneResin: 6407, FociStone: 6407 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } }, 10: { cost: { ArcaneResin: 9611, FociStone: 9611 }, effect: { type: 'bonus', stat: 'classGemDropRate', value: 0.002 } } } },
+                gemcuttersEye: { name: "Gemcutter's Eye", description: "Grants a chance to increase a dropped gem's grade by +1.", levels: { 1: { cost: { TannedLeather: 400, IronIngot: 400 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 2: { cost: { TannedLeather: 600, IronIngot: 600 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 3: { cost: { TannedLeather: 900, IronIngot: 900 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 4: { cost: { TannedLeather: 1350, IronIngot: 1350 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 5: { cost: { TannedLeather: 2025, IronIngot: 2025 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 6: { cost: { TannedLeather: 3038, IronIngot: 3038 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 7: { cost: { TannedLeather: 4556, IronIngot: 4556 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 8: { cost: { TannedLeather: 6834, IronIngot: 6834 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 9: { cost: { TannedLeather: 10251, IronIngot: 10251 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } }, 10: { cost: { TannedLeather: 15377, IronIngot: 15377 }, effect: { type: 'bonus', stat: 'gemGradeChance', value: 0.005 } } }, prereq: { research: 'fortuneHuntersIntuition', level: 5 } },
+                soulShatteringArts: { name: "Soul-Shattering Arts", description: "Increases Dust and Essence from smashing items.", levels: { 1: { cost: { ArcaneResin: 400, FociStone: 400 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 2: { cost: { ArcaneResin: 600, FociStone: 600 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 3: { cost: { ArcaneResin: 900, FociStone: 900 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 4: { cost: { ArcaneResin: 1350, FociStone: 1350 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 5: { cost: { ArcaneResin: 2025, FociStone: 2025 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 6: { cost: { ArcaneResin: 3038, FociStone: 3038 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 7: { cost: { ArcaneResin: 4556, FociStone: 4556 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 8: { cost: { ArcaneResin: 6834, FociStone: 6834 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 9: { cost: { ArcaneResin: 10251, FociStone: 10251 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } }, 10: { cost: { ArcaneResin: 15377, FociStone: 15377 }, effect: { type: 'bonus', stat: 'smashingYield', value: 0.05 } } }, prereq: { research: 'fortuneHuntersIntuition', level: 5 } },
+                questSeekersBoon: { name: "Quest-Seeker's Boon", description: "Increases the drop chance of quest items.", levels: { 1: { cost: { DragonboneTimber: 400, Rawhide: 400 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 2: { cost: { DragonboneTimber: 600, Rawhide: 600 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 3: { cost: { DragonboneTimber: 900, Rawhide: 900 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 4: { cost: { DragonboneTimber: 1350, Rawhide: 1350 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 5: { cost: { DragonboneTimber: 2025, Rawhide: 2025 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 6: { cost: { DragonboneTimber: 3038, Rawhide: 3038 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 7: { cost: { DragonboneTimber: 4556, Rawhide: 4556 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 8: { cost: { DragonboneTimber: 6834, Rawhide: 6834 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 9: { cost: { DragonboneTimber: 10251, Rawhide: 10251 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } }, 10: { cost: { DragonboneTimber: 15377, Rawhide: 15377 }, effect: { type: 'bonus', stat: 'questItemDropRate', value: 0.01 } } }, prereq: { research: 'fortuneHuntersIntuition', level: 5 } },
+                shadowManifestation: { name: "Shadow Manifestation", description: "Chance for enemies to drop a 'Shadow Echo' of your gear.", levels: { 1: { cost: { VoidHeartAdamant: 500, NightWhisperEssence: 500 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 2: { cost: { VoidHeartAdamant: 750, NightWhisperEssence: 750 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 3: { cost: { VoidHeartAdamant: 1125, NightWhisperEssence: 1125 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 4: { cost: { VoidHeartAdamant: 1688, NightWhisperEssence: 1688 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 5: { cost: { VoidHeartAdamant: 2531, NightWhisperEssence: 2531 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 6: { cost: { VoidHeartAdamant: 3797, NightWhisperEssence: 3797 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 7: { cost: { VoidHeartAdamant: 5695, NightWhisperEssence: 5695 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 8: { cost: { VoidHeartAdamant: 8543, NightWhisperEssence: 8543 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 9: { cost: { VoidHeartAdamant: 12814, NightWhisperEssence: 12814 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } }, 10: { cost: { VoidHeartAdamant: 19221, NightWhisperEssence: 19221 }, effect: { type: 'bonus', stat: 'shadowEchoChance', value: 0.0025 } } }, prereq: { research: ['soulShatteringArts', 'questSeekersBoon'], level: 5, condition: 'AND' } },
+            },
+            generators: {
+                dragonwoodGrove: { 1: { rate: 12 }, 2: { rate: 22 }, 3: { rate: 40 }, 4: { rate: 76 }, 5: { rate: 133 }, 6: { rate: 253 }, 7: { rate: 486 }, 8: { rate: 764 }, 9: { rate: 1286 }, 10: { rate: 1992 } },
+                bedrockQuarry: { 1: { rate: 12 }, 2: { rate: 22 }, 3: { rate: 40 }, 4: { rate: 76 }, 5: { rate: 133 }, 6: { rate: 253 }, 7: { rate: 486 }, 8: { rate: 764 }, 9: { rate: 1286 }, 10: { rate: 1992 } },
+                estateMine: { 1: { rate: 12 }, 2: { rate: 22 }, 3: { rate: 40 }, 4: { rate: 76 }, 5: { rate: 133 }, 6: { rate: 253 }, 7: { rate: 486 }, 8: { rate: 764 }, 9: { rate: 1286 }, 10: { rate: 1992 } },
+                huntingPreserve: { 1: { rate: 12 }, 2: { rate: 22 }, 3: { rate: 40 }, 4: { rate: 76 }, 5: { rate: 133 }, 6: { rate: 253 }, 7: { rate: 486 }, 8: { rate: 764 }, 9: { rate: 1286 }, 10: { rate: 1992 } },
+            },
+            storehouse: {
+                1: { capacity: 1000 }, 2: { capacity: 2500 }, 3: { capacity: 5000 },
+            },
+            refinement: {
+                blacksmith: { from: 'DwarfForgedIron', to: 'IronIngot', ratio: 5 },
+                tannery: { from: 'Rawhide', to: 'TannedLeather', ratio: 5 },
+                arcanistsAltar: [
+                    { from: 'DragonboneTimber', to: 'ArcaneResin', ratio: 5 },
+                    { from: 'EarthRootRock', to: 'FociStone', ratio: 5 }
+                ]
+            }
+        };
+
+        // --- ALL CLASS DEFINITIONS ---
+        class EstateManager {
+            constructor() { this.playerState = null; }
+            loadPlayerData(savedData) { this.playerState = savedData; console.log("EstateManager: Player data loaded."); }
+            getGameState() { return this.playerState; }
+            processOfflineProgress() {
+                if (!this.playerState || !this.playerState.estate) return;
+                const currentTime = Math.floor(Date.now() / 1000);
+                const lastLogin = this.playerState.estate.lastLoginTimestamp || currentTime;
+                const timeElapsed = currentTime - lastLogin;
+                if (timeElapsed <= 0) return;
+
+                const bonuses = this.getCharacterBonuses();
+                const offlineMultiplier = 1 + bonuses.offlineBonus;
+
+                this._calculatePassiveGeneration(timeElapsed * offlineMultiplier);
+                this._processFinishedTimers(currentTime);
+                this.playerState.estate.lastLoginTimestamp = currentTime;
+                console.log(`EstateManager: Processed ${timeElapsed} seconds of offline progress with a x${offlineMultiplier} multiplier.`);
+            }
+            startBuildingUpgrade(buildingId) {
+                const currentLevel = this.playerState.estate.buildings[buildingId].level;
+                const nextLevel = currentLevel + 1;
+                const upgradeData = EstateGameData.buildings[buildingId]?.[nextLevel];
+                if (!upgradeData) return { success: false, reason: "Already at max level." };
+                if (this.playerState.estate.activeTimers.some(t => t.id === buildingId && t.type === 'building')) return { success: false, reason: "Already being upgraded." };
+                for (const resource in upgradeData.cost) { if ((this.playerState.estate.resources[resource] || 0) < upgradeData.cost[resource]) return { success: false, reason: "Not enough resources." }; }
+                for (const resource in upgradeData.cost) { this.playerState.estate.resources[resource] -= upgradeData.cost[resource]; }
+                const completionTimestamp = Math.floor(Date.now() / 1000) + upgradeData.time;
+                this.playerState.estate.activeTimers.push({ timerId: `${buildingId}_${Date.now()}`, type: 'building', id: buildingId, targetLevel: nextLevel, completionTimestamp: completionTimestamp });
+                return { success: true };
+            }
+            startResearch(researchId) {
+                const currentLevel = this.playerState.estate.research[researchId]?.level || 0;
+                const nextLevel = currentLevel + 1;
+                const researchData = EstateGameData.research[researchId];
+                const levelData = researchData?.levels?.[nextLevel];
+                if (!levelData) return { success: false, reason: "Already at max level or research doesn't exist." };
+                
+                if (researchData.prereq) {
+                    const prereq = researchData.prereq;
+                    if (prereq.building && this.playerState.estate.buildings[prereq.building].level < prereq.level) return { success: false, reason: `Requires ${GDD.Buildings[prereq.building].name} level ${prereq.level}.` };
+                    if (prereq.research) {
+                        const researchIds = Array.isArray(prereq.research) ? prereq.research : [prereq.research];
+                        const isOrCondition = prereq.condition === 'OR';
+                        const check = (id) => (this.playerState.estate.research[id]?.level || 0) >= prereq.level;
+                        const met = isOrCondition ? researchIds.some(check) : researchIds.every(check);
+
+                        if (!met) {
+                            const separator = isOrCondition ? ' OR ' : ' AND ';
+                            const prereqNames = researchIds.map(id => EstateGameData.research[id].name).join(separator);
+                            return { success: false, reason: `Requires ${prereqNames} level ${prereq.level}.` };
+                        }
+                    }
+                }
+
+                for (const resource in levelData.cost) { if ((this.playerState.estate.resources[resource] || 0) < levelData.cost[resource]) return { success: false, reason: "Not enough resources." }; }
+                for (const resource in levelData.cost) { this.playerState.estate.resources[resource] -= levelData.cost[resource]; }
+
+                if (!this.playerState.estate.research[researchId]) this.playerState.estate.research[researchId] = { level: 0 };
+                this.playerState.estate.research[researchId].level = nextLevel;
+
+                return { success: true };
+            }
+            getCharacterBonuses() {
+                const bonuses = { gatheringSpeed: 0, bonusYield: 0, offlineBonus: 0, wc: 0, sc: 0, armorClass: 0, hitChance: 0, critChance: 0, dodgeChance: 0, ccResist: 0, gemDropRate: 0, classGemDropRate: 0, gemGradeChance: 0, smashingYield: 0, questItemDropRate: 0, shadowEchoChance: 0, passiveYield: 0 };
+                if (!this.playerState || !this.playerState.estate) return bonuses;
+                
+                const estateSynergyBonus = (this.playerState.estate.research.heartOfTheManor?.level > 0) ? (this.playerState.estate.buildings.estateHall.level * 0.02) : 0;
+                bonuses.passiveYield = estateSynergyBonus;
+
+                for (const researchId in this.playerState.estate.research) {
+                    const research = this.playerState.estate.research[researchId];
+                    for (let i = 1; i <= research.level; i++) {
+                        const levelData = EstateGameData.research[researchId]?.levels?.[i];
+                        if (levelData && levelData.effect) {
+                            const effect = levelData.effect;
+                            if (effect.type === 'bonus') {
+                                bonuses[effect.stat] = (bonuses[effect.stat] || 0) + effect.value;
+                            } else if (effect.type === 'multiBonus') {
+                                effect.stats.forEach((stat, index) => {
+                                    bonuses[stat] = (bonuses[stat] || 0) + effect.values[index];
+                                });
+                            } else {
+                                bonuses[effect.type] = (bonuses[effect.type] || 0) + effect.value;
+                            }
+                        }
+                    }
+                }
+                return bonuses;
+            }
+            _calculatePassiveGeneration(timeElapsed) {
+                if(!this.playerState.estate) return;
+                const storehouseLevel = this.playerState.estate.buildings.storehouse.level;
+                const capacity = EstateGameData.storehouse[storehouseLevel]?.capacity || 1000;
+                const passiveBonus = this.getCharacterBonuses().passiveYield;
+                const generators = [
+                    { id: 'dragonwoodGrove', resource: 'DragonboneTimber' }, { id: 'bedrockQuarry', resource: 'EarthRootRock' },
+                    { id: 'estateMine', resource: 'DwarfForgedIron' }, { id: 'huntingPreserve', resource: 'Rawhide' },
+                ];
+                generators.forEach(gen => {
+                    const level = this.playerState.estate.buildings[gen.id].level;
+                    if (level > 0) {
+                        const baseRate = EstateGameData.generators[gen.id][level].rate;
+                        const finalRate = baseRate * (1 + passiveBonus);
+                        const gained = (finalRate / 3600) * timeElapsed;
+                        this.playerState.estate.resources[gen.resource] = Math.min(capacity, (this.playerState.estate.resources[gen.resource] || 0) + gained);
+                    }
+                });
+            }
+            _processFinishedTimers(currentTime) {
+                if(!this.playerState.estate || !this.playerState.estate.activeTimers) return;
+                const completedTimerIds = new Set();
+                this.playerState.estate.activeTimers.forEach(timer => {
+                    if (currentTime >= timer.completionTimestamp) {
+                        if (timer.type === 'building') { 
+                            this.playerState.estate.buildings[timer.id].level = timer.targetLevel; 
+                        }
+                        completedTimerIds.add(timer.timerId);
+                    }
+                });
+                if (completedTimerIds.size > 0) this.playerState.estate.activeTimers = this.playerState.estate.activeTimers.filter(timer => !completedTimerIds.has(timer.timerId));
+            }
+        }
+        
+        class MapManager {
+            constructor(canvas, hexSize) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.hexSize = hexSize; this.grid = new Map(); this.zoom = 1; this.minZoom = 0.2; this.maxZoom = 5; this.offsetX = 0; this.offsetY = 0; this.isCameraLocked = true; this.isPointerDown = false; this.startPanCoords = { x: 0, y: 0 }; this.dragThreshold = 5; this.hasDragged = false; this.initialPinchDistance = 0; }
+            init(grid) { this.grid = grid; this.bindEventListeners(); this.resizeAndCenter(); }
+            bindEventListeners() {
+                this.canvas.parentElement.addEventListener('pointerdown', this.handlePointerDown.bind(this));
+                this.canvas.parentElement.addEventListener('pointermove', this.handlePointerMove.bind(this));
+                this.canvas.parentElement.addEventListener('pointerup', this.handlePointerUp.bind(this));
+                this.canvas.parentElement.addEventListener('pointercancel', this.handlePointerUp.bind(this));
+                this.canvas.addEventListener('wheel', this.handleWheelZoom.bind(this), { passive: false });
+                this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+                this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+                window.addEventListener('resize', this.resizeAndCenter.bind(this));
+            }
+            centerOnPlayer() {
+                const playerPos = game.currentView === 'world' ? game.worldMap : game.estateMap;
+                const { x, y } = Hex.hexToPixel(playerPos.q, playerPos.r, this.hexSize);
+                this.offsetX = (this.canvas.width / 2) - (x * this.zoom);
+                this.offsetY = (this.canvas.height / 2) - (y * this.zoom);
+            }
+            centerOnHex(q, r) {
+                const { x, y } = Hex.hexToPixel(q, r, this.hexSize);
+                this.offsetX = (this.canvas.width / 2) - (x * this.zoom);
+                this.offsetY = (this.canvas.height / 2) - (y * this.zoom);
+                this.isCameraLocked = false;
+            }
+            draw() {
+                if(this.isCameraLocked) {
+                    this.centerOnPlayer();
+                }
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.save();
+                this.ctx.translate(this.offsetX, this.offsetY); this.ctx.scale(this.zoom, this.zoom);
+                this.drawBackground(); this.grid.forEach(hex => this.drawHex(hex));
+                const playerPos = game.currentView === 'world' ? game.worldMap : game.estateMap;
+                this.drawPlayer(playerPos.q, playerPos.r); this.ctx.restore();
+            }
+            drawBackground() {}
+            drawHex(hex) {}
+            drawPlayer(q, r) {
+                const { x, y } = Hex.hexToPixel(q, r, this.hexSize);
+                this.ctx.save();
+                this.ctx.globalAlpha = 1.0;
+                this.ctx.font = `${this.hexSize * 1.2}px sans-serif`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(game.player.icon, x, y);
+                this.ctx.restore();
+            }
+            resizeAndCenter() { this.canvas.width = this.canvas.parentElement.clientWidth; this.canvas.height = this.canvas.parentElement.clientHeight; this.centerOnPlayer(); }
+            handlePointerDown(e) {
+                if (e.target.closest('#hex-tooltip') || e.target.closest('#estate-tooltip')) {
+                    return; 
+                }
+                this.isPointerDown = true;
+                this.hasDragged = false;
+                this.canvas.style.cursor = 'grabbing';
+                this.startPanCoords = { x: e.clientX, y: e.clientY };
+            }
+            handlePointerMove(e) { if (!this.isPointerDown) return; const dx = e.clientX - this.startPanCoords.x; const dy = e.clientY - this.startPanCoords.y; if (!this.hasDragged && (Math.abs(dx) > this.dragThreshold || Math.abs(dy) > this.dragThreshold)) { this.hasDragged = true; this.isCameraLocked = false; } if(this.hasDragged) { this.offsetX += dx; this.offsetY += dy; this.startPanCoords = { x: e.clientX, y: e.clientY }; } }
+            handlePointerUp(e) { if(!this.isPointerDown) return; this.isPointerDown = false; this.canvas.style.cursor = 'grab'; if (!this.hasDragged) { this.processClick(e); } }
+            handleWheelZoom(e) { e.preventDefault(); const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9; this.zoomAtPoint(zoomFactor, e.clientX, e.clientY); }
+            handleTouchStart(e) { if (e.touches.length === 2) { e.preventDefault(); this.initialPinchDistance = this.getTouchDistance(e.touches); } }
+            handleTouchMove(e) { if (e.touches.length === 2) { e.preventDefault(); const currentDist = this.getTouchDistance(e.touches); const zoomFactor = currentDist / this.initialPinchDistance; const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2; const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2; this.zoomAtPoint(zoomFactor, midX, midY); this.initialPinchDistance = currentDist; } }
+            getTouchDistance(touches) { const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+            zoomAtPoint(zoomFactor, x, y) {
+                const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * zoomFactor));
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = x - rect.left; const mouseY = y - rect.top;
+                const worldX = (mouseX - this.offsetX) / this.zoom; const worldY = (mouseY - this.offsetY) / this.zoom;
+                this.zoom = newZoom;
+                this.offsetX = mouseX - worldX * this.zoom; this.offsetY = mouseY - worldY * this.zoom;
+            }
+            processClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const worldX = (mouseX - this.offsetX) / this.zoom;
+                const worldY = (mouseY - this.offsetY) / this.zoom;
+                const { q, r } = Hex.pixelToHex(worldX, worldY, this.hexSize);
+                this.handleClickOnHex(q, r, {x: e.clientX, y: e.clientY});
+            }
+            handleClickOnHex(q, r, screenPos) {}
+        }
+
+        // --- HELPER FUNCTIONS & OBJECTS ---
+        const Hex = { 
+            hexToPixel: (q, r, size) => ({ x: size * Math.sqrt(3) * (q + r / 2), y: size * 1.5 * r }), 
+            pixelToHex(x, y, size) { const q = (Math.sqrt(3)/3 * x - 1/3 * y) / size; const r = (2/3 * y) / size; return this.hexRound(q, r); }, 
+            hexRound(fq, fr) { const fs = -fq - fr; let q = Math.round(fq), r = Math.round(fr), s = Math.round(fs); const q_d = Math.abs(q - fq), r_d = Math.abs(r - fr), s_d = Math.abs(s - fs); if (q_d > r_d && q_d > s_d) q = -r - s; else if (r_d > s_d) r = -q - s; return { q, r }; },
+            distance(a, b) { return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2; }
+        };
+        
+        function extractJson(text) {
+            const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+            const match = text.match(jsonRegex);
+            if (match && match[1]) {
+                try { return JSON.parse(match[1]); } catch (e) { console.error("Error parsing extracted JSON:", e, "Original text:", match[1]); return null; }
+            }
+            try { return JSON.parse(text); } catch (e) { console.error("Error parsing raw text as JSON:", e, "Original text:", text); return null; }
+        }
+
+        function formatTime(seconds) {
+            if (seconds <= 0) return "0s";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return [ h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : '', s > 0 ? `${s}s` : '' ].filter(Boolean).join(' ');
+        }
+
+        // --- STORAGE MANAGER ---
+        const StorageManager = {
+            saveWorld(grid, imageUrl) { const data = { grid: Array.from(grid.entries()), imageUrl: imageUrl }; localStorage.setItem('estate_world_map', JSON.stringify(data)); },
+            loadWorld() { const data = localStorage.getItem('estate_world_map'); if (!data) return null; const parsed = JSON.parse(data); return { grid: new Map(parsed.grid), imageUrl: parsed.imageUrl }; },
+            savePlayer() { localStorage.setItem('estate_player_data', JSON.stringify(game.player)); },
+            loadPlayer() { 
+                const data = localStorage.getItem('estate_player_data'); 
+                if(data) { 
+                    let loadedPlayer = JSON.parse(data); 
+                    if (!loadedPlayer.estate) { loadedPlayer.estate = {}; }
+                    if (!loadedPlayer.estate.research) { loadedPlayer.estate.research = {}; }
+                    if (!loadedPlayer.estate.resources) { loadedPlayer.estate.resources = {}; }
+                    if (!loadedPlayer.estate.activeTimers) { loadedPlayer.estate.activeTimers = []; }
+                    if (!loadedPlayer.estate.lastLoginTimestamp) { loadedPlayer.estate.lastLoginTimestamp = Math.floor(Date.now() / 1000); }
+                    game.player = { ...game.player, ...loadedPlayer }; 
+                } 
+            },
+            saveGDD() { localStorage.setItem('estate_gdd', JSON.stringify(GDD)); },
+            loadGDD() {
+                const data = localStorage.getItem('estate_gdd');
+                if (data) {
+                    const loadedGDD = JSON.parse(data);
+                    GDD = {...GDD, ...loadedGDD};
+                    RESOURCES = GDD.Resources;
+                }
+            },
+            clearAllData() { localStorage.removeItem('estate_player_data'); localStorage.removeItem('estate_world_map'); localStorage.removeItem('estate_gdd'); }
+        };
+
+        // --- MAP GENERATION LOGIC ---
+        const MapGenerator = {
+            getBiomeFromColor(r, g, b) {
+                if (g > r * 1.1 && g > b * 1.1) return 'forest';
+                if (r > g && r > b && r > 100 && g > 50) return 'volcanic';
+                if (r > 150 && g > 120 && b < 100 && Math.abs(r - g) < 50) return 'desert';
+                if (Math.abs(r - g) < 40 && Math.abs(g - b) < 40 && r > 60 && r < 180) return 'mountain';
+                return 'plains';
+            },
+            generateFromImage(grid, image, hexSize) {
+                grid.clear();
+                const tempCanvas = document.createElement('canvas'); tempCanvas.width = image.width; tempCanvas.height = image.height;
+                const ctx = tempCanvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+                const imageData = ctx.getImageData(0, 0, image.width, image.height).data;
+                const step = Math.max(1, Math.floor(hexSize / 2));
+                for (let y = 0; y < image.height; y += step) {
+                    for (let x = 0; x < image.width; x += step) {
+                        const i = (y * image.width + x) * 4;
+                        const r = imageData[i], g = imageData[i+1], b = imageData[i+2];
+                        const isWater = b > r + 20 && b > g + 20;
+                        if (isWater) continue;
+                        const worldX = x - image.width / 2; const worldY = y - image.height / 2;
+                        const hexCoords = Hex.pixelToHex(worldX, worldY, hexSize);
+                        const key = `${hexCoords.q},${hexCoords.r}`;
+                        if (!grid.has(key)) { 
+                            const biome = this.getBiomeFromColor(r, g, b);
+                            grid.set(key, { ...hexCoords, biome: biome }); 
+                        }
+                    }
+                }
+            },
+            getWeightedRandomResource(allowedResources) {
+                const weights = GDD.RarityWeights;
+                const spawnableResources = Object.entries(RESOURCES)
+                    .filter(([id, res]) => allowedResources.includes(id) && res.rarity !== 'Refined' && id !== 'WorldShards');
+
+                const weightedList = [];
+                let totalWeight = 0;
+
+                for (const [id, res] of spawnableResources) {
+                    const weight = weights[res.rarity] || 0;
+                    if (weight > 0) {
+                        totalWeight += weight;
+                        weightedList.push({ id, weight });
+                    }
+                }
+                
+                if (totalWeight === 0) return null;
+
+                let random = Math.random() * totalWeight;
+                for (const item of weightedList) {
+                    random -= item.weight;
+                    if (random <= 0) {
+                        return item.id;
+                    }
+                }
+                return null;
+            },
+            placeFeatures(grid) {
+                const landHexes = Array.from(grid.values()).filter(h => h.biome !== 'water' && !h.feature);
+                if (landHexes.length === 0) return;
+
+                const hasShardNode = Array.from(grid.values()).some(h => h.feature?.type === 'world_shard_node');
+                if (!hasShardNode && landHexes.length > 10) {
+                    const shardNodeHex = landHexes.splice(Math.floor(Math.random() * landHexes.length), 1)[0];
+                    if (shardNodeHex) {
+                        const def = GDD.NodeDefinitions.world_shard_node;
+                        shardNodeHex.feature = { type: 'world_shard_node', name: def.name, icon: def.icon, lastCollected: 0 };
+                    }
+                }
+                
+                const nodeCount = Math.floor(landHexes.length * 0.2); // Increased node density
+                for(let i = 0; i < nodeCount; i++) {
+                    if(landHexes.length === 0) break;
+                    const hexIndex = Math.floor(Math.random() * landHexes.length);
+                    const hex = landHexes.splice(hexIndex, 1)[0];
+                    if (hex && !hex.feature) {
+                        const allowedResources = GDD.BiomeMappings[hex.biome]?.resources || [];
+                        if (allowedResources.length === 0) continue;
+
+                        const randomKey = this.getWeightedRandomResource(allowedResources);
+                        if (!randomKey) continue;
+
+                        const def = GDD.NodeDefinitions.resource_node;
+                        const amount = def.base_amount_min + Math.floor(Math.random() * (def.base_amount_max - def.base_amount_min + 1));
+                        hex.feature = { type: 'resource_node', name: def.name_template.replace('{resourceName}', RESOURCES[randomKey].name), resourceId: randomKey, amount: amount };
+                    }
+                }
+            },
+            generateEstateMap(grid) {
+                const radius = 3;
+                for (let q = -radius; q <= radius; q++) {
+                    for (let r = -radius; r <= radius; r++) {
+                        if ((Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2 > radius) continue;
+                        grid.set(`${q},${r}`, { q, r });
+                    }
+                }
+                const buildingTypes = Object.keys(GDD.Buildings);
+                const hexes = Array.from(grid.values());
+                for(let i = 0; i < hexes.length; i++) { if (buildingTypes[i]) hexes[i].buildingId = buildingTypes[i]; }
+            }
+        };
+
+        // --- WORLD MAP MANAGER ---
+        class WorldMap extends MapManager {
+            constructor(canvas) { super(canvas, 5); this.image = null; this.gatheringTimer = null; this.gatheringInterval = null; }
+            init(grid, image) { this.image = image; super.init(grid); }
+            drawBackground() { if (!this.image) return; const imgX = -this.image.width / 2; const imgY = -this.image.height / 2; this.ctx.drawImage(this.image, imgX, imgY); }
+            drawHex(hex) {
+                const { x, y } = Hex.hexToPixel(hex.q, hex.r, this.hexSize);
+                this.ctx.beginPath(); for (let i = 0; i < 6; i++) { const angle = Math.PI / 180 * (60 * i + 30); this.ctx[i === 0 ? 'moveTo' : 'lineTo'](x + this.hexSize * Math.cos(angle), y + this.hexSize * Math.sin(angle)); } this.ctx.closePath();
+                
+                const isSelected = game.worldMap.selectedHex && game.worldMap.selectedHex.q === hex.q && game.worldMap.selectedHex.r === hex.r;
+
+                if (isSelected) {
+                    this.ctx.save();
+                    this.ctx.shadowBlur = 20;
+                    this.ctx.shadowColor = 'rgba(103, 232, 249, 0.5)';
+                    this.ctx.strokeStyle = 'rgba(103, 232, 249, 0.8)';
+                    this.ctx.lineWidth = 1;
+                } else {
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    this.ctx.lineWidth = 0.2;
+                }
+                
+                this.ctx.stroke();
+                if (isSelected) this.ctx.restore();
+
+                if (hex.feature) {
+                    if (hex.feature.type === 'estate_plot') {
+                        this.ctx.save();
+                        const glow = 25 + Math.sin(Date.now() / 250) * 10;
+                        this.ctx.shadowBlur = glow;
+                        this.ctx.shadowColor = '#fff';
+                    }
+                    const icon = hex.feature.icon || RESOURCES[hex.feature.resourceId]?.icon || '❓';
+                    this.ctx.font = `${this.hexSize * 1.2}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText(icon, x, y);
+                    if (hex.feature.type === 'estate_plot') { this.ctx.restore(); }
+                }
+            }
+            handleClickOnHex(q, r, screenPos) {
+                const hex = this.grid.get(`${q},${r}`);
+                if (!hex) return;
+                
+                const distanceToPlayer = Hex.distance(game.worldMap, hex);
+                const isPlayerOnHex = distanceToPlayer === 0;
+                const isSelectedHex = game.worldMap.selectedHex && game.worldMap.selectedHex.q === q && game.worldMap.selectedHex.r === r;
+
+                if (isPlayerOnHex && isSelectedHex) {
+                    this.showTooltip(hex, screenPos, true);
+                    return;
+                }
+
+                game.worldMap.selectedHex = { q, r };
+
+                if (game.dev.freeMove || distanceToPlayer === 1) {
+                    this.cancelGathering();
+                    this.isCameraLocked = true;
+                    game.worldMap.q = q;
+                    game.worldMap.r = r;
+                    ui.worldMap.tooltip.container.classList.add('hidden');
+                    return; 
+                }
+
+                if (hex.feature) {
+                    this.showTooltip(hex, screenPos, false);
+                } else {
+                    ui.worldMap.tooltip.container.classList.add('hidden');
+                }
+            }
+            showTooltip(hex, screenPos, isPlayerOnHex) {
+                const tip = ui.worldMap.tooltip;
+                this.hideAllTooltipButtons();
+                tip.name.textContent = hex.feature ? hex.feature.name : 'Open Land';
+                tip.biome.textContent = `(${hex.q}, ${hex.r}) - ${hex.biome}`;
+                tip.resource.textContent = '';
+
+                if (hex.feature) {
+                    switch(hex.feature.type) {
+                        case 'resource_node':
+                            tip.resource.textContent = `Amount: ${hex.feature.amount}`;
+                            tip.gatherBtn.classList.remove('hidden');
+                            tip.gatherBtn.disabled = !isPlayerOnHex;
+                            tip.gatherBtn.onclick = () => this.startGathering(hex);
+                            break;
+                        case 'estate_plot':
+                            tip.enterBtn.classList.remove('hidden');
+                            tip.enterBtn.disabled = !isPlayerOnHex;
+                            tip.enterBtn.onclick = () => enterEstate();
+                            break;
+                        case 'world_shard_node':
+                            this.handleShardNodeTooltip(hex, isPlayerOnHex);
+                            break;
+                    }
+                } else {
+                     if (isPlayerOnHex) {
+                        if (!game.player.hasPlacedFirstEstate) {
+                            tip.foundEstateBtn.classList.remove('hidden');
+                            tip.foundEstateBtn.onclick = () => this.placeInitialEstate(hex);
+                        } else {
+                            tip.moveEstateBtn.classList.remove('hidden');
+                            tip.moveEstateBtn.textContent = `Move Estate Here (Cost: ${GDD.GameConstants.ESTATE_MOVE_COST} 💠)`;
+                            tip.moveEstateBtn.onclick = () => this.attemptMoveEstate(hex);
+                        }
+                    }
+                }
+
+                const mapRect = ui.worldMap.canvas.getBoundingClientRect();
+                let left = screenPos.x - mapRect.left - (tip.container.offsetWidth / 2);
+                let top = screenPos.y - mapRect.top + 20;
+
+                if (left < 10) left = 10;
+                if (left + tip.container.offsetWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - tip.container.offsetWidth - 10;
+                }
+                if (top + tip.container.offsetHeight > window.innerHeight - 10) {
+                    top = screenPos.y - mapRect.top - tip.container.offsetHeight - 20;
+                }
+
+                tip.container.style.left = `${left}px`;
+                tip.container.style.top = `${top}px`;
+                tip.container.classList.remove('hidden');
+            }
+            hideAllTooltipButtons() {
+                ui.worldMap.tooltip.gatherBtn.classList.add('hidden');
+                ui.worldMap.tooltip.enterBtn.classList.add('hidden');
+                ui.worldMap.tooltip.moveEstateBtn.classList.add('hidden');
+                ui.worldMap.tooltip.foundEstateBtn.classList.add('hidden');
+                ui.worldMap.tooltip.harvestShardBtn.classList.add('hidden');
+            }
+            startGathering(hex) {
+                if (this.gatheringTimer) return;
+
+                const bonus = estateManager.getCharacterBonuses().gatheringSpeed;
+                const duration = GDD.GameConstants.GATHER_DURATION_MS * (1 - bonus);
+                let timeLeft = duration;
+
+                const gatherBtn = ui.worldMap.tooltip.gatherBtn;
+                gatherBtn.disabled = true;
+
+                this.gatheringInterval = setInterval(() => {
+                    timeLeft -= 100;
+                    gatherBtn.textContent = `Gathering... ${(timeLeft / 1000).toFixed(1)}s`;
+                    if (timeLeft <= 0) {
+                        clearInterval(this.gatheringInterval);
+                    }
+                }, 100);
+
+                this.gatheringTimer = setTimeout(() => {
+                    this.completeGathering(hex);
+                }, duration);
+            }
+            completeGathering(hex) {
+                clearInterval(this.gatheringInterval);
+                clearTimeout(this.gatheringTimer);
+                this.gatheringTimer = null;
+                this.gatheringInterval = null;
+
+                gatherResource(hex);
+
+                const gatherBtn = ui.worldMap.tooltip.gatherBtn;
+                gatherBtn.disabled = false;
+                gatherBtn.textContent = "Gather";
+                ui.worldMap.tooltip.container.classList.add('hidden');
+            }
+            cancelGathering() {
+                if (this.gatheringTimer) {
+                    clearInterval(this.gatheringInterval);
+                    clearTimeout(this.gatheringTimer);
+                    this.gatheringTimer = null;
+                    this.gatheringInterval = null;
+                    
+                    const gatherBtn = ui.worldMap.tooltip.gatherBtn;
+                    gatherBtn.disabled = false;
+                    gatherBtn.textContent = "Gather";
+                }
+            }
+            handleShardNodeTooltip(hex, isPlayerOnHex) {
+                const now = Date.now();
+                const cooldownHours = GDD.NodeDefinitions.world_shard_node.cooldown_hours;
+                const hoursSinceCollected = (now - (hex.feature.lastCollected || 0)) / 3600000;
+                const canHarvest = hoursSinceCollected >= cooldownHours;
+                ui.worldMap.tooltip.harvestShardBtn.classList.remove('hidden');
+                ui.worldMap.tooltip.harvestShardBtn.disabled = !canHarvest || !isPlayerOnHex;
+                if (canHarvest) {
+                    ui.worldMap.tooltip.resource.textContent = "Ready to Harvest!";
+                    ui.worldMap.tooltip.harvestShardBtn.textContent = "Harvest World Shard";
+                } else {
+                    const minutesLeft = Math.ceil((cooldownHours - hoursSinceCollected) * 60);
+                    ui.worldMap.tooltip.resource.textContent = `Harvests in ${minutesLeft} min`;
+                    ui.worldMap.tooltip.harvestShardBtn.textContent = "Harvesting...";
+                }
+                ui.worldMap.tooltip.harvestShardBtn.onclick = () => this.harvestShard(hex);
+            }
+            harvestShard(hex) {
+                hex.feature.lastCollected = Date.now();
+                game.player.worldShards++;
+                StorageManager.savePlayer();
+                StorageManager.saveWorld(this.grid, this.image.src);
+                updateGameUI();
+                this.handleShardNodeTooltip(hex, true);
+            }
+            placeInitialEstate(hex) {
+                hex.feature = { type: 'estate_plot', name: 'Estates Hill', icon: '🏡' };
+                game.player.hasPlacedFirstEstate = true;
+                this.movePlayerNextTo(hex);
+                StorageManager.savePlayer();
+                StorageManager.saveWorld(this.grid, this.image.src);
+                ui.worldMap.tooltip.container.classList.add('hidden');
+            }
+            attemptMoveEstate(newHex) {
+                const cost = GDD.GameConstants.ESTATE_MOVE_COST;
+                if (game.player.worldShards >= cost) {
+                    game.player.worldShards -= cost;
+                    for (const [key, hex] of this.grid.entries()) {
+                        if (hex.feature?.type === 'estate_plot') {
+                            delete hex.feature;
+                            break;
+                        }
+                    }
+                    newHex.feature = { type: 'estate_plot', name: 'Estates Hill', icon: '🏡' };
+                    this.movePlayerNextTo(newHex);
+                    StorageManager.savePlayer();
+                    StorageManager.saveWorld(this.grid, this.image.src);
+                    updateGameUI();
+                    ui.worldMap.tooltip.container.classList.add('hidden');
+                } else {
+                    alert(`You need ${cost} World Shard(s) to move your estate.`);
+                }
+            }
+            movePlayerNextTo(estateHex) {
+                const directions = [ { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 }, { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 } ];
+                for (const dir of directions) {
+                    const neighborQ = estateHex.q + dir.q;
+                    const neighborR = estateHex.r + dir.r;
+                    const neighborKey = `${neighborQ},${neighborR}`;
+                    const neighborHex = this.grid.get(neighborKey);
+                    if (neighborHex && !neighborHex.feature) {
+                        game.worldMap.q = neighborQ;
+                        game.worldMap.r = neighborR;
+                        return;
+                    }
+                }
+                game.worldMap.q = estateHex.q;
+                game.worldMap.r = estateHex.r;
+            }
+        }
+        
+        // --- ESTATE MAP MANAGER ---
+        class EstateMap extends MapManager {
+            constructor(canvas) { super(canvas, 60); }
+            init(grid, estateName) { 
+                super.init(grid); 
+                this.isCameraLocked = true;
+            }
+            drawHex(hex) {
+                const { x, y } = Hex.hexToPixel(hex.q, hex.r, this.hexSize);
+                this.ctx.beginPath(); for (let i = 0; i < 6; i++) { const angle = Math.PI / 180 * (60 * i + 30); this.ctx[i === 0 ? 'moveTo' : 'lineTo'](x + this.hexSize * Math.cos(angle), y + this.hexSize * Math.sin(angle)); } this.ctx.closePath();
+                
+                const isSelected = game.estateMap.selectedHex && game.estateMap.selectedHex.q === hex.q && game.estateMap.selectedHex.r === hex.r;
+
+                this.ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+                this.ctx.fill();
+
+                if (isSelected) {
+                    this.ctx.save();
+                    this.ctx.shadowBlur = 20;
+                    this.ctx.shadowColor = 'rgba(103, 232, 249, 0.5)';
+                    this.ctx.strokeStyle = 'rgba(103, 232, 249, 0.8)';
+                    this.ctx.lineWidth = 1;
+                } else {
+                    this.ctx.strokeStyle = 'rgba(202, 233, 234, 0.3)';
+                    this.ctx.lineWidth = 1;
+                }
+                this.ctx.stroke();
+                if (isSelected) this.ctx.restore();
+
+                if (hex.buildingId) {
+                    const building = GDD.Buildings[hex.buildingId];
+                    this.ctx.font = `${this.hexSize * 0.5}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(building.icon || '🏛️', x, y);
+                }
+            }
+            handleClickOnHex(q, r, screenPos) {
+                const hex = this.grid.get(`${q},${r}`);
+                if (!hex) return;
+
+                const isPlayerOnHex = game.estateMap.q === q && game.estateMap.r === r;
+
+                if (isPlayerOnHex) {
+                    if (hex.buildingId) {
+                        const buildingId = hex.buildingId;
+                        if (buildingId === 'researchCottage') { ResearchManager.showResearchModal(); }
+                        else if (buildingId === 'bank') { BankManager.showBankModal(); }
+                        else if (buildingId === 'questBoard') { QuestManager.showQuestModal(); }
+                        else if (EstateGameData.refinement[buildingId]) { BuildingManager.showRefinementModal(buildingId); }
+                        else { BuildingManager.showUpgradeModal(buildingId); }
+                    }
+                } else {
+                    game.estateMap.q = q;
+                    game.estateMap.r = r;
+                    ui.estate.tooltip.container.classList.add('hidden');
+                }
+                
+                game.estateMap.selectedHex = { q, r };
+            }
+            showMessage(text) { const box = ui.estate.messageBox; box.textContent = text; box.style.opacity = '1'; setTimeout(() => { box.style.opacity = '0'; }, 3000); }
+        }
+
+        // --- GAME CONTROLLERS ---
+        function showLoading(message) { ui.loadingMessage.textContent = message; ui.loadingOverlay.classList.remove('hidden'); }
+        function hideLoading() { ui.loadingOverlay.classList.add('hidden'); }
+
+        function startWorldGeneration(imageUrl) {
+            showLoading("Generating world from image...");
+            const image = new Image();
+            image.crossOrigin = "Anonymous";
+            image.onload = () => {
+                const grid = new Map();
+                MapGenerator.generateFromImage(grid, image, worldManager.hexSize);
+                MapGenerator.placeFeatures(grid);
+                StorageManager.saveWorld(grid, imageUrl);
+                worldManager.init(grid, image);
+                hideLoading();
+                showWorld();
+            };
+            image.onerror = () => {
+                hideLoading();
+                ui.mainMenuStatus.textContent = "Error: Could not load image. Check URL and CORS policy.";
+            };
+            image.src = imageUrl;
+        }
+
+        function loadExistingWorld() {
+            const savedData = StorageManager.loadWorld();
+            if (!savedData) { ui.mainMenuStatus.textContent = "No saved world found."; return; }
+            showLoading("Loading saved world...");
+            const image = new Image();
+            image.crossOrigin = "Anonymous";
+            image.onload = () => {
+                worldManager.init(savedData.grid, image);
+                const estateHex = Array.from(savedData.grid.values()).find(h => h.feature?.type === 'estate_plot');
+                if (estateHex) { worldManager.movePlayerNextTo(estateHex); }
+                hideLoading();
+                showWorld();
+            };
+            image.onerror = () => {
+                hideLoading();
+                ui.mainMenuStatus.textContent = "Error loading world's background image.";
+            };
+            image.src = savedData.imageUrl;
+        }
+
+        function showWorld() {
+            game.currentView = 'world';
+            ui.estate.container.classList.add('hidden');
+            ui.mainScreen.classList.add('hidden');
+            ui.worldMap.modal.classList.remove('hidden');
+            ui.inventory.ui.classList.add('hidden');
+            ui.storage.ui.classList.add('hidden');
+            ui.production.ui.classList.add('hidden');
+            
+            if (!worldManager.image) {
+                const savedData = StorageManager.loadWorld();
+                if (savedData && savedData.imageUrl) {
+                    const image = new Image();
+                    image.crossOrigin = "Anonymous";
+                    image.onload = () => { worldManager.image = image; worldManager.resizeAndCenter(); };
+                    image.src = savedData.imageUrl;
+                }
+            } else { worldManager.resizeAndCenter(); }
+            updateGameUI();
+        }
+
+        function enterEstate() {
+            if (!game.player.estate) { purchaseEstate(); }
+            if (!game.player.estate.hasBeenSetup) { ui.estateSetup.modal.classList.remove('hidden'); } 
+            else { loadEstateView(); }
+        }
+
+        function loadEstateView() {
+            game.currentView = 'estate';
+            const estateGrid = new Map();
+            MapGenerator.generateEstateMap(estateGrid);
+            estateMapManager.init(estateGrid, game.player.estate.name);
+            
+            if (game.player.estate.backgroundUrl) { ui.estate.container.style.backgroundImage = `url(${game.player.estate.backgroundUrl})`; } 
+            else { ui.estate.container.style.backgroundImage = ''; }
+
+            ui.worldMap.modal.classList.add('hidden');
+            ui.estateSetup.modal.classList.add('hidden');
+            ui.estate.container.classList.remove('hidden');
+            ui.inventory.ui.classList.remove('hidden');
+            ui.storage.ui.classList.remove('hidden');
+            ui.production.ui.classList.remove('hidden');
+            estateMapManager.resizeAndCenter();
+            updateGameUI();
+        }
+
+        function showMainMenu() {
+            game.currentView = 'menu';
+            ui.worldMap.modal.classList.add('hidden');
+            ui.estate.container.classList.add('hidden');
+            ui.inventory.ui.classList.add('hidden');
+            ui.storage.ui.classList.add('hidden');
+            ui.production.ui.classList.add('hidden');
+            ui.mainScreen.classList.remove('hidden');
+        }
+        
+        function setupMainMenu() {
+            ui.mainMenuContent.innerHTML = `
+                <h1 class="text-4xl font-cinzel mb-4">The Estate</h1>
+                <p class="mb-4 text-gray-300">Provide a URL to an image to generate a world map, or load a previously saved one.</p>
+                <div class="mb-4 text-left">
+                    <label for="image-url-input" class="block mb-2 text-sm font-bold">Image URL</label>
+                    <input type="text" id="image-url-input" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" value="https://i.ibb.co/Wb2yFFt/AAB99-D44-0734-4857-9884-CD2-BD14-D8804.jpg">
+                </div>
+                <button id="generate-world-btn" class="glass-button text-xl font-cinzel px-8 py-3 rounded-lg w-full mb-4">Generate New World</button>
+                <div class="flex gap-4">
+                    <button id="load-world-btn" class="glass-button py-2 rounded-lg w-full">Load Saved World</button>
+                    <button id="clear-data-btn" class="glass-button py-2 rounded-lg w-full bg-red-500/20 border-red-500/40 hover:bg-red-500/40">Clear All Data</button>
+                </div>
+                <p id="main-menu-status" class="text-red-400 mt-4 h-6"></p>
+            `;
+            
+            ui.imageUrlInput = document.getElementById('image-url-input');
+            ui.mainMenuStatus = document.getElementById('main-menu-status');
+
+            document.getElementById('generate-world-btn').addEventListener('click', () => {
+                const url = ui.imageUrlInput.value.trim();
+                if (url) {
+                    game.player.hasPlacedFirstEstate = false;
+                    StorageManager.savePlayer();
+                    startWorldGeneration(url);
+                } else { ui.mainMenuStatus.textContent = "Please enter an image URL."; }
+            });
+            document.getElementById('load-world-btn').addEventListener('click', loadExistingWorld);
+            document.getElementById('clear-data-btn').addEventListener('click', () => {
+                if(confirm("Are you sure you want to delete ALL your world, player, and game design data? This cannot be undone.")) {
+                    StorageManager.clearAllData();
+                    location.reload();
+                }
+            });
+        }
+        
+        function updateGameUI() {
+            if (!game.player.estate) return;
+            const invList = ui.inventory.list; 
+            const storeList = ui.storage.list;
+            invList.innerHTML = ''; 
+            storeList.innerHTML = '';
+            
+            const capacity = EstateGameData.storehouse[game.player.estate.buildings.storehouse.level]?.capacity || 1000;
+            
+            for (const key in RESOURCES) {
+                const invAmount = game.player.inventory[key] || 0;
+                if (invAmount > 0) invList.innerHTML += `<div>${RESOURCES[key].icon} ${RESOURCES[key].name}: ${invAmount}</div>`;
+                const storeAmount = game.player.estate.resources[key] || 0;
+                if (storeAmount > 0) storeList.innerHTML += `<div>${RESOURCES[key].icon} ${RESOURCES[key].name}: ${Math.floor(storeAmount).toLocaleString()} / ${capacity.toLocaleString()}</div>`;
+            }
+            if (invList.innerHTML === '') invList.innerHTML = '<p class="text-xs opacity-50">Empty</p>';
+            if (storeList.innerHTML === '') storeList.innerHTML = '<p class="text-xs opacity-50">Empty</p>';
+
+            const resourceBar = ui.resourceBarContent;
+            resourceBar.innerHTML = '';
+            let resourceBarContent = `<h4 class="font-bold text-center text-base mb-2">Total Resources</h4>
+                                      <div class="flex justify-between items-center font-bold">
+                                        <span>💠 World Shards</span>
+                                        <span>${game.player.worldShards}</span>
+                                      </div>
+                                      <hr class="border-gray-600 my-2">`;
+
+            const sortedResources = Object.keys(RESOURCES).sort((a, b) => {
+                const rarityOrder = { "Epic": 0, "Rare": 1, "Refined": 2, "Common": 3 };
+                const rarityA = RESOURCES[a].rarity || "Common";
+                const rarityB = RESOURCES[b].rarity || "Common";
+                if (rarityOrder[rarityA] !== rarityOrder[rarityB]) return rarityOrder[rarityA] - rarityOrder[rarityB];
+                return RESOURCES[a].name.localeCompare(RESOURCES[b].name);
+            });
+
+            for (const key of sortedResources) {
+                if (key === 'WorldShards') continue;
+                const invAmount = game.player.inventory[key] || 0;
+                const storeAmount = game.player.estate.resources[key] || 0;
+                const total = invAmount + storeAmount;
+                if (total > 0) {
+                    resourceBarContent += `<div class="flex justify-between items-center">
+                                              <span>${RESOURCES[key].icon} ${RESOURCES[key].name}</span>
+                                              <span class="font-semibold">${Math.floor(total).toLocaleString()}</span>
+                                           </div>`;
+                }
+            }
+            resourceBar.innerHTML = resourceBarContent;
+
+            const productionList = ui.production.list;
+            productionList.innerHTML = '';
+            if(game.currentView === 'estate' && game.player.estate) {
+                let productionContent = '';
+                const generators = EstateGameData.generators;
+                for (const genId in generators) {
+                    const level = game.player.estate.buildings[genId].level;
+                    if (level > 0) {
+                        const rate = generators[genId][level]?.rate || 0;
+                        const resourceKey = Object.keys(RESOURCES).find(k => k.toLowerCase().includes(genId.replace('Grove','').replace('Quarry','').replace('Mine','').replace('Preserve','').toLowerCase()));
+                        if(resourceKey) productionContent += `<div class="flex justify-between"><span>${RESOURCES[resourceKey].icon} ${RESOURCES[resourceKey].name}</span><span>+${rate}/hr</span></div>`;
+                    }
+                }
+                productionList.innerHTML = productionContent;
+            }
+        }
+
+        function gatherResource(hex) {
+            if (hex.feature?.amount > 0) {
+                const bonuses = estateManager.getCharacterBonuses();
+                const resourceId = hex.feature.resourceId; 
+                let amountToGather = bonuses.bonusYield > 0 ? bonuses.bonusYield : 1;
+
+                hex.feature.amount -= 1;
+                game.player.inventory[resourceId] = (game.player.inventory[resourceId] || 0) + amountToGather;
+                
+                if (hex.feature.amount <= 0) {
+                    delete hex.feature;
+                    const landHexes = Array.from(worldManager.grid.values()).filter(h => h.biome !== 'water' && !h.feature);
+                    if (landHexes.length > 0) {
+                        const newHex = landHexes[Math.floor(Math.random() * landHexes.length)];
+                        const allowedResources = GDD.BiomeMappings[newHex.biome]?.resources || [];
+                        if (allowedResources.length > 0) {
+                            const randomKey = MapGenerator.getWeightedRandomResource(allowedResources);
+                            if(randomKey) {
+                                const def = GDD.NodeDefinitions.resource_node;
+                                const amount = def.base_amount_min + Math.floor(Math.random() * (def.base_amount_max - def.base_amount_min + 1));
+                                newHex.feature = { type: 'resource_node', name: def.name_template.replace('{resourceName}', RESOURCES[randomKey].name), resourceId: randomKey, amount: amount };
+                            }
+                        }
+                    }
+                }
+                updateGameUI();
+                StorageManager.saveWorld(worldManager.grid, worldManager.image.src);
+            }
+        }
+
+        function purchaseEstate() {
+            if (game.player.level < 250) { alert("You must be level 250 to purchase an estate."); return; }
+            game.player.estate = { 
+                isOwned: true, name: "My Estate", description: "", hasBeenSetup: false, backgroundUrl: "",
+                buildings: {
+                    estateHall: { level: 1 }, researchCottage: { level: 1 }, storehouse: { level: 1 },
+                    blacksmith: { level: 1 }, tannery: { level: 1 }, arcanistsAltar: { level: 1 },
+                    dragonwoodGrove: { level: 1 }, bedrockQuarry: { level: 1 }, estateMine: { level: 1 },
+                    huntingPreserve: { level: 1 }, questBoard: {level: 1}, bank: {level: 1}
+                },
+                research: {},
+                resources: {},
+                activeTimers: [],
+                lastLoginTimestamp: Math.floor(Date.now() / 1000)
+            };
+            
+            estateManager.loadPlayerData(game.player);
+            StorageManager.savePlayer();
+        }
+
+        const BuildingManager = {
+            showUpgradeModal(buildingId) {
+                if (buildingId === 'arcanistsAltar') {
+                    this.showRefinementModal(buildingId);
+                    return;
+                }
+                const buildingDef = GDD.Buildings[buildingId]; if(!buildingDef) return;
+                const currentLevel = game.player.estate.buildings[buildingId].level;
+                const nextLevel = currentLevel + 1; 
+                const upgradeData = EstateGameData.buildings[buildingId]?.[nextLevel];
+                let content = `<h3 class="text-2xl font-cinzel mb-2">${buildingDef.name}</h3><p class="text-sm mb-4">Current Level: ${currentLevel}</p>`;
+
+                if(GDD.Buildings[buildingId].type === 'GENERATOR') {
+                    const rate = EstateGameData.generators[buildingId]?.[currentLevel]?.rate;
+                    if(rate) {
+                        content += `<p class="text-cyan-300 mb-4">Produces +${rate}/hr</p>`
+                    }
+                }
+                
+                const activeTimer = game.player.estate.activeTimers.find(t => t.id === buildingId && t.type === 'building');
+                if (activeTimer) {
+                    const timeLeft = activeTimer.completionTimestamp - Math.floor(Date.now() / 1000);
+                    content += `<div class="text-center p-4 bg-black/30 rounded-lg">
+                                  <p class="text-cyan-300">Upgrade in progress...</p>
+                                  <p id="timer-${buildingId}" class="text-2xl font-bold">${formatTime(timeLeft)}</p>
+                               </div>`;
+                } else if (upgradeData) {
+                    content += `<h4 class="font-bold mb-2">Upgrade to Level ${nextLevel}</h4>`; let canUpgrade = true;
+                    content += `<p class="text-xs mb-1">Cost:</p><ul class="text-xs list-disc list-inside mb-4">`;
+                     for (const resKey in upgradeData.cost) {
+                        const requiredAmount = upgradeData.cost[resKey]; const playerAmount = game.player.estate.resources[resKey] || 0;
+                        const hasRes = playerAmount >= requiredAmount; if (!hasRes) canUpgrade = false;
+                        content += `<li class="${hasRes ? 'text-green-400' : 'text-red-400'}">${RESOURCES[resKey].name}: ${requiredAmount.toLocaleString()} / ${Math.floor(playerAmount).toLocaleString()}</li>`;
+                    } content += `</ul>`;
+                    content += `<p class="text-xs mb-1">Time: ${formatTime(upgradeData.time)}</p>`;
+                    content += `<button id="confirm-upgrade-btn" class="glass-button w-full mt-6 py-2 rounded-lg" ${!canUpgrade ? 'disabled' : ''}>Upgrade</button>`;
+                } else { content += `<p>This building is at its maximum level.</p>`; }
+                ui.buildingUpgrade.content.innerHTML = content;
+                if(document.getElementById('confirm-upgrade-btn')) { document.getElementById('confirm-upgrade-btn').onclick = () => this.performUpgrade(buildingId); }
+                ui.buildingUpgrade.modal.classList.remove('hidden');
+            },
+            performUpgrade(buildingId) {
+                const result = estateManager.startBuildingUpgrade(buildingId);
+                if (result.success) {
+                    StorageManager.savePlayer();
+                    updateGameUI();
+                    this.showUpgradeModal(buildingId);
+                    estateMapManager.showMessage(`${GDD.Buildings[buildingId].name} upgrade started!`);
+                } else {
+                    estateMapManager.showMessage(`Upgrade failed: ${result.reason}`);
+                }
+            },
+            showRefinementModal(buildingId) {
+                const recipes = Array.isArray(EstateGameData.refinement[buildingId]) ? EstateGameData.refinement[buildingId] : [EstateGameData.refinement[buildingId]];
+                if (!recipes || recipes.length === 0) return;
+
+                let content = `<h3 class="text-2xl font-cinzel mb-2">${GDD.Buildings[buildingId].name}</h3><p class="text-sm mb-4">Refine Materials</p>`;
+                
+                recipes.forEach((recipe, index) => {
+                    const inputResource = game.player.estate.resources[recipe.from] || 0;
+                    const maxCanMake = Math.floor(inputResource / recipe.ratio);
+                    content += `
+                        <div class="bg-black/20 p-4 rounded-lg mb-4">
+                            <p class="mb-2">Recipe: ${recipe.ratio} ${RESOURCES[recipe.from].icon} → 1 ${RESOURCES[recipe.to].icon}</p>
+                            <p class="text-xs mb-2">You have: ${Math.floor(inputResource).toLocaleString()} ${RESOURCES[recipe.from].name}</p>
+                            <p class="text-xs mb-4">You can make: ${maxCanMake.toLocaleString()} ${RESOURCES[recipe.to].name}</p>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="refine-amount-input-${index}" min="0" max="${maxCanMake}" placeholder="Amount" class="gdd-input flex-grow">
+                                <button id="refine-max-btn-${index}" class="glass-button px-3 py-2 rounded-md">Max</button>
+                            </div>
+                            <button id="confirm-refine-btn-${index}" class="glass-button w-full mt-4 py-2 rounded-lg" ${maxCanMake === 0 ? 'disabled' : ''}>Refine</button>
+                        </div>
+                    `;
+                });
+
+                ui.refinement.content.innerHTML = content;
+                
+                recipes.forEach((recipe, index) => {
+                    document.getElementById(`refine-max-btn-${index}`).onclick = () => {
+                        const inputResource = game.player.estate.resources[recipe.from] || 0;
+                        const maxCanMake = Math.floor(inputResource / recipe.ratio);
+                        document.getElementById(`refine-amount-input-${index}`).value = maxCanMake;
+                    };
+                    document.getElementById(`confirm-refine-btn-${index}`).onclick = () => this.performRefinement(buildingId, index);
+                });
+
+                ui.refinement.modal.classList.remove('hidden');
+            },
+            performRefinement(buildingId, recipeIndex) {
+                const recipe = (Array.isArray(EstateGameData.refinement[buildingId]) ? EstateGameData.refinement[buildingId] : [EstateGameData.refinement[buildingId]])[recipeIndex];
+                const amountInput = document.getElementById(`refine-amount-input-${recipeIndex}`);
+                const amountToMake = parseInt(amountInput.value, 10);
+
+                if (isNaN(amountToMake) || amountToMake <= 0) {
+                    estateMapManager.showMessage("Invalid amount.");
+                    return;
+                }
+
+                const cost = amountToMake * recipe.ratio;
+                const hasEnough = (game.player.estate.resources[recipe.from] || 0) >= cost;
+
+                if (hasEnough) {
+                    game.player.estate.resources[recipe.from] -= cost;
+                    game.player.estate.resources[recipe.to] = (game.player.estate.resources[recipe.to] || 0) + amountToMake;
+                    StorageManager.savePlayer();
+                    updateGameUI();
+                    estateMapManager.showMessage(`Refined ${amountToMake} ${RESOURCES[recipe.to].name}.`);
+                    this.showRefinementModal(buildingId);
+                } else {
+                    estateMapManager.showMessage("Not enough resources.");
+                }
+            }
+        };
+
+        const ResearchManager = {
+            researchPaths: {
+                'Path of Providence': { icon: '🌱', projects: ['reinforcedTools', 'dwarvenTechnique', 'heartOfTheManor', 'quartermastersLogistics'] },
+                'Path of Prowess': { icon: '⚔️', projects: ['ironWeave', 'fightersProwess', 'castersAcuity', 'keenEyeTraining', 'anatomyStudies', 'footworkDrills', 'ironWill'] },
+                'Path of Fortune': { icon: '💰', projects: ['fortuneHuntersIntuition', 'classGemAttunement', 'gemcuttersEye', 'soulShatteringArts', 'questSeekersBoon', 'shadowManifestation'] }
+            },
+            showResearchModal() {
+                this.renderResearchHub();
+                ui.researchLab.modal.classList.remove('hidden');
+            },
+            renderResearchHub() {
+                const container = ui.researchLab.content;
+                let content = `<h1 class="text-4xl font-cinzel mb-6 text-center">Research Cottage</h1><div class="grid grid-cols-1 md:grid-cols-3 gap-6">`;
+                
+                for (const pathName in this.researchPaths) {
+                    const path = this.researchPaths[pathName];
+                    let totalLevels = 0;
+                    let currentLevels = 0;
+                    path.projects.forEach(researchId => {
+                        const researchDef = EstateGameData.research[researchId];
+                        if(researchDef) {
+                            totalLevels += Object.keys(researchDef.levels).length;
+                            currentLevels += game.player.estate.research[researchId]?.level || 0;
+                        }
+                    });
+                    const progress = totalLevels > 0 ? (currentLevels / totalLevels) * 100 : 0;
+
+                    content += `<div class="glass-panel p-4 rounded-lg text-center cursor-pointer hover:border-cyan-400 transition-all" onclick="ResearchManager.renderResearchTree('${pathName}')">
+                                  <div class="text-5xl mb-2">${path.icon}</div>
+                                  <h3 class="text-xl font-cinzel mb-2">${pathName}</h3>
+                                  <div class="w-full bg-black/30 rounded-full h-2.5">
+                                    <div class="bg-cyan-500 h-2.5 rounded-full" style="width: ${progress}%"></div>
+                                  </div>
+                                  <p class="text-xs mt-1">${progress.toFixed(0)}% Complete</p>
+                                </div>`;
+                }
+                content += `</div>`;
+                container.innerHTML = content;
+            },
+            renderResearchTree(pathName) {
+                const container = ui.researchLab.content;
+                const path = this.researchPaths[pathName];
+                if (!path) return;
+
+                let content = `<div class="flex items-center mb-6">
+                                 <button class="glass-button mr-4" onclick="ResearchManager.renderResearchHub()">← Back</button>
+                                 <h1 class="text-3xl font-cinzel text-center flex-grow">${pathName}</h1>
+                               </div>
+                               <div class="space-y-4">`;
+
+                path.projects.forEach(researchId => {
+                    const researchDef = EstateGameData.research[researchId];
+                    if (!researchDef) return;
+                    const currentLevel = game.player.estate.research[researchId]?.level || 0;
+                    const maxLevel = Object.keys(researchDef.levels).length;
+                    const nextLevel = currentLevel + 1;
+                    const upgradeData = researchDef.levels[nextLevel];
+                    
+                    let bonusText = '';
+                    const firstLevelEffect = researchDef.levels[1].effect;
+                    if (firstLevelEffect.type === 'multiBonus') {
+                        let bonuses = firstLevelEffect.stats.map((stat, index) => {
+                            let value = (currentLevel * firstLevelEffect.values[index] * 100).toFixed(1);
+                            let statName = stat.replace(/([A-Z])/g, ' $1').trim();
+                            return `+${value}% ${statName}`;
+                        });
+                        bonusText = bonuses.join(', ');
+                    } else if (firstLevelEffect.type === 'bonusYield') {
+                        let value = currentLevel > 0 ? researchDef.levels[currentLevel].effect.value : 0;
+                        bonusText = `+${value}x Yield`;
+                    } else {
+                        let value = (currentLevel * firstLevelEffect.value * 100).toFixed(1);
+                        bonusText = `+${value}%`;
+                    }
+
+
+                    content += `<div class="bg-black/20 p-3 rounded-md">
+                                  <div class="flex justify-between items-baseline">
+                                    <p class="font-bold">${researchDef.name}</p>
+                                    <p class="text-xs opacity-70">Lvl: ${currentLevel}/${maxLevel}</p>
+                                  </div>
+                                  <p class="text-xs text-cyan-300 italic">${researchDef.description}</p>
+                                  <p class="text-xs text-green-400">Current Bonus: ${bonusText}</p>
+                                  `;
+                    
+                    if (upgradeData) {
+                        let canResearch = true;
+                        let prereqText = '';
+                        if (researchDef.prereq) {
+                            const prereq = researchDef.prereq;
+                            if (prereq.research) {
+                                const researchIds = Array.isArray(prereq.research) ? prereq.research : [prereq.research];
+                                const isOrCondition = prereq.condition === 'OR';
+                                const check = (id) => (game.player.estate.research[id]?.level || 0) >= prereq.level;
+                                const met = isOrCondition ? researchIds.some(check) : researchIds.every(check);
+
+                                if (!met) {
+                                    canResearch = false;
+                                    const separator = isOrCondition ? ' OR ' : ' AND ';
+                                    const prereqNames = researchIds.map(id => EstateGameData.research[id].name).join(separator);
+                                    prereqText = `<p class="text-red-400 text-xs mt-1">Req: ${prereqNames} Lvl ${prereq.level}</p>`;
+                                }
+                            }
+                        }
+                        content += `<p class="text-xs mt-2">Cost: ${Object.entries(upgradeData.cost).map(([res, val]) => `${val.toLocaleString()} ${RESOURCES[res].icon}`).join(', ')}</p>`;
+                        content += prereqText;
+                        content += `<button class="glass-button w-full mt-2 py-1 text-sm rounded" onclick="ResearchManager.performResearch('${researchId}')" ${!canResearch ? 'disabled' : ''}>Research Lvl ${nextLevel}</button>`;
+                    } else {
+                        content += `<p class="text-yellow-400 text-sm mt-2">Max Level</p>`;
+                    }
+                    content += `</div>`;
+                });
+                content += `</div>`;
+                container.innerHTML = content;
+            },
+            performResearch(researchId) {
+                const result = estateManager.startResearch(researchId);
+                if (result.success) {
+                    StorageManager.savePlayer();
+                    const pathName = Object.keys(this.researchPaths).find(p => this.researchPaths[p].projects.includes(researchId));
+                    this.renderResearchTree(pathName);
+                    estateMapManager.showMessage(`Research complete: ${EstateGameData.research[researchId].name}!`);
+                } else {
+                    estateMapManager.showMessage(`Research failed: ${result.reason}`);
+                }
+            }
+        };
+
+        const BankManager = {
+            showBankModal() {
+                this.renderBankUI();
+                ui.bank.modal.classList.remove('hidden');
+            },
+            renderBankUI() {
+                const container = ui.bank.container;
+                let inventoryHtml = `<div class="border border-gray-700 p-4 rounded-lg">
+                    <h3 class="text-xl font-cinzel mb-4">Inventory (At Risk)</h3>
+                    <div class="space-y-2">`;
+                for(const resKey in game.player.inventory) {
+                    const amount = game.player.inventory[resKey];
+                    if(amount > 0) {
+                        inventoryHtml += `<div class="flex justify-between items-center">
+                            <span>${RESOURCES[resKey].icon} ${RESOURCES[resKey].name}: ${amount.toLocaleString()}</span>
+                            <button class="glass-button text-xs px-2 py-1 rounded" onclick="BankManager.deposit('${resKey}')">Deposit</button>
+                        </div>`;
+                    }
+                }
+                inventoryHtml += `</div><button class="glass-button w-full mt-4 py-2 rounded-lg" onclick="BankManager.depositAll()">Deposit All</button></div>`;
+
+                let storageHtml = `<div class="border border-gray-700 p-4 rounded-lg">
+                    <h3 class="text-xl font-cinzel mb-4">Estate Storage (Safe)</h3>
+                    <div class="space-y-2">`;
+                for(const resKey in game.player.estate.resources) {
+                     const amount = game.player.estate.resources[resKey];
+                    if(amount > 0) {
+                        storageHtml += `<div class="flex justify-between items-center">
+                            <span>${RESOURCES[resKey].icon} ${RESOURCES[resKey].name}: ${Math.floor(amount).toLocaleString()}</span>
+                            <button class="glass-button text-xs px-2 py-1 rounded" onclick="BankManager.withdrawResource('${resKey}')">Withdraw</button>
+                        </div>`;
+                    }
+                }
+                 storageHtml += `</div></div>`;
+                
+                container.innerHTML = inventoryHtml + storageHtml;
+            },
+            depositAll() {
+                if(!game.player.estate) return;
+                for (const resKey in game.player.inventory) {
+                    game.player.estate.resources[resKey] = (game.player.estate.resources[resKey] || 0) + game.player.inventory[resKey];
+                }
+                game.player.inventory = {};
+                StorageManager.savePlayer(); updateGameUI(); this.renderBankUI();
+            },
+            deposit(resKey) {
+                const amountStr = prompt(`How much ${RESOURCES[resKey].name} to deposit?`, game.player.inventory[resKey]);
+                if (amountStr) {
+                    const amount = parseInt(amountStr, 10);
+                    if (!isNaN(amount) && amount > 0 && game.player.inventory[resKey] >= amount) {
+                        game.player.inventory[resKey] -= amount;
+                        if(game.player.inventory[resKey] === 0) delete game.player.inventory[resKey];
+                        game.player.estate.resources[resKey] = (game.player.estate.resources[resKey] || 0) + amount;
+                        StorageManager.savePlayer(); updateGameUI(); this.renderBankUI();
+                    } else { alert("Invalid amount."); }
+                }
+            },
+            withdrawResource(resKey) {
+                if(!game.player.estate) return;
+                const amountStr = prompt(`How much ${RESOURCES[resKey].name} to withdraw?`, '100');
+                if (amountStr) {
+                    const amount = parseInt(amountStr, 10);
+                    if (!isNaN(amount) && amount > 0 && (game.player.estate.resources[resKey] || 0) >= amount) {
+                        game.player.estate.resources[resKey] -= amount;
+                        game.player.inventory[resKey] = (game.player.inventory[resKey] || 0) + amount;
+                        StorageManager.savePlayer(); updateGameUI(); this.renderBankUI();
+                    } else { alert("Invalid amount or not enough in storage."); }
+                }
+            }
+        };
+
+        const QuestManager = {
+            showQuestModal() {
+                this.generateAndDisplayQuest();
+                ui.questBoard.modal.classList.remove('hidden');
+            },
+            async generateAndDisplayQuest() {
+                const contentDiv = ui.questBoard.content;
+                contentDiv.innerHTML = `<div class="text-center">Loading new quest...</div>`;
+                
+                try {
+                    const availableBuildings = Object.keys(game.player.estate.buildings).map(id => GDD.Buildings[id].name).join(', ');
+                    const prompt = `You are a quest master in a fantasy world. Generate a quest for a player. The player's estate has the following buildings: ${availableBuildings}. The quest should be thematic to these buildings. Return a JSON object with the following structure: { "title": "string", "description": "string", "objective": "string", "reward": { "resource": "string", "amount": "number" } }. The resource for the reward must be one of: DragonboneTimber, PrimordialMire, EarthRootRock, DwarfForgedIron, Rawhide.`;
+
+                    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { 
+                        contents: chatHistory,
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    "title": { "type": "STRING" },
+                                    "description": { "type": "STRING" },
+                                    "objective": { "type": "STRING" },
+                                    "reward": {
+                                        "type": "OBJECT",
+                                        "properties": {
+                                            "resource": { "type": "STRING" },
+                                            "amount": { "type": "NUMBER" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const resultText = await response.text();
+                    const result = extractJson(resultText);
+                    
+                    if (result && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const quest = extractJson(result.candidates[0].content.parts[0].text);
+                        if (!quest) { throw new Error("Could not parse valid quest JSON from AI response."); }
+
+                        let rewardHtml = '<p class="text-gray-400">No reward for this quest.</p>';
+                        if (quest.reward && quest.reward.amount && quest.reward.resource && RESOURCES[quest.reward.resource]) {
+                            rewardHtml = `<p>${quest.reward.amount.toLocaleString()} ${RESOURCES[quest.reward.resource].icon} ${RESOURCES[quest.reward.resource].name}</p>`;
+                        }
+                        
+                        contentDiv.innerHTML = `
+                            <h2 class="text-3xl font-cinzel mb-4">${quest.title || "Untitled Quest"}</h2>
+                            <p class="mb-4">${quest.description || "No description provided."}</p>
+                            <p class="font-bold mb-2">Objective:</p>
+                            <p class="mb-4 bg-black/20 p-2 rounded">${quest.objective || "No objective defined."}</p>
+                            <p class="font-bold mb-2">Reward:</p>
+                            ${rewardHtml}
+                        `;
+                    } else {
+                        throw new Error("Could not generate a valid quest from the AI.");
+                    }
+                } catch(e) {
+                    console.error("Quest Generation Error:", e);
+                    contentDiv.innerHTML = `<p class="text-red-400">Could not retrieve a quest from the board. Please try again later.</p>`;
+                }
+            }
+        };
+
+        // --- GAME LOOP ---
+        function animate() {
+            if (game.currentView === 'world') { worldManager.draw(); } 
+            else if (game.currentView === 'estate') { estateMapManager.draw(); }
+            requestAnimationFrame(animate);
+        }
+
+        function gameTick() {
+            if (game.player && game.player.estate && game.player.estate.activeTimers && game.player.estate.activeTimers.length > 0) {
+                const currentTime = Math.floor(Date.now() / 1000);
+                let timersFinished = false;
+                game.player.estate.activeTimers.forEach(timer => {
+                    const timerElement = document.getElementById(`timer-${timer.id}`);
+                    if (timerElement) {
+                        const timeLeft = timer.completionTimestamp - currentTime;
+                        if (timeLeft > 0) {
+                            timerElement.textContent = formatTime(timeLeft);
+                        } else {
+                            timerElement.textContent = "Complete!";
+                            timersFinished = true;
+                        }
+                    }
+                });
+
+                if (timersFinished) {
+                    estateManager.processOfflineProgress();
+                    StorageManager.savePlayer();
+                    if (!ui.buildingUpgrade.modal.classList.contains('hidden')) {
+                        const buildingId = ui.buildingUpgrade.content.querySelector('[id^="timer-"]')?.id.split('-')[1];
+                        if (buildingId) BuildingManager.showUpgradeModal(buildingId);
+                    }
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            ui = {
+                mainScreen: document.getElementById('main-screen'), mainMenuContent: document.getElementById('main-menu-content'), loadingOverlay: document.getElementById('loading-overlay'), loadingMessage: document.getElementById('loading-message'), inventory: { ui: document.getElementById('inventory-ui'), list: document.getElementById('inventory-list') }, storage: { ui: document.getElementById('storage-ui'), list: document.getElementById('storage-list') }, production: { ui: document.getElementById('production-ui'), list: document.getElementById('production-list') }, resourceSidebar: document.getElementById('resource-sidebar'), resourceBarContent: document.getElementById('resource-bar-content'), toggleSidebarBtn: document.getElementById('toggle-sidebar-btn'), worldMap: { modal: document.getElementById('world-map-modal'), canvas: document.getElementById('map-canvas'), exitBtn: document.getElementById('map-exit-btn'), tooltip: { container: document.getElementById('hex-tooltip'), name: document.getElementById('tooltip-name'), biome: document.getElementById('tooltip-biome'), resource: document.getElementById('tooltip-resource'), gatherBtn: document.getElementById('tooltip-gather-btn'), enterBtn: document.getElementById('tooltip-enter-btn'), moveEstateBtn: document.getElementById('tooltip-move-estate-btn'), foundEstateBtn: document.getElementById('tooltip-found-estate-btn'), harvestShardBtn: document.getElementById('tooltip-harvest-shard-btn') } }, estate: { container: document.getElementById('estate-manager-container'), canvas: document.getElementById('estate-canvas'), exitBtn: document.getElementById('estate-exit-btn'), title: document.getElementById('estate-title'), messageBox: document.getElementById('estate-message-box'), tooltip: { container: document.getElementById('estate-tooltip'), name: document.getElementById('estate-tooltip-name'), level: document.getElementById('estate-tooltip-level') } }, buildingUpgrade: { modal: document.getElementById('building-upgrade-modal'), content: document.getElementById('upgrade-modal-content'), closeBtn: document.getElementById('close-upgrade-modal-btn') }, estateSetup: { modal: document.getElementById('estate-setup-modal'), nameInput: document.getElementById('estate-name-input'), descInput: document.getElementById('estate-desc-input'), aiDescBtn: document.getElementById('ai-desc-btn'), aiNameBtn: document.getElementById('ai-name-btn'), nameSuggestions: document.getElementById('name-suggestions'), confirmBtn: document.getElementById('confirm-estate-setup-btn'), statusMsg: document.getElementById('setup-status-message') }, researchLab: { modal: document.getElementById('research-lab-modal'), content: document.getElementById('research-lab-content'), closeBtn: document.getElementById('close-research-modal-btn') }, devTools: { openBtn: document.getElementById('dev-tools-btn'), recenterBtn: document.getElementById('recenter-btn'), panToEstateBtn: document.getElementById('pan-to-estate-btn'), analysisBtn: document.getElementById('map-analysis-btn') }, generatorModal: { modal: document.getElementById('generator-modal'), content: document.getElementById('generator-modal-content'), closeBtn: document.getElementById('close-generator-modal-btn') }, bank: { modal: document.getElementById('estate-bank-modal'), container: document.getElementById('bank-container'), closeBtn: document.getElementById('close-bank-modal-btn') }, questBoard: { modal: document.getElementById('quest-board-modal'), content: document.getElementById('quest-board-content'), closeBtn: document.getElementById('close-quest-board-btn') },
+                refinement: { modal: document.getElementById('refinement-modal'), content: document.getElementById('refinement-modal-content'), closeBtn: document.getElementById('close-refinement-modal-btn') },
+                gddEditor: { modal: document.getElementById('gdd-editor-modal'), sidebar: document.getElementById('gdd-sidebar'), contentArea: document.getElementById('gdd-content-area'), contentScroll: document.getElementById('gdd-content-scroll'), contentTitle: document.getElementById('gdd-content-title'), saveBtn: document.getElementById('gdd-save-btn'), closeBtn: document.getElementById('gdd-close-btn'),},
+                analysisReport: { modal: document.getElementById('analysis-report-modal'), content: document.getElementById('analysis-report-content'), closeBtn: document.getElementById('close-analysis-modal-btn') }
+            };
+            
+            estateManager = new EstateManager();
+            StorageManager.loadGDD();
+            worldManager = new WorldMap(ui.worldMap.canvas); 
+            estateMapManager = new EstateMap(ui.estate.canvas);
+            
+            StorageManager.loadPlayer();
+            if (game.player.estate) {
+                estateManager.loadPlayerData(game.player);
+                estateManager.processOfflineProgress();
+                StorageManager.savePlayer();
+            }
+
+            ui.worldMap.exitBtn.addEventListener('click', showMainMenu); 
+            ui.estate.exitBtn.addEventListener('click', showWorld); 
+            ui.buildingUpgrade.closeBtn.addEventListener('click', () => ui.buildingUpgrade.modal.classList.add('hidden'));
+            ui.researchLab.closeBtn.addEventListener('click', () => ui.researchLab.modal.classList.add('hidden'));
+            ui.generatorModal.closeBtn.addEventListener('click', () => ui.generatorModal.modal.classList.add('hidden'));
+            ui.bank.closeBtn.addEventListener('click', () => ui.bank.modal.classList.add('hidden'));
+            ui.questBoard.closeBtn.addEventListener('click', () => ui.questBoard.modal.classList.add('hidden'));
+            ui.refinement.closeBtn.addEventListener('click', () => ui.refinement.modal.classList.add('hidden'));
+            ui.analysisReport.closeBtn.addEventListener('click', () => ui.analysisReport.modal.classList.add('hidden'));
+            
+            ui.toggleSidebarBtn.addEventListener('click', () => {
+                ui.resourceSidebar.classList.toggle('collapsed');
+                localStorage.setItem('sidebarCollapsed', ui.resourceSidebar.classList.contains('collapsed'));
+            });
+
+            if (localStorage.getItem('sidebarCollapsed') === 'true') ui.resourceSidebar.classList.add('collapsed');
+            
+            ui.devTools.recenterBtn.addEventListener('click', () => { worldManager.isCameraLocked = true; });
+            ui.devTools.panToEstateBtn.addEventListener('click', () => {
+                const estateHex = Array.from(worldManager.grid.values()).find(h => h.feature?.type === 'estate_plot');
+                if(estateHex) worldManager.centerOnHex(estateHex.q, estateHex.r);
+                else alert("Estate not placed yet!");
+            });
+            ui.devTools.analysisBtn.addEventListener('click', () => {
+                const nodeCounts = {};
+                let totalNodes = 0;
+                for (const hex of worldManager.grid.values()) {
+                    if (hex.feature?.type === 'resource_node') {
+                        const resId = hex.feature.resourceId;
+                        nodeCounts[resId] = (nodeCounts[resId] || 0) + 1;
+                        totalNodes++;
+                    }
+                }
+                let reportHtml = `<p class="mb-2">Total Resource Nodes: ${totalNodes}</p>`;
+                for (const resId in nodeCounts) {
+                    reportHtml += `<div>${RESOURCES[resId].icon} ${RESOURCES[resId].name}: ${nodeCounts[resId]} nodes</div>`;
+                }
+                ui.analysisReport.content.innerHTML = reportHtml;
+                ui.analysisReport.modal.classList.remove('hidden');
+                ui.analysisReport.modal.classList.add('flex');
+            });
+
+            GddEditor.init();
+
+            ui.estateSetup.aiDescBtn.addEventListener('click', async () => {
+                const btn = ui.estateSetup.aiDescBtn;
+                btn.disabled = true;
+                btn.textContent = "Generating...";
+                try {
+                    const prompt = "Generate a short, evocative description for a fantasy estate in a single paragraph.";
+                    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { contents: chatHistory };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const resultText = await response.text();
+                    const result = extractJson(resultText);
+
+                    if (result && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        ui.estateSetup.descInput.value = result.candidates[0].content.parts[0].text;
+                    } else if (resultText) {
+                        ui.estateSetup.descInput.value = resultText.replace(/```/g, "").trim();
+                    } else {
+                        throw new Error("Invalid or empty response from AI.");
+                    }
+                } catch (error) {
+                    console.error("AI Description Error:", error);
+                    ui.estateSetup.statusMsg.textContent = "Could not generate description.";
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = "✨ Generate AI Description";
+                }
+            });
+            
+            ui.estateSetup.aiNameBtn.addEventListener('click', async () => {
+                const btn = ui.estateSetup.aiNameBtn;
+                btn.disabled = true;
+                btn.textContent = "Suggesting...";
+                try {
+                    const description = ui.estateSetup.descInput.value.trim() || 'a generic fantasy castle';
+                    const prompt = `Generate 5 cool, one-or-two-word names for a fantasy estate based on this description: "${description}". Return a JSON object with a single key "names" which is an array of strings.`;
+                    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { 
+                        contents: chatHistory,
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: { "names": { "type": "ARRAY", "items": { "type": "STRING" } } }
+                            }
+                        }
+                    };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const resultText = await response.text();
+                    const result = extractJson(resultText);
+
+                    if (result && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const nameData = extractJson(result.candidates[0].content.parts[0].text);
+                        if (!nameData || !nameData.names) { throw new Error("Could not parse valid names JSON from AI response.");}
+                        const names = nameData.names;
+                        const suggestionsContainer = ui.estateSetup.nameSuggestions;
+                        suggestionsContainer.innerHTML = '';
+                        names.forEach(name => {
+                            const nameBtn = document.createElement('button');
+                            nameBtn.className = 'glass-button text-sm px-3 py-1 rounded-full';
+                            nameBtn.textContent = name;
+                            nameBtn.onclick = () => { ui.estateSetup.nameInput.value = name; };
+                            suggestionsContainer.appendChild(nameBtn);
+                        });
+                    } else { throw new Error("Invalid response from AI."); }
+                } catch (error) {
+                    console.error("AI Name Suggestion Error:", error);
+                    ui.estateSetup.statusMsg.textContent = "Could not suggest names.";
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = "✨ Suggest Names";
+                }
+            });
+
+            ui.estateSetup.confirmBtn.addEventListener('click', async () => {
+                const btn = ui.estateSetup.confirmBtn;
+                const name = ui.estateSetup.nameInput.value.trim();
+                const description = ui.estateSetup.descInput.value.trim();
+                if (!name || !description) {
+                    ui.estateSetup.statusMsg.textContent = "Name and description are required.";
+                    return;
+                }
+                btn.disabled = true;
+                ui.estateSetup.statusMsg.textContent = "Generating your estate's vista...";
+                showLoading("Generating Estate Background...");
+
+                try {
+                    const prompt = `A beautiful, detailed fantasy painting of ${description}. Cinematic lighting, epic view.`;
+                    const payload = { instances: [{ prompt: prompt }], parameters: { "sampleCount": 1} };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const result = await response.json();
+                    if (result.predictions?.[0]?.bytesBase64Encoded) {
+                        game.player.estate.name = name;
+                        game.player.estate.description = description;
+                        game.player.estate.backgroundUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                        game.player.estate.hasBeenSetup = true;
+                        StorageManager.savePlayer();
+                        hideLoading();
+                        loadEstateView();
+                    } else { throw new Error("Invalid image response from AI."); }
+                } catch (error) {
+                    console.error("AI Image Generation Error:", error);
+                    ui.estateSetup.statusMsg.textContent = "Could not generate the estate background. Please try again.";
+                    hideLoading();
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+
+
+            setupMainMenu();
+            animate();
+            gameTickInterval = setInterval(gameTick, 1000);
+        });
+
+        // --- GDD Editor Logic ---
+        const GddEditor = {
+            SELECT_OPTIONS: {
+                'benefit.type': ['TIER_UNLOCK', 'STORAGE_CAPACITY', 'PASSIVE_RATE', 'PLAYER_STAT', 'UNLOCK', 'REFINEMENT'],
+                'benefit.details.resource': () => Object.keys(GDD.Resources),
+                'cost.resource': () => Object.keys(GDD.Resources),
+                'rarity': () => Object.keys(GDD.RarityWeights),
+            },
+            
+            init() {
+                ui.devTools.openBtn.addEventListener('click', () => this.open());
+                ui.gddEditor.closeBtn.addEventListener('click', () => this.close());
+                ui.gddEditor.saveBtn.addEventListener('click', () => this.saveChanges());
+            },
+
+            open() {
+                this.renderSidebar();
+                this.renderContent(Object.keys(GDD)[0]);
+                ui.gddEditor.modal.classList.remove('hidden');
+                ui.gddEditor.modal.classList.add('flex', 'items-center', 'justify-center');
+            },
+
+            close() {
+                ui.gddEditor.modal.classList.add('hidden');
+                ui.gddEditor.modal.classList.remove('flex', 'items-center', 'justify-center');
+            },
+            
+            renderSidebar() {
+                const sidebar = ui.gddEditor.sidebar;
+                sidebar.innerHTML = '';
+                for (const key in GDD) {
+                    const tab = document.createElement('button');
+                    tab.className = 'gdd-tab block w-full text-left p-3 border-r-4 border-transparent hover:bg-gray-700/50 transition-colors';
+                    tab.textContent = key.replace(/([A-Z])/g, ' $1').trim();
+                    tab.dataset.key = key;
+                    tab.onclick = () => this.renderContent(key);
+                    sidebar.appendChild(tab);
+                }
+                sidebar.innerHTML += `<hr class="border-gray-600 my-2">`;
+                const testingTab = document.createElement('button');
+                testingTab.className = 'gdd-tab block w-full text-left p-3 border-r-4 border-transparent hover:bg-gray-700/50 transition-colors';
+                testingTab.textContent = "Testing";
+                testingTab.dataset.key = "Testing";
+                testingTab.onclick = () => this.renderContent('Testing');
+                sidebar.appendChild(testingTab);
+
+                sidebar.firstChild?.classList.add('active');
+            },
+
+            renderContent(key) {
+                try {
+                    document.querySelectorAll('#gdd-sidebar .gdd-tab').forEach(t => t.classList.remove('active'));
+                    const activeTab = document.querySelector(`#gdd-sidebar .gdd-tab[data-key="${key}"]`);
+                    if (activeTab) {
+                        activeTab.classList.add('active');
+                    }
+                    
+                    ui.gddEditor.contentTitle.textContent = key.replace(/([A-Z])/g, ' $1').trim();
+                    const contentArea = ui.gddEditor.contentScroll;
+                    contentArea.innerHTML = '';
+                    
+                    const accordionListKeys = ['WorldEvents'];
+                    const objectAccordionKeys = ['Resources', 'Buildings', 'Research'];
+                    const data = GDD[key];
+
+                    if (key === 'Testing') {
+                        this.renderTestingTab(contentArea);
+                        ui.gddEditor.saveBtn.classList.add('hidden');
+                        return;
+                    }
+                    
+                    ui.gddEditor.saveBtn.classList.remove('hidden');
+
+                    if (!data) {
+                        contentArea.innerHTML = '<p class="text-red-400">Error: No data found for this key.</p>';
+                        return;
+                    }
+                    
+                    if (accordionListKeys.includes(key)) {
+                        this.renderAccordionList(contentArea, key, data);
+                    } else if (objectAccordionKeys.includes(key)) {
+                        this.renderObjectAsAccordionList(contentArea, key, data);
+                    } else {
+                        contentArea.appendChild(this._createFormForObject(data, key));
+                    }
+
+                } catch (e) {
+                    console.error(`Error rendering GDD content for key "${key}":`, e);
+                    ui.gddEditor.contentScroll.innerHTML = `<div class="text-red-400 p-4">
+                        <p class="font-bold">A critical error occurred while rendering this view.</p>
+                        <p class="text-sm">Please check the developer console for details.</p>
+                        <pre class="text-xs mt-4 bg-black/30 p-2 rounded-md overflow-auto">${e.stack}</pre>
+                    </div>`;
+                }
+            },
+            
+            renderObjectAsAccordionList(container, key, dataObject) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'space-y-2';
+
+                const header = document.createElement('div');
+                header.className = 'flex justify-end mb-4';
+                const addButton = document.createElement('button');
+                addButton.className = 'glass-button px-3 py-1 rounded-md';
+                let singularKey = key;
+                if (key.endsWith('s')) {
+                    singularKey = key.slice(0, -1);
+                }
+                addButton.textContent = `+ Add New ${singularKey}`;
+                addButton.onclick = () => this.addNewItem(key);
+                header.appendChild(addButton);
+                container.appendChild(header);
+
+                for (const itemKey in dataObject) {
+                    const path = `${key}.${itemKey}`;
+                    const accordion = document.createElement('div');
+                    accordion.className = 'glass-panel rounded-lg overflow-hidden';
+
+                    const accordionHeader = document.createElement('div');
+                    accordionHeader.className = 'gdd-accordion-header p-3 flex justify-between items-center';
+                    accordionHeader.innerHTML = `<span class="font-bold">${dataObject[itemKey].name || itemKey}</span>
+                                                 <button class="glass-button bg-red-500/20 border-red-500/40 hover:bg-red-500/40 px-2 py-0.5 rounded-md text-xs" onclick="GddEditor.deleteItem('${path}')">Delete</button>`;
+                    
+                    const accordionContent = document.createElement('div');
+                    accordionContent.className = 'gdd-accordion-content';
+                    accordionContent.appendChild(this._createFormForObject(dataObject[itemKey], path));
+
+                    accordionHeader.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON') return;
+                        accordionContent.classList.toggle('open');
+                    };
+
+                    accordion.appendChild(accordionHeader);
+                    accordion.appendChild(accordionContent);
+                    wrapper.appendChild(accordion);
+                }
+                container.appendChild(wrapper);
+            },
+
+            renderTestingTab(container) {
+                container.innerHTML = `
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xl font-cinzel mb-3">Give Resources</h3>
+                            <div id="dev-resource-buttons" class="gdd-form-grid"></div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-cinzel mb-3">Cheats</h3>
+                            <div id="dev-cheat-buttons" class="gdd-form-grid"></div>
+                        </div>
+                    </div>
+                `;
+
+                const resourceContainer = container.querySelector('#dev-resource-buttons');
+                const addAllBtn = document.createElement('button');
+                addAllBtn.className = 'glass-button py-2 rounded-md';
+                addAllBtn.textContent = 'Add 1k All';
+                addAllBtn.onclick = () => {
+                    for(const resKey in RESOURCES) {
+                        this.addResource(resKey, 1000);
+                    }
+                };
+                resourceContainer.appendChild(addAllBtn);
+
+                for(const resKey in RESOURCES) {
+                    const btn = document.createElement('button');
+                    btn.className = 'glass-button py-2 rounded-md';
+                    btn.textContent = `+1k ${RESOURCES[resKey].icon}`;
+                    btn.title = `Add 1000 ${RESOURCES[resKey].name}`;
+                    btn.onclick = () => this.addResource(resKey, 1000);
+                    resourceContainer.appendChild(btn);
+                }
+
+                const cheatContainer = container.querySelector('#dev-cheat-buttons');
+                const freeMoveBtn = document.createElement('button');
+                freeMoveBtn.id = 'dev-free-move-btn';
+                freeMoveBtn.className = 'glass-button py-2 rounded-md dev-toggle';
+                freeMoveBtn.textContent = `Free Move: ${game.dev.freeMove ? 'ON' : 'OFF'}`;
+                freeMoveBtn.classList.toggle('active', game.dev.freeMove);
+                freeMoveBtn.onclick = () => this.toggleFreeMove();
+                cheatContainer.appendChild(freeMoveBtn);
+
+                const instaResearchBtn = document.createElement('button');
+                instaResearchBtn.className = 'glass-button py-2 rounded-md';
+                instaResearchBtn.textContent = 'Complete All Research';
+                instaResearchBtn.onclick = () => this.completeAllResearch();
+                cheatContainer.appendChild(instaResearchBtn);
+            },
+            
+            completeAllResearch() {
+                if (!game.player.estate) {
+                    alert("You must have an estate to use this cheat.");
+                    return;
+                }
+                if (!confirm("Are you sure you want to complete all research projects? This cannot be undone.")) {
+                    return;
+                }
+
+                for (const researchId in EstateGameData.research) {
+                    const researchLevels = Object.keys(EstateGameData.research[researchId].levels);
+                    if (researchLevels.length > 0) {
+                        const maxLevel = Math.max(...researchLevels.map(Number));
+                        game.player.estate.research[researchId] = { level: maxLevel };
+                    }
+                }
+                StorageManager.savePlayer();
+                updateGameUI();
+                alert("All research projects have been completed.");
+            },
+
+            addResource(resKey, amount) {
+                if (game.player.estate) {
+                    game.player.estate.resources[resKey] = (game.player.estate.resources[resKey] || 0) + amount;
+                    updateGameUI();
+                } else {
+                    alert("You must have an estate to add resources.");
+                }
+            },
+
+            toggleFreeMove() {
+                game.dev.freeMove = !game.dev.freeMove;
+                const btn = document.getElementById('dev-free-move-btn');
+                if(btn) {
+                    btn.textContent = `Free Move: ${game.dev.freeMove ? 'ON' : 'OFF'}`;
+                    btn.classList.toggle('active', game.dev.freeMove);
+                }
+            },
+
+            renderAccordionList(container, key, dataArray) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'space-y-2';
+
+                const header = document.createElement('div');
+                header.className = 'flex justify-end mb-4';
+                const addButton = document.createElement('button');
+                addButton.className = 'glass-button px-3 py-1 rounded-md';
+                let singularKey = key;
+                if (key.endsWith('s')) {
+                    singularKey = key.slice(0, -1);
+                }
+                addButton.textContent = `+ Add New ${singularKey}`;
+                addButton.onclick = () => this.addNewItem(key);
+                header.appendChild(addButton);
+                container.appendChild(header);
+
+                dataArray.forEach((item, index) => {
+                    const path = `${key}[${index}]`;
+                    const accordion = document.createElement('div');
+                    accordion.className = 'glass-panel rounded-lg overflow-hidden';
+
+                    const accordionHeader = document.createElement('div');
+                    accordionHeader.className = 'gdd-accordion-header p-3 flex justify-between items-center';
+                    accordionHeader.innerHTML = `<span class="font-bold">${item.name || item.id || `Item ${index + 1}`}</span>
+                                                 <button class="glass-button bg-red-500/20 border-red-500/40 hover:bg-red-500/40 px-2 py-0.5 rounded-md text-xs" onclick="GddEditor.deleteItem('${path}')">Delete</button>`;
+                    
+                    const accordionContent = document.createElement('div');
+                    accordionContent.className = 'gdd-accordion-content';
+                    accordionContent.appendChild(this._createFormForObject(item, path));
+
+                    accordionHeader.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON') return;
+                        accordionContent.classList.toggle('open');
+                    };
+
+                    accordion.appendChild(accordionHeader);
+                    accordion.appendChild(accordionContent);
+                    wrapper.appendChild(accordion);
+                });
+                container.appendChild(wrapper);
+            },
+            
+            _createFormForObject(obj, path) {
+                const formGrid = document.createElement('div');
+                formGrid.className = 'gdd-form-grid';
+
+                for (const key in obj) {
+                    const value = obj[key];
+                    const currentPath = `${path}.${key}`;
+                    
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        const fieldset = document.createElement('fieldset');
+                        fieldset.className = 'col-span-full border border-gray-700 p-3 rounded-md';
+                        fieldset.innerHTML = `<legend class="px-2 font-bold text-sm">${key}</legend>`;
+                        fieldset.appendChild(this._createFormForObject(value, currentPath));
+                        formGrid.appendChild(fieldset);
+                    } else {
+                        const inputGroup = document.createElement('div');
+                        inputGroup.className = 'gdd-input-group';
+                        
+                        const label = document.createElement('label');
+                        label.className = 'text-sm mb-1 opacity-80';
+                        label.textContent = key;
+                        
+                        let input;
+                        const inputType = typeof value;
+
+                        let isSelect = false;
+                        for(const selectKey in this.SELECT_OPTIONS) {
+                            if(currentPath.endsWith(selectKey)) {
+                                let options = this.SELECT_OPTIONS[selectKey];
+                                if (typeof options === 'function') {
+                                    options = options();
+                                }
+                                input = this._createSelect(currentPath, options, value);
+                                isSelect = true;
+                                break;
+                            }
+                        }
+
+                        if (!isSelect) {
+                            switch(inputType) {
+                                case 'string':
+                                    if (value.length > 80 || key.toLowerCase().includes('description')) {
+                                        input = document.createElement('textarea');
+                                        input.className = 'gdd-textarea';
+                                        input.rows = 3;
+                                    } else {
+                                        input = document.createElement('input');
+                                        input.type = 'text';
+                                        input.className = 'gdd-input';
+                                    }
+                                    input.value = value;
+                                    break;
+                                case 'number':
+                                    input = document.createElement('input');
+                                    input.type = 'number';
+                                    input.className = 'gdd-input';
+                                    input.value = value;
+                                    break;
+                                case 'boolean':
+                                    input = document.createElement('input');
+                                    input.type = 'checkbox';
+                                    input.className = 'gdd-checkbox';
+                                    input.checked = value;
+                                    break;
+                                default:
+                                    input = document.createElement('input');
+                                    input.type = 'text';
+                                    input.className = 'gdd-input';
+                                    input.value = JSON.stringify(value);
+                                    input.disabled = true;
+                            }
+                        }
+                        
+                        input.dataset.path = currentPath;
+                        inputGroup.appendChild(label);
+                        inputGroup.appendChild(input);
+                        formGrid.appendChild(inputGroup);
+                    }
+                }
+                return formGrid;
+            },
+
+            _createSelect(path, options, selectedValue) {
+                const select = document.createElement('select');
+                select.className = 'gdd-select';
+                options.forEach(opt => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt;
+                    optionEl.textContent = opt;
+                    if (opt === selectedValue) {
+                        optionEl.selected = true;
+                    }
+                    select.appendChild(optionEl);
+                });
+                return select;
+            },
+
+            saveChanges() {
+                const inputs = ui.gddEditor.contentScroll.querySelectorAll('[data-path]');
+                const newGDD = JSON.parse(JSON.stringify(GDD));
+
+                inputs.forEach(input => {
+                    const path = input.dataset.path;
+                    let value;
+                    if (input.type === 'checkbox') {
+                        value = input.checked;
+                    } else if (input.type === 'number') {
+                        value = parseFloat(input.value);
+                    } else {
+                        value = input.value;
+                    }
+                    this._setValueByPath(newGDD, path, value);
+                });
+                
+                GDD = newGDD;
+                RESOURCES = GDD.Resources;
+                StorageManager.saveGDD();
+                alert("Game Data Saved!");
+                
+                const currentKey = document.querySelector('#gdd-sidebar .gdd-tab.active').dataset.key;
+                this.renderContent(currentKey);
+            },
+
+            _setValueByPath(obj, path, value) {
+                const keys = path.replace(/\[(\w+)\]/g, '.$1').split('.');
+                const lastKey = keys.pop();
+                const lastObj = keys.reduce((currentObj, key) => currentObj[key] = currentObj[key] || {}, obj);
+                lastObj[lastKey] = value;
+            },
+
+            addNewItem(key) {
+                const data = GDD[key];
+                 if (Array.isArray(data)) {
+                    const template = data.length > 0 ? JSON.parse(JSON.stringify(data[0])) : {};
+                    for(const prop in template) {
+                        if(typeof template[prop] === 'string') template[prop] = '';
+                        if(typeof template[prop] === 'number') template[prop] = 0;
+                        if(typeof template[prop] === 'boolean') template[prop] = false;
+                        if(typeof template[prop] === 'object' && template[prop] !== null) template[prop] = {};
+                    }
+                    if(template.id) template.id = `new_${key.slice(0,-1)}_${Date.now()}`;
+                    if(template.name) template.name = "New Item";
+                    data.push(template);
+                } else if (typeof data === 'object' && data !== null) {
+                    const newKey = prompt("Enter ID for the new item:");
+                    if (newKey && !data[newKey]) {
+                        const template = Object.keys(data).length > 0 ? JSON.parse(JSON.stringify(data[Object.keys(data)[0]])) : {};
+                         for(const prop in template) {
+                            if(typeof template[prop] === 'string') template[prop] = '';
+                            if(typeof template[prop] === 'number') template[prop] = 0;
+                            if(typeof template[prop] === 'boolean') template[prop] = false;
+                            if(typeof template[prop] === 'object' && template[prop] !== null) template[prop] = {};
+                        }
+                        if (template.name !== undefined) template.name = "New Item";
+                        data[newKey] = template;
+                    } else if (newKey) {
+                        alert("An item with that ID already exists.");
+                    }
+                }
+                this.renderContent(key);
+            },
+
+            deleteItem(path) {
+                if (!confirm(`Are you sure you want to delete the item at path: ${path}? This cannot be undone.`)) return;
+                
+                const keys = path.replace(/\[(\w+)\]/g, '.$1').split('.');
+                const lastKey = keys.pop();
+                
+                let parentObj = GDD;
+                keys.forEach(key => {
+                    parentObj = parentObj[key];
+                });
+
+                if (Array.isArray(parentObj)) {
+                    parentObj.splice(parseInt(lastKey, 10), 1);
+                } else if (typeof parentObj === 'object' && parentObj !== null) {
+                    delete parentObj[lastKey];
+                }
+
+                const currentKey = document.querySelector('#gdd-sidebar .gdd-tab.active').dataset.key;
+                this.renderContent(currentKey);
+            }
+        };
+    </script>
+</body>
+</html>

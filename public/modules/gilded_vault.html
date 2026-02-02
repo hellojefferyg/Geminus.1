@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+   <title>Geminus - Grand Vault</title>
+   
+   <script src="https://cdn.tailwindcss.com"></script>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+   
+   <style>
+       :root {
+           --bg-color: #000000;
+           --accent-cyan: #00ffff;
+           --panel-bg: rgba(10, 30, 35, 0.7);
+           --panel-border: rgba(255, 215, 0, 0.3);
+           --text-primary: #ffffff;
+           --text-secondary: #bae6fd;
+           --accent-green: #4ade80;
+           --accent-red: #f87171;
+           --accent-orange: #f5a623;
+       }
+       html, body { height: 100%; }
+       body { 
+           font-family: 'Inter', sans-serif; 
+           background-color: var(--bg-color); 
+           color: var(--text-primary); 
+           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+       }
+       .font-cinzel { font-family: 'Cinzel', serif; }
+       .main-container { 
+           max-width: 420px; 
+           height: 100%; 
+           background-color: #0a0a0a;
+           background-image: url('https://i.ibb.co/gZ7vWZG6/IMG-1910.jpg');
+           background-size: cover;
+           background-position: center;
+       }
+       .header { background-color: rgba(0,0,0,0.5); border-bottom: 1px solid var(--panel-border); }
+       .header-title { color: var(--accent-orange); text-shadow: 0 0 8px var(--accent-orange), 0 1px 3px rgba(0, 0, 0, 0.7); }
+       .panel { background: var(--panel-bg); backdrop-filter: blur(10px); border: 1px solid var(--panel-border); border-radius: 0.5rem; }
+       
+       .action-button {
+           border-radius: 0.5rem;
+           font-weight: 700;
+           transition: all 0.2s ease;
+           border: 1px solid;
+           padding: 0.75rem;
+       }
+       .action-button:disabled {
+           background: rgba(60, 60, 60, 0.4);
+           border-color: rgba(100, 100, 100, 0.8);
+           cursor: not-allowed;
+           color: #6b7280;
+           text-shadow: none;
+       }
+ 
+       .deposit-button { background-color: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.5); color: var(--accent-green); }
+       .deposit-button:hover:not(:disabled) { background-color: rgba(74, 222, 128, 0.2); border-color: var(--accent-green); }
+       .withdraw-button { background-color: rgba(248, 113, 113, 0.1); border-color: rgba(248, 113, 113, 0.5); color: var(--accent-red); }
+       .withdraw-button:hover:not(:disabled) { background-color: rgba(248, 113, 113, 0.2); border-color: var(--accent-red); }
+       .percent-button { background-color: rgba(245, 166, 35, 0.1); border: 1px solid var(--panel-border); border-radius: 0.5rem; color: var(--accent-orange); transition: all 0.2s ease; }
+       .percent-button:hover { background-color: rgba(245, 166, 35, 0.2); border-color: var(--accent-orange); }
+ 
+       .custom-input {
+           background-color: rgba(0,0,0,0.4);
+           border: 1px solid var(--panel-border);
+           border-radius: 0.5rem;
+           padding: 0.75rem;
+           color: var(--text-primary);
+           text-align: center;
+           font-size: 1.25rem;
+       }
+       input[type=number]::-webkit-inner-spin-button, 
+       input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+       input[type=number] { -moz-appearance: textfield; }
+ 
+       .accordion-header {
+           cursor: pointer;
+           padding: 0.75rem 0.5rem;
+           border-bottom: 1px solid var(--panel-border);
+           font-weight: bold;
+           color: var(--text-secondary);
+       }
+       .accordion-content {
+           max-height: 0;
+           overflow: hidden;
+           transition: max-height 0.3s ease-out;
+       }
+       .nav-rail-button {
+           background-color: transparent;
+           border-right: 3px solid transparent;
+           transition: all 0.2s ease;
+           opacity: 0.6;
+           width: 100%;
+           padding: 0.5rem;
+           border-radius: 0.25rem 0 0 0.25rem;
+       }
+       .nav-rail-button.active {
+           background-color: rgba(245, 166, 35, 0.1);
+           border-right-color: var(--accent-orange);
+           opacity: 1;
+       }
+       .nav-rail-button:hover:not(.active) {
+           background-color: rgba(245, 166, 35, 0.05);
+           opacity: 0.8;
+       }
+       .venture-card {
+           background-color: rgba(0,0,0,0.2);
+           border: 1px solid var(--panel-border);
+           border-radius: 0.5rem;
+       }
+       
+       #toast-container {
+           position: fixed;
+           top: 1rem;
+           left: 50%;
+           transform: translateX(-50%);
+           z-index: 100;
+           display: flex;
+           flex-direction: column;
+           gap: 0.5rem;
+           align-items: center;
+       }
+       .toast {
+           padding: 0.75rem 1.5rem;
+           border-radius: 0.5rem;
+           font-weight: bold;
+           animation: fade-in-out 5s forwards;
+       }
+       .toast.success { background-color: rgba(74, 222, 128, 0.8); border: 1px solid var(--accent-green); }
+       .toast.failure { background-color: rgba(248, 113, 113, 0.8); border: 1px solid var(--accent-red); }
+       @keyframes fade-in-out {
+           0% { opacity: 0; transform: translateY(-20px); }
+           10% { opacity: 1; transform: translateY(0); }
+           90% { opacity: 1; transform: translateY(0); }
+           100% { opacity: 0; transform: translateY(-20px); }
+       }
+   </style>
+</head>
+<body class="bg-black flex justify-center">
+ 
+   <div id="toast-container"></div>
+ 
+   <div id="vault-root" class="main-container flex flex-col">
+       <header class="header p-4 text-center flex-shrink-0">
+           <h1 id="page-title" class="font-cinzel text-2xl header-title">The Grand Vault</h1>
+       </header>
+ 
+       <main class="flex-grow p-4 overflow-y-auto">
+           <div class="panel flex h-full">
+               <!-- Navigation Rail -->
+               <div class="w-1/3 border-r border-yellow-300/20">
+                   <div id="accordion-nav">
+                       <!-- Personal Vault Accordion -->
+                       <div>
+                           <div class="accordion-header" data-accordion="personal">Personal Vault</div>
+                           <div class="accordion-content p-2 space-y-2">
+                               <button data-tab="vault" class="nav-rail-button active">Vault</button>
+                               <button data-tab="writ" class="nav-rail-button">Writ</button>
+                               <button data-tab="ventures" class="nav-rail-button">Ventures</button>
+                           </div>
+                       </div>
+                       <!-- Public Network Accordion -->
+                       <div>
+                           <div class="accordion-header" data-accordion="public">Public Network</div>
+                           <div class="accordion-content p-2 space-y-2">
+                               <button data-tab="guild" class="nav-rail-button">Guild</button>
+                               <button data-tab="exchange" class="nav-rail-button">Exchange</button>
+                               <button data-tab="bounties" class="nav-rail-button">Bounties</button>
+                               <button data-tab="remote" class="nav-rail-button">Remote</button>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+ 
+               <!-- Content Area -->
+               <div class="w-2/3 p-4 overflow-y-auto">
+                   <div id="vault-content" class="space-y-6">
+                       <!-- Vault Content -->
+                       <div class="grid grid-cols-2 gap-4 text-center">
+                           <div><h2 class="text-sm text-secondary font-bold">Pocket Gold</h2><p id="pocket-gold" class="text-xl font-bold text-yellow-300"></p></div>
+                           <div><h2 class="text-sm text-secondary font-bold">Vault Gold</h2><p id="vault-gold" class="text-xl font-bold text-green-300"></p></div>
+                       </div>
+                       <div><input type="number" id="transaction-amount" class="custom-input w-full" placeholder="Enter amount..."></div>
+                       <div class="grid grid-cols-5 gap-2">
+                           <button class="percent-button text-xs py-2" data-percent="0.1">10%</button>
+                           <button class="percent-button text-xs py-2" data-percent="0.25">25%</button>
+                           <button class="percent-button text-xs py-2" data-percent="0.5">50%</button>
+                           <button class="percent-button text-xs py-2" data-percent="0.75">75%</button>
+                           <button class="percent-button text-xs py-2" data-percent="1">MAX</button>
+                       </div>
+                       <div class="grid grid-cols-2 gap-4">
+                           <button id="deposit-button" class="action-button deposit-button">Deposit</button>
+                           <button id="withdraw-button" class="action-button withdraw-button">Withdraw</button>
+                       </div>
+                   </div>
+ 
+                   <div id="writ-content" class="hidden">
+                       <!-- Writ Content -->
+                       <div id="writ-locked" class="text-center">
+                           <h2 class="font-cinzel text-lg text-orange-300">Merchant's Writ</h2>
+                           <p class="text-secondary text-sm mt-4">This service is only available to established adventurers of Level 50 or higher.</p>
+                       </div>
+                       <div id="writ-unlocked" class="hidden space-y-6">
+                            <div class="grid grid-cols-2 gap-4 text-center">
+                               <div><h2 class="text-sm text-secondary font-bold">Current Debt</h2><p id="debt-amount" class="text-xl font-bold text-red-400"></p></div>
+                               <div><h2 class="text-sm text-secondary font-bold">Available Credit</h2><p id="credit-amount" class="text-xl font-bold text-green-300"></p></div>
+                           </div>
+                           <div><input type="number" id="writ-transaction-amount" class="custom-input w-full" placeholder="Enter amount..."></div>
+                           <div class="grid grid-cols-5 gap-2" id="writ-percent-buttons">
+                               <button class="percent-button text-xs py-2" data-percent="0.1">10%</button>
+                               <button class="percent-button text-xs py-2" data-percent="0.25">25%</button>
+                               <button class="percent-button text-xs py-2" data-percent="0.5">50%</button>
+                               <button class="percent-button text-xs py-2" data-percent="0.75">75%</button>
+                               <button class="percent-button text-xs py-2" data-percent="1">MAX</button>
+                           </div>
+                           <div class="grid grid-cols-2 gap-4">
+                               <button id="borrow-button" class="action-button deposit-button">Borrow</button>
+                               <button id="repay-button" class="action-button withdraw-button">Repay</button>
+                           </div>
+                            <p class="text-xs text-center text-secondary pt-2">Interest is calculated daily. Failure to repay may result in a Debtor's Curse.</p>
+                       </div>
+                   </div>
+                   
+                   <div id="ventures-content" class="hidden space-y-4">
+                       <h2 class="font-cinzel text-lg text-orange-300 text-center">Venture Charters</h2>
+                       <div id="active-ventures-section"></div>
+                       <div id="available-ventures-section"></div>
+                   </div>
+ 
+                   <div id="guild-content" class="hidden space-y-4">
+                       <div class="flex justify-between items-center">
+                           <h2 class="font-cinzel text-lg text-orange-300">Guild Treasury</h2>
+                           <div class="text-center text-sm">
+                               <select id="role-select" class="custom-input !p-1 !text-sm !w-auto">
+                                   <option value="member">Member</option>
+                                   <option value="officer">Officer</option>
+                                   <option value="leader">Leader</option>
+                               </select>
+                           </div>
+                       </div>
+                       <div class="text-center">
+                           <h3 class="text-sm text-secondary font-bold">Treasury Balance</h3>
+                           <p id="guild-balance" class="text-2xl font-bold text-yellow-300"></p>
+                       </div>
+                       <div><input type="number" id="guild-transaction-amount" class="custom-input w-full" placeholder="Enter amount..."></div>
+                       <div class="grid grid-cols-2 gap-4">
+                           <button id="guild-deposit-button" class="action-button deposit-button">Deposit</button>
+                           <button id="guild-withdraw-button" class="action-button withdraw-button">Withdraw</button>
+                       </div>
+                       <div>
+                           <h3 class="font-bold text-secondary mb-2 text-center">Transaction Log</h3>
+                           <div id="guild-log" class="text-xs space-y-2 max-h-48 overflow-y-auto p-2 bg-black/20 rounded"></div>
+                       </div>
+                   </div>
+ 
+                   <div id="exchange-content" class="hidden space-y-4">
+                        <h2 class="font-cinzel text-lg text-orange-300 text-center">Aurum Exchange</h2>
+                        <div id="exchange-ticker" class="space-y-2"></div>
+                   </div>
+                   
+                   <div id="bounties-content" class="hidden space-y-4">
+                       <h2 class="font-cinzel text-lg text-orange-300 text-center">Bounty Board</h2>
+                       <div id="bounty-list" class="space-y-2"></div>
+                   </div>
+ 
+                   <div id="remote-content" class="hidden text-center">
+                       <h2 class="font-cinzel text-lg text-orange-300">Remote Access</h2>
+                       <p class="text-secondary text-sm mt-4">Remote access to the Grand Vault is locked.</p>
+                       <p class="text-secondary text-sm mt-2">Complete the "Mobile Bank" conquest to unlock the <strong class="text-yellow-300">Aetherium Conduit</strong> for your Player Estate.</p>
+                   </div>
+               </div>
+           </div>
+       </main>
+   </div>
+ 
+<script>
+   // --- BRIDGE TO ENGINE ---
+   // We reach up to the parent window to grab the real game state and managers
+   const gameManager = window.parent.gameManager;
+   const VaultManager = gameManager ? gameManager.VaultManager : null;
+   const Player = gameManager ? gameManager.state.player : null;
+
+   if (!VaultManager || !Player) {
+       console.error("Gilded Vault: Connection to Mainframe failed.");
+       // Optional: Visual error if the engine isn't running
+       document.body.innerHTML = "<div style='color:red;text-align:center;margin-top:20%;font-family:sans-serif;'><h3>CONNECTION LOST</h3><p>The Gilded Vault cannot reach the Geminus Engine.</p></div>";
+   }
+
+   // --- DATA CONFIG ---
+   const marketData = [
+       { name: 'Primal Soul', value: 250000000, trend: 'up' },
+       { name: 'Grade 9 Gem', value: 400000000, trend: 'down' },
+       { name: 'Crucible Recipe', value: 75000000, trend: 'up' },
+   ];
+   const availableVentures = [
+       { id: 'v1', name: 'Caravan Escort', risk: 'Low', cost: 1000, duration: 10, returnRange: [1.05, 1.20], description: 'A safe bet. Protect a merchant caravan on a well-traveled road.'},
+       { id: 'v2', name: 'Sunken City Expedition', risk: 'High', cost: 5000, duration: 180, returnRange: [0.5, 3.0], description: 'High risk, high reward. Fund an expedition to a treacherous underwater ruin.'},
+   ];
+
+   //================================================================
+   // MODULE: Bank UI Controller
+   //================================================================
+   const BankUI = {
+       ui: {},
+       activeMode: 'deposit',
+       activeTab: 'vault',
+       ventureTimers: {},
+
+       init() {
+           this.cacheUI();
+           this.addEventListeners();
+           this.updateUI(); // Initial Render using real data
+           
+           // Default to personal tab
+           this.openAccordion('personal'); 
+       },
+
+       cacheUI() {
+           this.ui = {
+               toastContainer: document.getElementById('toast-container'),
+               navRailButtons: document.querySelectorAll('.nav-rail-button'),
+               accordionHeaders: document.querySelectorAll('.accordion-header'),
+               vaultContent: document.getElementById('vault-content'),
+               writContent: document.getElementById('writ-content'),
+               venturesContent: document.getElementById('ventures-content'),
+               guildContent: document.getElementById('guild-content'),
+               exchangeContent: document.getElementById('exchange-content'),
+               bountiesContent: document.getElementById('bounties-content'),
+               remoteContent: document.getElementById('remote-content'),
+               activeVenturesSection: document.getElementById('active-ventures-section'),
+               availableVenturesSection: document.getElementById('available-ventures-section'),
+               pocketGold: document.getElementById('pocket-gold'),
+               vaultGold: document.getElementById('vault-gold'),
+               amountInput: document.getElementById('transaction-amount'),
+               depositBtn: document.getElementById('deposit-button'),
+               withdrawBtn: document.getElementById('withdraw-button'),
+               percentButtons: document.querySelectorAll('#vault-content .percent-button'),
+               writLocked: document.getElementById('writ-locked'),
+               writUnlocked: document.getElementById('writ-unlocked'),
+           };
+       },
+
+       addEventListeners() {
+           this.ui.accordionHeaders.forEach(header => {
+               header.addEventListener('click', () => this.openAccordion(header.dataset.accordion));
+           });
+           this.ui.navRailButtons.forEach(btn => btn.addEventListener('click', () => this.switchTab(btn.dataset.tab)));
+           
+           // [UPDATED] Call Engine Logic directly
+           this.ui.depositBtn.addEventListener('click', () => {
+               const amt = parseInt(this.ui.amountInput.value, 10);
+               if (VaultManager && amt > 0) {
+                   VaultManager.deposit(amt);
+                   this.updateUI(); // Immediate refresh
+               }
+           });
+
+           this.ui.withdrawBtn.addEventListener('click', () => {
+               const amt = parseInt(this.ui.amountInput.value, 10);
+               if (VaultManager && amt > 0) {
+                   VaultManager.withdraw(amt);
+                   this.updateUI(); // Immediate refresh
+               }
+           });
+
+           this.ui.amountInput.addEventListener('input', () => this.updateButtonStates());
+           
+           this.ui.percentButtons.forEach(btn => btn.addEventListener('click', () => {
+               this.setAmountByPercent(parseFloat(btn.dataset.percent));
+           }));
+           
+           this.ui.depositBtn.addEventListener('mouseenter', () => {
+               this.activeMode = 'deposit';
+               this.updateButtonStates(); // Re-check validity when switching modes
+           });
+           this.ui.withdrawBtn.addEventListener('mouseenter', () => {
+               this.activeMode = 'withdraw';
+               this.updateButtonStates();
+           });
+       },
+       
+       openAccordion(accordionId) {
+           this.ui.accordionHeaders.forEach(header => {
+               const content = header.nextElementSibling;
+               if (header.dataset.accordion === accordionId) {
+                   content.style.maxHeight = content.scrollHeight + "px";
+               } else {
+                   content.style.maxHeight = null;
+               }
+           });
+       },
+
+       switchTab(tabId) {
+           this.activeTab = tabId;
+           this.ui.navRailButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
+           this.ui.vaultContent.classList.toggle('hidden', tabId !== 'vault');
+           this.ui.writContent.classList.toggle('hidden', tabId !== 'writ');
+           this.ui.venturesContent.classList.toggle('hidden', tabId !== 'ventures');
+           this.ui.guildContent.classList.toggle('hidden', tabId !== 'guild');
+           this.ui.exchangeContent.classList.toggle('hidden', tabId !== 'exchange');
+           this.ui.bountiesContent.classList.toggle('hidden', tabId !== 'bounties');
+           this.ui.remoteContent.classList.toggle('hidden', tabId !== 'remote');
+           this.updateUI();
+       },
+
+       setAmountByPercent(percent) {
+           let amount = 0;
+           // [UPDATED] Use Real Player Data
+           const pocket = Player?.gold || 0;
+           const vault = Player?.gildedVaultGold || 0;
+
+           if (this.activeMode === 'deposit') amount = Math.floor(pocket * percent);
+           else if (this.activeMode === 'withdraw') amount = Math.floor(vault * percent);
+           
+           this.ui.amountInput.value = amount > 0 ? amount : '';
+           this.updateButtonStates();
+       },
+       
+       updateUI() {
+           // [UPDATED] Use Real Player Data
+           const pocket = Player?.gold || 0;
+           const vault = Player?.gildedVaultGold || 0;
+
+           this.ui.pocketGold.textContent = pocket.toLocaleString();
+           this.ui.vaultGold.textContent = vault.toLocaleString();
+           this.updateButtonStates();
+           
+           // Writ Access Check (Level 50+)
+           const level = Player?.level || 1;
+           if (level >= 50) {
+               this.ui.writLocked.classList.add('hidden');
+               this.ui.writUnlocked.classList.remove('hidden');
+           } else {
+               this.ui.writLocked.classList.remove('hidden');
+               this.ui.writUnlocked.classList.add('hidden');
+           }
+       },
+       
+       updateButtonStates() {
+           const amount = parseInt(this.ui.amountInput.value, 10) || 0;
+           const pocket = Player?.gold || 0;
+           const vault = Player?.gildedVaultGold || 0;
+
+           this.ui.depositBtn.disabled = amount <= 0 || amount > pocket;
+           this.ui.withdrawBtn.disabled = amount <= 0 || amount > vault;
+       }
+   };
+
+   // --- INITIALIZATION ---
+   window.addEventListener('load', () => BankUI.init());
+</script>
+</body>
+</html>
+ 
+

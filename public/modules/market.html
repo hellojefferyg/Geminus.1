@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: transparent; font-family: 'Inter', sans-serif; color: #e0f8ff; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .parchment-row { background: rgba(30, 20, 10, 0.6); border: 1px solid rgba(139, 69, 19, 0.4); }
+        .parchment-row:hover { background: rgba(50, 30, 15, 0.8); border-color: #d4a373; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col p-6 overflow-hidden">
+    <div class="flex justify-between items-end mb-6 border-b border-amber-900/50 pb-4">
+        <div>
+            <h1 id="page-title" class="font-cinzel text-3xl text-amber-500 tracking-widest uppercase">Board</h1>
+            <p class="text-amber-200/60 text-sm mt-1">Available contracts and listings</p>
+        </div>
+        <div class="text-right">
+            <div class="text-xs text-slate-400">Current Gold</div>
+            <div class="font-cinzel text-yellow-500 text-xl">1,250 🪙</div>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto space-y-3 pr-2">
+        <div class="parchment-row p-4 rounded flex items-center justify-between transition-all">
+            <div class="flex items-center gap-4">
+                <div class="h-12 w-12 bg-black/40 rounded border border-amber-900/30 flex items-center justify-center text-2xl">📜</div>
+                <div>
+                    <h3 class="font-cinzel text-amber-100">Bounty: The Goblin King</h3>
+                    <p class="text-xs text-amber-200/50">Slay the king in the Northern Caverns.</p>
+                </div>
+            </div>
+            <button class="px-4 py-2 bg-amber-900/40 border border-amber-600/40 text-amber-200 hover:bg-amber-700 hover:text-white rounded font-cinzel text-xs">Accept</button>
+        </div>
+
+        <div class="parchment-row p-4 rounded flex items-center justify-between transition-all">
+            <div class="flex items-center gap-4">
+                <div class="h-12 w-12 bg-black/40 rounded border border-amber-900/30 flex items-center justify-center text-2xl">🪵</div>
+                <div>
+                    <h3 class="font-cinzel text-amber-100">Request: Ironwood Logs</h3>
+                    <p class="text-xs text-amber-200/50">Deliver 20 logs to the Carpenter.</p>
+                </div>
+            </div>
+            <button class="px-4 py-2 bg-amber-900/40 border border-amber-600/40 text-amber-200 hover:bg-amber-700 hover:text-white rounded font-cinzel text-xs">Accept</button>
+        </div>
+
+        <div class="parchment-row p-4 rounded flex items-center justify-between transition-all">
+            <div class="flex items-center gap-4">
+                <div class="h-12 w-12 bg-black/40 rounded border border-amber-900/30 flex items-center justify-center text-2xl">💎</div>
+                <div>
+                    <h3 class="font-cinzel text-amber-100">Sale: Raw Emeralds</h3>
+                    <p class="text-xs text-amber-200/50">Bulk sale from the Clan Mines.</p>
+                </div>
+            </div>
+            <button class="px-4 py-2 bg-amber-900/40 border border-amber-600/40 text-amber-200 hover:bg-amber-700 hover:text-white rounded font-cinzel text-xs">Buy (500g)</button>
+        </div>
+    </div>
+
+    <script>
+        // Auto-update title based on filename
+        const name = window.location.pathname.split('/').pop().replace('.html', '').replace(/_/g, ' ');
+        document.getElementById('page-title').textContent = name;
+    </script>
+</body>
+</html>

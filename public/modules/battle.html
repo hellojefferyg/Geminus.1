@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .glass-panel { background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(34, 211, 238, 0.3); backdrop-filter: blur(4px); }
+        .selection-item:hover { background: rgba(34, 211, 238, 0.1); border-color: rgba(34, 211, 238, 0.5); }
+        .selected { background: rgba(34, 211, 238, 0.2); border-color: #22d3ee; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body class="flex flex-col h-full bg-black/90">
+
+    <header class="p-4 border-b border-cyan-900/30 bg-cyan-950/20 flex justify-between items-center shrink-0">
+        <h2 class="font-cinzel text-2xl text-cyan-400 flex items-center gap-2">
+            ⚔️ BATTLE ENCOUNTER
+        </h2>
+    </header>
+
+    <div id="selection-screen" class="flex-1 flex flex-col items-center justify-center p-8 gap-6">
+        <h3 class="text-xl text-gray-300 font-cinzel">Choose Your Opponent</h3>
+        
+        <div class="w-full max-w-lg h-80 overflow-y-auto glass-panel rounded-lg p-2 space-y-2" id="mob-list-container">
+            <div class="text-gray-500 text-center mt-10">Scanning for enemies...</div>
+        </div>
+
+        <button id="btn-start-fight" disabled class="px-8 py-3 bg-red-900/50 text-gray-500 border border-red-900 rounded font-cinzel tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase">
+            Select Enemy
+        </button>
+    </div>
+
+    <div id="arena-screen" class="hidden flex-1 flex flex-col h-full">
+        <div class="flex-1 flex p-6 gap-8 items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
+            
+            <div class="flex-1 max-w-xs flex flex-col items-center border border-blue-900/50 rounded-lg bg-blue-950/20 p-4 relative">
+                <div class="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mb-2 border-2 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                    <span class="text-3xl">🛡️</span>
+                </div>
+                <h3 id="player-name" class="font-cinzel text-lg text-blue-200">Hero</h3>
+                <div class="w-full h-3 bg-gray-800 rounded-full mt-2 overflow-hidden border border-gray-600">
+                    <div id="player-hp-bar" class="h-full bg-blue-500 transition-all duration-300" style="width: 100%"></div>
+                </div>
+                <p id="player-hp-text" class="text-xs text-blue-300 mt-1">100 / 100</p>
+            </div>
+
+            <div class="text-2xl font-cinzel text-gray-600 opacity-50 italic">VS</div>
+
+            <div class="flex-1 max-w-xs flex flex-col items-center border border-red-900/50 rounded-lg bg-red-950/20 p-4 relative">
+                <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-2 border-2 border-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                    <span class="text-3xl">💀</span>
+                </div>
+                <h3 id="enemy-name" class="font-cinzel text-lg text-red-200">Enemy</h3>
+                <div class="w-full h-3 bg-gray-800 rounded-full mt-2 overflow-hidden border border-gray-600">
+                    <div id="enemy-hp-bar" class="h-full bg-red-600 transition-all duration-300" style="width: 100%"></div>
+                </div>
+                <p id="enemy-hp-text" class="text-xs text-red-300 mt-1">??? / ???</p>
+            </div>
+        </div>
+
+        <div class="h-48 flex flex-col bg-black border-t border-gray-800">
+             <div class="flex justify-center p-3 bg-gray-900/50 border-b border-gray-800">
+                <button id="btn-attack" class="px-10 py-2 bg-red-700 hover:bg-red-600 text-white font-bold rounded border border-red-500 transition-colors shadow-lg shadow-red-900/20">
+                    ATTACK
+                </button>
+            </div>
+            <div id="combat-log" class="flex-1 p-4 overflow-y-auto font-mono text-sm text-gray-400 space-y-1">
+                <div class="text-gray-600 italic">Battle ready...</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const BattleModule = {
+        state: {
+            player: { name: 'Hero', hp: 100, maxHp: 100, dmg: 10 },
+            enemy: null,
+            active: false
+        },
+        selectedMob: null,
+
+        init() {
+            // 1. Get Data from Parent GameManager
+            if (window.parent && window.parent.gameManager) {
+                const gm = window.parent.gameManager;
+                
+                // Load Player Stats
+                if (gm.state.player) {
+                    this.state.player.name = gm.state.player.name;
+                    this.state.player.hp = gm.state.player.stats?.hp || 100;
+                    this.state.player.maxHp = gm.state.player.stats?.maxHp || 100;
+                    this.state.player.dmg = Math.floor((gm.state.player.stats?.strength || 10) / 2) + 5;
+                }
+
+                // Load Enemy List (Array)
+                const mobs = gm.currentEncounterList || [];
+                
+                // Handle "Single Enemy" legacy case just in case
+                if (!mobs.length && gm.currentEncounter) {
+                    mobs.push(gm.currentEncounter);
+                }
+
+                if (mobs.length > 0) {
+                    this.renderSelection(mobs);
+                } else {
+                    document.getElementById('mob-list-container').innerHTML = 
+                        '<div class="text-red-500 text-center mt-10">No enemies found in this sector.</div>';
+                }
+            }
+
+            // Bind Events
+            document.getElementById('btn-start-fight').onclick = () => this.startBattle();
+            document.getElementById('btn-attack').onclick = () => this.handlePlayerTurn();
+            
+            // Spacebar Shortcut
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    if (this.state.active) this.handlePlayerTurn();
+                }
+            });
+        },
+
+        renderSelection(mobs) {
+            const container = document.getElementById('mob-list-container');
+            container.innerHTML = '';
+
+            mobs.forEach(mob => {
+                const el = document.createElement('div');
+                const isBoss = mob.tier === 'Boss' || mob.isBoss;
+                const level = mob.level || 1;
+                
+                el.className = `selection-item p-4 rounded cursor-pointer border border-transparent transition-all flex justify-between items-center ${isBoss ? 'text-red-400 font-bold bg-red-950/10' : 'text-gray-300'}`;
+                
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-2 h-2 rounded-full ${isBoss ? 'bg-red-500' : 'bg-cyan-500'}"></div>
+                        <div class="flex flex-col">
+                            <span>${mob.name}</span>
+                            <span class="text-xs opacity-50 font-normal">Level ${level} ${mob.type || 'Entity'}</span>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-gray-900 px-2 py-1 rounded border border-gray-700 text-gray-400">
+                        HP: ${mob.hp}
+                    </span>
+                `;
+
+                el.onclick = () => {
+                    // Highlight Selection
+                    Array.from(container.children).forEach(c => c.classList.remove('selected'));
+                    el.classList.add('selected');
+                    
+                    // Enable Start Button
+                    this.selectedMob = mob;
+                    const btn = document.getElementById('btn-start-fight');
+                    btn.disabled = false;
+                    btn.innerText = "FIGHT!";
+                    btn.classList.remove('bg-red-900/50', 'text-gray-500');
+                    btn.classList.add('bg-red-600', 'text-white', 'hover:bg-red-500', 'shadow-lg', 'shadow-red-500/30');
+                };
+                container.appendChild(el);
+            });
+        },
+
+        startBattle() {
+            if (!this.selectedMob) return;
+
+            // Switch Screens
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('arena-screen').classList.remove('hidden');
+
+            // Init Enemy
+            this.state.enemy = {
+                name: this.selectedMob.name,
+                hp: this.selectedMob.hp,
+                maxHp: this.selectedMob.hp,
+                dmg: this.selectedMob.damage || 5
+            };
+            this.state.active = true;
+
+            this.updateUI();
+            this.log(`Battle started against ${this.state.enemy.name}!`, 'text-yellow-400');
+        },
+
+        handlePlayerTurn() {
+            if (!this.state.active) return;
+
+            // 1. DISPATCH TO CENTRAL ENGINE
+            // We ask the main game window to process the turn using the 'real' formula.
+            if (window.parent && window.parent.gameManager) {
+                const gm = window.parent.gameManager;
+                
+                // We call the central resolve function
+                const result = gm.Systems.resolveCombatTurn(gm.state.player, this.state.enemy);
+
+                // 2. APPLY RESULTS TO LOCAL UI
+                // Update HP based on what the engine says actually happened
+                this.state.enemy.hp = result.monsterCurrentHP;
+                this.state.player.hp = result.playerCurrentHP;
+
+                // Log the results provided by the engine
+                if (result.damageDealt) {
+                    this.log(`You hit for ${result.damageDealt.toFixed(0)} damage!`, 'text-blue-300');
+                }
+                
+                this.updateUI();
+
+                // 3. CHECK FOR VICTORY
+                if (result.status === 'VICTORY') {
+                    this.endBattle(true);
+                    return;
+                }
+
+                // 4. ENEMY COUNTER-ATTACK (VISUAL DELAY)
+                const btn = document.getElementById('btn-attack');
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                setTimeout(() => {
+                    if (result.damageTaken) {
+                        this.log(`${this.state.enemy.name} attacks you for ${result.damageTaken.toFixed(0)} damage!`, 'text-red-400');
+                    }
+                    this.updateUI();
+                    
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                    if (result.status === 'DEFEAT') this.endBattle(false);
+                }, 600);
+            }
+        },
+
+        endBattle(victory) {
+            this.state.active = false;
+            document.getElementById('btn-attack').classList.add('hidden');
+            
+            // [UPDATED] Access the Central Engine
+            const gm = window.parent.gameManager;
+
+            if (victory) {
+                this.log(`VICTORY!`, 'text-green-400 font-bold text-xl mt-2');
+                
+                // [UPDATED] Call Systems to generate real loot (XP, Gold, Items, Alignment)
+                if (gm && gm.Systems) {
+                    // Use the game state for zone ID
+                    const currentZoneId = gm.state.game.currentZoneId || 'Z01';
+                    
+                    // Generate Loot & Process Level Ups
+                    // Note: We pass selectedMob because it has the static data (xp, gold)
+                    const msgs = gm.Systems.generateLoot(gm.state.player, this.selectedMob, currentZoneId);
+                    
+                    // Display Loot Logs
+                    msgs.forEach(m => this.log(m, 'text-purple-300'));
+                    
+                    // Refresh Main UI (XP Bar, Gold, Inventory)
+                    if (gm.ProfileManager) gm.ProfileManager.updateAllProfileUI();
+                }
+            } else {
+                this.log("DEFEAT...", 'text-red-600 font-bold text-xl mt-2');
+                
+                // [UPDATED] Trigger Sanctuary Manager for Death Handling
+                if (gm && gm.SanctuaryManager) {
+                    setTimeout(() => {
+                        // 1. Close this battle popup
+                        const closeBtn = window.parent.document.getElementById('module-close-btn');
+                        if (closeBtn) closeBtn.click();
+                        
+                        // 2. Trigger the Defeat/Revival Flow in the main engine
+                        gm.SanctuaryManager.handlePlayerDefeat();
+                    }, 1500);
+                }
+            }
+        },
+
+        updateUI() {
+            // [UPDATED] Math.ceil for cleaner display integers
+            document.getElementById('player-hp-text').innerText = `${Math.max(0, Math.ceil(this.state.player.hp))} / ${Math.ceil(this.state.player.maxHp)}`;
+            document.getElementById('player-hp-bar').style.width = `${Math.max(0, (this.state.player.hp / this.state.player.maxHp) * 100)}%`;
+
+            document.getElementById('enemy-name').innerText = this.state.enemy.name;
+            document.getElementById('enemy-hp-text').innerText = `${Math.max(0, Math.ceil(this.state.enemy.hp))} / ${Math.ceil(this.state.enemy.maxHp)}`;
+            document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, (this.state.enemy.hp / this.state.enemy.maxHp) * 100)}%`;
+        },
+
+        log(msg, classes = 'text-gray-400') {
+            const el = document.getElementById('combat-log');
+            const line = document.createElement('div');
+            line.className = classes;
+            line.innerHTML = msg; // [UPDATED] Changed to innerHTML to support color spans
+            el.appendChild(line);
+            el.scrollTop = el.scrollHeight;
+        }
+    };
+
+    window.addEventListener('load', () => BattleModule.init());
+</script>
+</body>
+</html>

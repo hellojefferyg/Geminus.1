@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-bg-color">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Geminus - The Sanctuary</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0c1427; /* Deep Blue */
+            --panel-bg: rgba(17, 24, 39, 0.75); /* Slate-900 */
+            --panel-border: rgba(56, 189, 248, 0.3); /* Sky-400 */
+            --text-primary: #f0f9ff; /* Sky-50 */
+            --text-secondary: #7dd3fc; /* Sky-300 */
+            --accent-color: #38bdf8; /* Sky-500 */
+            --bargain-color: #e11d48; /* Rose-600 for the risky choice */
+            --progress-bg: #1e293b; /* slate-800 */
+            --progress-gold: #facc15; /* yellow-400 */
+            --progress-xp: #67e8f9; /* cyan-300 */
+        }
+        html, body { 
+            height: 100%; 
+            overflow: hidden; 
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-primary); 
+        }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        
+        #sanctuary-root { 
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 560px; 
+            width: 100%;
+            margin: 0 auto;
+            background: radial-gradient(ellipse at center, rgba(14, 27, 56, 1) 0%, #0c1427 70%);
+            position: relative;
+        }
+        #sanctuary-root::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(200, 220, 255, 0.1) 0%, rgba(200, 220, 255, 0) 70%);
+            transform: translate(-50%, -50%);
+            animation: pulse-light 8s infinite ease-in-out;
+            z-index: 0;
+        }
+        @keyframes pulse-light {
+            0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.7; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        }
+
+        .header { background-color: rgba(12, 20, 39, 0.6); border-bottom: 1px solid var(--panel-border); }
+        .header-title { color: var(--accent-color); text-shadow: 0 0 12px var(--accent-color); }
+        
+        .panel { 
+            background: var(--panel-bg); 
+            backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--panel-border); 
+            border-radius: 0.75rem;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.1);
+        }
+        
+        .action-button {
+            border-radius: 0.5rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            border: 2px solid;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+        .revive-button { 
+            background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.1));
+            border-color: var(--accent-color); 
+            color: var(--text-primary);
+            text-shadow: 0 0 8px var(--accent-color);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+        }
+        .revive-button:hover:not(:disabled) { 
+            background-color: rgba(56, 189, 248, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.5);
+        }
+        .bargain-button {
+            background: radial-gradient(ellipse at center, rgba(225, 29, 72, 0.2), rgba(225, 29, 72, 0.1));
+            border-color: var(--bargain-color);
+            color: var(--text-primary);
+            text-shadow: 0 0 8px var(--bargain-color);
+            box-shadow: 0 0 20px rgba(225, 29, 72, 0.3);
+        }
+        .bargain-button:hover:not(:disabled) {
+            background-color: rgba(225, 29, 72, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(225, 29, 72, 0.5);
+        }
+        .action-button:disabled {
+            background: rgba(55, 65, 81, 0.4);
+            border-color: rgba(107, 114, 128, 0.5);
+            cursor: not-allowed;
+            color: #6b7280;
+            text-shadow: none;
+            box-shadow: none;
+        }
+        .progress-bar {
+            background-color: var(--progress-bg);
+            border-radius: 9999px;
+            height: 0.75rem;
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
+        }
+        .progress-bar > div {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+        }
+        #dev-switcher {
+            background: rgba(0,0,0,0.5);
+            border-top: 1px solid var(--panel-border);
+        }
+        #dev-switcher button {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body class="flex justify-center">
+
+    <div id="sanctuary-root">
+        <header class="header p-4 flex-shrink-0 z-10">
+            <h1 class="font-cinzel text-2xl md:text-3xl header-title text-center">Sanctuary</h1>
+        </header>
+
+        <main class="flex-grow flex flex-col items-center justify-center p-4 md:p-6 space-y-4 z-10 min-h-0">
+            <div id="status-panel" class="panel w-full p-4 md:p-6 text-center">
+                <h2 id="status-title" class="font-cinzel text-xl md:text-2xl mb-2"></h2>
+                <p id="status-message" class="text-secondary text-sm md:text-base"></p>
+            </div>
+            
+            <div id="debt-management-panel" class="w-full max-w-lg">
+                <!-- Debt management UI will be injected here -->
+            </div>
+
+            <div id="revive-button-container" class="w-full max-w-lg flex-grow flex flex-col justify-around">
+                 <!-- Revival choice buttons will be dynamically inserted here -->
+            </div>
+        </main>
+        
+        <footer class="p-4 text-center text-xs text-gray-500 z-10 flex-shrink-0">
+            <p>The ethereal energies of the Sanctuary flow through you, mending your spirit.</p>
+        </footer>
+
+        <!-- Developer State Switcher -->
+        <div id="dev-switcher" class="p-2 flex-shrink-0 z-20">
+            <div class="flex items-center justify-center gap-2">
+                 <span class="text-xs font-bold text-gray-400 mr-2">DEV:</span>
+                 <button id="dev-pve-btn">Test PVE Death</button>
+                 <button id="dev-pvp-btn">Test PVP Death</button>
+                 <button id="dev-debt-btn">Test Debt Mgt</button>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    // --- GDD DATA & CONFIG ---
+    const GDD_DATA = {
+        DEATH_PENALTY: { GOLD_LOSS_PERCENT: 1.00, XP_LOSS_PERCENT: 1.00 },
+        SOUL_DEBT: { TITHE_PERCENT: 0.50 }
+    };
+
+    // [UPDATED] Bridge to Real Game Engine
+    const GameBridge = {
+        getPlayer: () => window.parent.gameManager?.state?.player,
+        commit: (strategy) => window.parent.gameManager?.SanctuaryManager?.commitRevival(strategy),
+        close: () => {
+            const btn = window.parent.document.getElementById('module-close-btn');
+            if (btn) btn.click();
+        }
+    };
+
+    const SanctuaryManager = {
+        player: null,
+        ui: {},
+
+        init() {
+            // 1. Load Real Player Data
+            const realPlayer = GameBridge.getPlayer();
+            if (!realPlayer) {
+                console.error("Sanctuary: No player found in parent window.");
+                return;
+            }
+            
+            // Deep copy for UI rendering (so we don't mutate state directly here)
+            this.player = JSON.parse(JSON.stringify(realPlayer));
+            
+            // Inject calculated "isDefeated" state for the UI if coming from death
+            if (this.player.hp <= 0) {
+                this.player.isDefeated = true;
+                this.player.lastDeathType = 'PVE_DEATH'; // Defaulting for now
+            }
+
+            this.cacheUI();
+            this.updateUI();
+        },
+
+        cacheUI() {
+            if (!this.ui.statusTitle) { // Only cache once
+                this.ui = {
+                    statusTitle: document.getElementById('status-title'),
+                    statusMessage: document.getElementById('status-message'),
+                    reviveButtonContainer: document.getElementById('revive-button-container'),
+                    debtManagementPanel: document.getElementById('debt-management-panel'),
+                };
+            }
+        },
+        
+        updateUI() {
+            if (this.player.isDefeated) {
+                this.ui.statusTitle.textContent = "Your Spirit Lingers";
+                this.ui.statusTitle.classList.add('text-red-400');
+                this.ui.debtManagementPanel.innerHTML = '';
+
+                if (this.player.lastDeathType === 'PVP_DEATH') {
+                    this.renderPvpRevival();
+                } else {
+                    this.renderPveRevivalChoices();
+                }
+            } else {
+                this.ui.statusTitle.textContent = "You Are Whole";
+                this.ui.statusTitle.classList.remove('text-red-400');
+                this.ui.reviveButtonContainer.innerHTML = '';
+                
+                const soulDebt = this.player.soulDebt || { gold: 0, xp: 0 };
+                if (soulDebt.gold > 0 || soulDebt.xp > 0) {
+                    this.renderDebtPanel();
+                } else {
+                    this.ui.statusMessage.textContent = "The Sanctuary's light has restored you. Your soul is free of debt.";
+                    this.ui.debtManagementPanel.innerHTML = '';
+                }
+            }
+        },
+        
+        renderDebtPanel() {
+             this.ui.statusMessage.textContent = "You carry a Soul Debt. Your gains are reduced until it is repaid.";
+             const debt = this.player.soulDebt || { gold: 0, xp: 0, goldDebtTotal: 1, xpDebtTotal: 1 };
+             const goldProgress = debt.goldDebtTotal > 0 ? (1 - (debt.gold / debt.goldDebtTotal)) * 100 : 100;
+             const xpProgress = debt.xpDebtTotal > 0 ? (1 - (debt.xp / debt.xpDebtTotal)) * 100 : 100;
+
+             this.ui.debtManagementPanel.innerHTML = `
+                <div class="panel p-4 space-y-3">
+                    <h3 class="font-cinzel text-lg text-center text-bargain-color">Soul Debt Management</h3>
+                    <div>
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-yellow-300">Gold Debt</span>
+                            <span>${debt.gold.toLocaleString()} / ${debt.goldDebtTotal.toLocaleString()}</span>
+                        </div>
+                        <div class="progress-bar"><div style="width: ${goldProgress}%; background-color: var(--progress-gold);"></div></div>
+                    </div>
+                     <div>
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-sky-300">XP Debt</span>
+                            <span>${debt.xp.toLocaleString()} / ${debt.xpDebtTotal.toLocaleString()}</span>
+                        </div>
+                        <div class="progress-bar"><div style="width: ${xpProgress}%; background-color: var(--progress-xp);"></div></div>
+                    </div>
+                    <button id="tithe-button" class="action-button revive-button w-full">Make a Tithe</button>
+                </div>
+             `;
+             document.getElementById('tithe-button').addEventListener('click', () => this.handleTithePayment());
+        },
+
+        renderPveRevivalChoices() {
+            const goldToLose = Math.floor(this.player.gold * GDD_DATA.DEATH_PENALTY.GOLD_LOSS_PERCENT);
+            const xpToLose = Math.floor(this.player.xp * GDD_DATA.DEATH_PENALTY.XP_LOSS_PERCENT);
+            
+            this.ui.statusMessage.innerHTML = `You have fallen to a creature of the world. Choose your path to revival.<br>You carry <span class="font-bold text-yellow-300">${this.player.gold.toLocaleString()}</span> Gold and <span class="font-bold text-sky-300">${this.player.xp.toLocaleString()} / ${this.player.xpToNextLevel.toLocaleString()}</span> XP.`;
+
+            this.ui.reviveButtonContainer.innerHTML = `
+                <div class="flex flex-col sm:flex-row gap-4 h-full">
+                    <div class="panel !border-accent-color/50 p-3 flex-1 flex flex-col">
+                        <h3 class="font-cinzel text-base md:text-lg text-accent-color text-center">The Penitent's Path</h3>
+                        <p class="text-xs text-secondary text-center flex-grow my-2">Accept the penalty. Lose your assets to be revived free of debt.</p>
+                        <button id="penitent-button" class="action-button revive-button mt-auto">
+                            Lose ${goldToLose.toLocaleString()} G & ${xpToLose.toLocaleString()} XP
+                        </button>
+                    </div>
+                    <div class="panel !border-bargain-color/50 p-3 flex-1 flex flex-col">
+                        <h3 class="font-cinzel text-base md:text-lg text-bargain-color text-center">The Echo's Bargain</h3>
+                        <p class="text-xs text-secondary text-center flex-grow my-2">Defer the price. Keep your assets but incur a Soul Debt, reducing future gains.</p>
+                        <button id="bargain-button" class="action-button bargain-button mt-auto">
+                           Incur Soul Debt
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('penitent-button').addEventListener('click', () => this.handlePenitentsPath(goldToLose, xpToLose));
+            document.getElementById('bargain-button').addEventListener('click', () => this.handleEchosBargain(goldToLose, xpToLose));
+        },
+
+        renderPvpRevival() {
+            const goldToLose = Math.floor(this.player.gold * GDD_DATA.DEATH_PENALTY.GOLD_LOSS_PERCENT);
+            const xpToLose = Math.floor(this.player.xp * GDD_DATA.DEATH_PENALTY.XP_LOSS_PERCENT);
+
+            this.ui.statusMessage.innerHTML = `You were slain by another player. Your gold has been claimed. There is no bargain for a warrior's death.<br>Accept the penalty to return to the fight.`;
+
+            this.ui.reviveButtonContainer.innerHTML = `
+                <div class="flex flex-col gap-4 h-full justify-center items-center">
+                    <div class="panel !border-accent-color/50 p-4 flex flex-col w-full max-w-xs">
+                        <h3 class="font-cinzel text-lg text-accent-color text-center">The Penitent's Path</h3>
+                        <p class="text-xs text-secondary text-center flex-grow my-2">Your only option is to accept the consequences of honorable combat.</p>
+                        <button id="penitent-button" class="action-button revive-button mt-auto">
+                             Lose ${xpToLose.toLocaleString()} XP & Revive
+                        </button>
+                    </div>
+                </div>
+            `;
+             document.getElementById('penitent-button').addEventListener('click', () => this.handlePenitentsPath(goldToLose, xpToLose));
+        },
+
+        handlePenitentsPath(goldLost, xpLost) {
+            // [UPDATED] Send choice to engine
+            GameBridge.commit('PENITENT');
+            
+            const wasPvp = this.player.lastDeathType === 'PVP_DEATH';
+            const message = wasPvp 
+                ? `You have returned from a warrior's death. ${xpLost.toLocaleString()} XP was lost.`
+                : `You paid the price. ${goldLost.toLocaleString()} Gold and ${xpLost.toLocaleString()} XP were lost.`;
+            this.reviveSequence(message);
+        },
+
+        handleEchosBargain(goldDebt, xpDebt) {
+            // [UPDATED] Send choice to engine
+            GameBridge.commit('BARGAIN');
+            this.reviveSequence(`The bargain is struck. You carry the weight of your debt.`);
+        },
+        
+        handleTithePayment() {
+            const paymentAmount = parseInt(prompt(`You have ${this.player.gildedVaultGold.toLocaleString()} Gold in your Vault. How much would you like to pay towards your debt?`, this.player.gildedVaultGold));
+            
+            if (isNaN(paymentAmount) || paymentAmount <= 0) return;
+            if (paymentAmount > this.player.gildedVaultGold) {
+                alert("You don't have enough gold in your vault.");
+                return;
+            }
+
+            this.player.gildedVaultGold -= paymentAmount;
+            let remainingPayment = paymentAmount;
+
+            if (this.player.soulDebt.gold > 0) {
+                const goldPaid = Math.min(remainingPayment, this.player.soulDebt.gold);
+                this.player.soulDebt.gold -= goldPaid;
+                remainingPayment -= goldPaid;
+            }
+            
+            if (remainingPayment > 0 && this.player.soulDebt.xp > 0) {
+                 const xpPaid = Math.min(remainingPayment, this.player.soulDebt.xp);
+                 this.player.soulDebt.xp -= xpPaid;
+            }
+
+            if(this.player.soulDebt.gold === 0 && this.player.soulDebt.xp === 0) {
+                this.player.soulDebt.goldDebtTotal = 0;
+                this.player.soulDebt.xpDebtTotal = 0;
+            }
+            
+            this.updateUI();
+        },
+
+        reviveSequence(message) {
+            this.player.isDefeated = false;
+            this.ui.reviveButtonContainer.innerHTML = `<div class="flex h-full items-center justify-center"><p class="text-center font-bold text-2xl animate-pulse text-accent-color">REVIVED!</p></div>`;
+            document.getElementById('sanctuary-root').style.animation = 'flash-revive 1s ease-out';
+            
+            setTimeout(() => {
+                document.getElementById('sanctuary-root').style.animation = '';
+                this.ui.statusMessage.textContent = message;
+                this.updateUI();
+                
+                // [UPDATED] Close the module
+                GameBridge.close();
+            }, 1500);
+        }
+    };
+    
+    // --- INITIALIZATION & BRIDGE ---
+    
+    // Expose the manager so the main GameManager can trigger it with real data
+    window.SanctuaryManager = SanctuaryManager;
+
+    // Maintain Dev Tools for manual testing
+    function handleStateChange(scenarioKey) {
+       // Mock loading removed in favor of real engine bridge
+       console.log("DevTools: State change requested via bridge.");
+    }
+
+    // Keep the Dev Button listeners active
+    const pveBtn = document.getElementById('dev-pve-btn');
+    const pvpBtn = document.getElementById('dev-pvp-btn');
+    const debtBtn = document.getElementById('dev-debt-btn');
+
+    if (pveBtn) pveBtn.onclick = () => handleStateChange('pveDeath');
+    if (pvpBtn) pvpBtn.onclick = () => handleStateChange('pvpDeath');
+    if (debtBtn) debtBtn.onclick = () => handleStateChange('withDebt');
+
+    // Visual styles for the revival animation
+    const style = document.createElement('style');
+    style.innerHTML = `@keyframes flash-revive { 0% { opacity: 1; } 50% { opacity: 0.5; box-shadow: 0 0 50px #38bdf8; } 100% { opacity: 1; } }`;
+    document.head.appendChild(style);
+</script>
+</body>
+</html>
+

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <title>Geminus - Aetherial Shard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-black text-gray-200 theme-aetherial-shard overflow-hidden">
+    <script src="/src/utils/ReceiverBridge.js"></script>
+    <script type="module" src="/src/main.js"></script>
+
+    <canvas id="smoke-canvas"></canvas>
+
+    <div id="interaction-tooltip" class="hidden fixed left-1/2 -translate-x-1/2 bottom-[35%] z-[100] pointer-events-none">
+        <div class="bg-black/85 border border-cyan-400 text-cyan-400 px-6 py-2 rounded shadow-[0_0_15px_rgba(0,255,255,0.3)] uppercase tracking-widest font-cinzel text-sm animate-pulse">
+            Click Hero to Enter <span id="tooltip-target-name" class="font-bold text-white"></span>
+        </div>
+    </div>
+    <div id="loading-screen" class="fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-center transition-opacity duration-1000">
+    <div class="relative">
+        <div class="w-24 h-24 border-2 border-cyan-900/30 border-t-cyan-400 rounded-full animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-cyan-400 font-orbitron text-xs animate-pulse">⚛️</span>
+        </div>
+    </div>
+    <h1 class="mt-8 font-cinzel text-2xl text-cyan-100 tracking-[0.4em] uppercase">Geminus</h1>
+    <p id="loading-status" class="mt-2 font-orbitron text-[10px] text-cyan-700 tracking-widest uppercase">Materializing World...</p>
+</div>
+    <div id="game-container" class="h-full">
+        <div id="game-hud-screen" class="relative z-10 h-full">
+            <div id="dev-tools-panel" class="absolute top-2 left-2 z-[100] flex flex-col gap-1 items-start pointer-events-auto">
+                <button id="dev-zone-btn" class="glass-button px-2 py-1 text-[10px] font-orbitron text-cyan-400 border border-cyan-500/30 rounded bg-black/80 hover:bg-cyan-900/50 transition-colors shadow-[0_0_10px_rgba(0,255,255,0.2)]">
+                    ⚡ DEV WARP
+                </button>
+                <select id="dev-zone-select" class="hidden glass-panel bg-black/90 text-cyan-400 text-[10px] p-1 border border-cyan-500/50 outline-none rounded w-32 custom-scrollbar">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div id="layout-container" class="max-w-md mx-auto h-full flex flex-col p-2 gap-2">
+                
+                <div id="hud-container">
+                    <header class="relative glass-panel p-3 rounded-lg flex justify-between items-center gap-2">
+                        <section id="player-status-panel" class="flex-1">
+                            <div id="player-status-container" class="flex flex-col space-y-1">
+                                <p class="font-orbitron text-base name-value text-glow-label" id="player-name-level-value">Initializing...</p>
+                                <p class="text-xs"><span class="text-glow-label font-bold">RACE:</span> <span id="player-race-value">---</span></p>
+                                <p class="text-xs"><span class="text-glow-label font-bold">A-SPEC:</span> <span id="player-aspec-value">---</span></p>
+                                <p class="text-xs"><span class="text-glow-label font-bold">ZONE:</span> <span id="zone-name-value">Unknown</span></p>
+                                <p class="text-xs text-glow-label font-mono" id="player-coords-value">[0, 0]</p>
+                            </div>
+                        </section>
+                        <section id="mini-map-panel" class="w-20 h-20 cursor-pointer group">
+                            <canvas id="mini-map-canvas" class="rounded-full border-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></canvas>
+                        </section>
+                        <button id="toggle-controls-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg">🎮</button>
+                    </header>
+                </div>
+
+                <div id="main-content-container" class="flex-grow flex flex-col overflow-hidden">
+                    <main id="main-content" class="flex-grow flex flex-col overflow-hidden glass-panel rounded-lg relative">
+                        <div id="main-tabs-container" class="flex border-b border-cyan-500/30 overflow-x-auto">
+                            <button class="main-tab-button active flex-shrink-0" data-tab="equipment">Equipment</button>
+                            <button class="main-tab-button flex-shrink-0" data-tab="inventory">Inventory</button>
+                            <button class="main-tab-button flex-shrink-0" data-tab="stats">Stats</button>
+                            <button class="main-tab-button flex-shrink-0" data-tab="combat">Combat</button>
+                        </div>
+                        <div id="main-tab-content" class="flex-grow p-4 overflow-y-auto custom-scrollbar">
+                            <div id="tab-content-equipment" class="main-tab-panel active"></div>
+                            <div id="tab-content-inventory" class="main-tab-panel"></div>
+                            <div id="tab-content-stats" class="main-tab-panel"></div>
+                            <div id="tab-content-combat" class="main-tab-panel"></div>
+                        </div>
+                    </main>
+                </div>
+
+                <div id="footer-container">
+                    <footer class="glass-panel p-4 rounded-lg flex justify-center items-center">
+                        <div class="relative w-32 h-32 d-pad-container">
+                            <button class="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-up" data-key="up">▲</button>
+                            <button class="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-left" data-key="left">◀</button>
+                            <button class="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-right" data-key="right">▶</button>
+                            <button class="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-down" data-key="down">▼</button>
+                            <button class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-[10px] text-cyan-400" id="key-center" data-key="center">OK</button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+    <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2000]"></div>
+    <div id="toast-notification"></div>
+
+    <div id="full-screen-map-overlay" class="fixed inset-0 bg-black/80 z-50 hidden flex-col items-center p-4">
+    <div id="react-map-root" class="absolute inset-0 z-0"></div>
+
+    <button id="map-close-btn" class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-cyan-400 transition-colors z-[60]">&times;</button>
+    
+    <div class="absolute inset-0 z-10 overflow-hidden">
+        <canvas id="zone-canvas" class="absolute inset-0 w-full h-full border border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.1)] pointer-events-auto"></canvas>
+        
+        <div id="magi-tech-monitor" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 15, 30, 0.95); border: 2px solid #00f2ff; padding: 15px; border-radius: 12px; color: #00f2ff; font-family: monospace; font-size: 11px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); pointer-events: none;">
+            <div style="font-weight: bold; text-align: center; border-bottom: 1px solid #004444; padding-bottom: 5px; margin-bottom: 5px;">RESONANCE MONITOR</div>
+            <div id="debug-raw">RAW MOUSE: --</div>
+            <div id="debug-world">WORLD SPACE: --</div>
+            <div id="debug-grid">GRID INDEX: --</div>
+            <div id="debug-hero" style="color: #ff9d00; border-top: 1px solid #443300; padding-top: 5px; margin-top: 5px;">HERO INDEX: --</div>
+        </div>
+    </div>
+</div>
+<div id="module-overlay" class="hidden fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="relative w-full max-w-4xl h-[85vh] bg-black border border-cyan-900/50 rounded-lg shadow-2xl overflow-hidden">
+            
+            <button id="module-close-btn" class="absolute top-2 right-2 z-50 w-8 h-8 flex items-center justify-center bg-red-900/80 hover:bg-red-700 text-white rounded-full border border-red-500 transition-colors">
+                ✕
+            </button>
+
+            <iframe id="module-iframe" class="w-full h-full border-none bg-transparent"></iframe>
+        </div>
+    </div>
+</body>
+</html>

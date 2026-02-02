@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+   <title>Geminus - The Armory</title>
+   
+   <script src="https://cdn.tailwindcss.com"></script>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+   
+   <style>
+       :root {
+           --bg-color: #000000;
+           --panel-bg: rgba(10, 20, 25, 0.75);
+           --panel-border: rgba(255, 215, 0, 0.3);
+           --text-primary: #ffffff;
+           --text-secondary: #bae6fd;
+           --accent-green: #4ade80;
+           --accent-red: #f87171;
+           --accent-color: #f5a623; /* Orange Accent */
+           --lock-color: #fca5a5;
+       }
+       html, body { height: 100%; overflow: hidden; }
+       body { 
+           font-family: 'Inter', sans-serif; 
+           background-color: var(--bg-color); 
+           color: var(--text-primary); 
+           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+       }
+       .font-cinzel { font-family: 'Cinzel', serif; }
+       .main-container { 
+           max-width: 560px; 
+           width: 100%;
+           height: 100%; 
+           background-color: #0a0a0a;
+           background-image: url('https://i.ibb.co/JjqcjPdC/IMG-1934.jpg');
+           background-size: cover;
+           background-position: center;
+       }
+       .header { background-color: rgba(0,0,0,0.5); border-bottom: 1px solid var(--panel-border); }
+       .header-title { color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color), 0 1px 3px rgba(0, 0, 0, 0.7); }
+       .panel { 
+           background: var(--panel-bg); 
+           backdrop-filter: blur(10px); 
+           border: 1px solid var(--panel-border); 
+           border-radius: 0.5rem;
+           position: relative;
+       }
+       
+       .action-button {
+           border-radius: 0.5rem;
+           font-weight: 700;
+           transition: all 0.2s ease;
+           border: 1px solid;
+           padding: 0.5rem 1rem;
+           font-size: 0.875rem;
+       }
+       .action-button:disabled {
+           background: rgba(60, 60, 60, 0.4);
+           border-color: rgba(100, 100, 100, 0.8);
+           cursor: not-allowed;
+           color: #6b7280;
+           text-shadow: none;
+       }
+       .buy-button { background-color: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.5); color: var(--accent-green); }
+       .buy-button:hover:not(:disabled) { background-color: rgba(74, 222, 128, 0.2); border-color: var(--accent-green); }
+       .sell-button { background-color: rgba(248, 113, 113, 0.1); border-color: rgba(248, 113, 113, 0.5); color: var(--accent-red); }
+       .sell-button:hover:not(:disabled) { background-color: rgba(248, 113, 113, 0.2); border-color: var(--accent-red); }
+       .examine-button { background-color: rgba(245, 166, 35, 0.1); border-color: var(--panel-border); color: var(--accent-color); }
+       .examine-button:hover:not(:disabled) { background-color: rgba(245, 166, 35, 0.2); border-color: var(--accent-color); }
+       
+       .shop-tab {
+           border-bottom: 3px solid transparent;
+           opacity: 0.7;
+           transition: all 0.2s ease;
+       }
+       .shop-tab.active {
+           border-bottom-color: var(--accent-color);
+           opacity: 1;
+           color: var(--accent-color);
+       }
+       
+       .custom-dropdown { position: relative; }
+       .custom-dropdown-button {
+           background-color: rgba(0,0,0,0.4);
+           border: 1px solid var(--panel-border);
+           border-radius: 0.25rem;
+           padding: 0.5rem;
+           width: 100%;
+           text-align: left;
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+       }
+       .custom-dropdown-options {
+           position: absolute;
+           top: 100%;
+           left: 0;
+           right: 0;
+           background: #0a1e23;
+           border: 1px solid var(--panel-border);
+           border-radius: 0.25rem;
+           max-height: 200px;
+           overflow-y: auto;
+           z-index: 100;
+       }
+       .custom-dropdown-option { padding: 0.5rem; cursor: pointer; }
+       .custom-dropdown-option:hover { background-color: rgba(245, 166, 35, 0.1); }
+       
+       .equippable { color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); }
+       .unequippable { color: #9ca3af; opacity: 0.7; }
+       .stat-upgrade { color: var(--accent-green); }
+       .stat-downgrade { color: var(--accent-red); }
+       
+       .close-button {
+           position: absolute; top: 0.5rem; right: 0.5rem; width: 1.5rem; height: 1.5rem;
+           background: rgba(0,0,0,0.3); border: 1px solid var(--panel-border); border-radius: 9999px;
+           color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+           cursor: pointer; transition: all 0.2s ease; z-index: 10;
+       }
+       .close-button:hover { background: rgba(255,0,0,0.3); color: white; }
+ 
+       .lock-button {
+           background-color: rgba(252, 165, 165, 0.1); border-color: rgba(252, 165, 165, 0.5); color: var(--lock-color);
+       }
+       .lock-button:hover:not(:disabled) { background-color: rgba(252, 165, 165, 0.2); border-color: var(--lock-color); }
+       .lock-button.locked {
+           background-color: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.5); color: var(--accent-green);
+       }
+       .lock-button.locked:hover:not(:disabled) { background-color: rgba(74, 222, 128, 0.2); border-color: var(--accent-green); }
+ 
+       .advisor-header { cursor: pointer; }
+       .advisor-toggle { transition: transform 0.2s; }
+       .advisor-collapsed .advisor-toggle { transform: rotate(-90deg); }
+       .advisor-collapsed #upgrade-advisor-content { display: none; }
+ 
+       .gem-slot {
+           width: 1rem; height: 1rem; border-radius: 9999px;
+           background-color: rgba(0,0,0,0.3);
+           border: 1px solid var(--panel-border);
+           box-shadow: inset 0 0 3px var(--accent-color);
+       }
+       
+       .specialization-glow {
+           color: var(--accent-color);
+           text-shadow: 0 0 8px var(--accent-color);
+           border: 1px solid var(--accent-color);
+           border-radius: 0.25rem;
+           margin: 2px;
+       }
+ 
+       /* Modal Styles */
+       .modal-overlay {
+           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+           background-color: rgba(0,0,0,0.7);
+           display: flex; align-items: center; justify-content: center;
+           z-index: 1000;
+       }
+       .modal-content {
+           width: 90%; max-width: 400px;
+       }
+ 
+   </style>
+</head>
+<body class="flex justify-center">
+ 
+   <div id="shop-root" class="main-container flex flex-col">
+       <header class="header p-4 flex-shrink-0">
+           <div class="w-full">
+               <h1 class="font-cinzel text-2xl header-title text-center">The Armory</h1>
+               <div class="text-right -mt-2">
+                   <span class="text-secondary text-xs">Your Gold</span>
+                   <p id="player-gold" class="text-lg font-bold text-yellow-300"></p>
+               </div>
+           </div>
+       </header>
+ 
+       <nav class="flex text-light flex-shrink-0 bg-black/30">
+           <button data-mode="buy" class="shop-tab active flex-1 py-3 text-center font-bold">Buy</button>
+           <button data-mode="sell" class="shop-tab flex-1 py-3 text-center font-bold">Sell</button>
+           <button data-mode="buyback" class="shop-tab flex-1 py-3 text-center font-bold">Buyback</button>
+       </nav>
+ 
+       <main id="app-content" class="flex-grow overflow-y-auto p-4">
+           <div id="stable-container" class="min-h-[550px]">
+               <!-- Buy Tab Content -->
+               <div id="buy-content" class="space-y-4">
+                   <div class="panel p-4 space-y-4 z-10">
+                       <div class="grid grid-cols-3 gap-4">
+                           <div id="buy-category-select-container" class="custom-dropdown"></div>
+                           <div id="buy-type-select-container" class="custom-dropdown"></div>
+                           <div id="buy-tier-select-container" class="custom-dropdown"></div>
+                       </div>
+                       <div class="grid grid-cols-2 gap-4">
+                            <button id="buy-examine-button" class="action-button examine-button">Examine</button>
+                            <button id="buy-action-button" class="action-button buy-button">Purchase</button>
+                       </div>
+                   </div>
+ 
+                   <div id="upgrade-advisor-panel" class="panel">
+                       <div id="upgrade-advisor-header" class="advisor-header flex justify-between items-center p-2 border-b border-b-white/10">
+                           <h2 class="font-cinzel text-orange-300">Upgrade Advisor</h2>
+                           <span class="advisor-toggle text-orange-300">▼</span>
+                       </div>
+                       <div id="upgrade-advisor-content" class="p-2 space-y-2"></div>
+                   </div>
+               </div>
+ 
+               <!-- Sell Tab Content -->
+               <div id="sell-content" class="hidden space-y-4">
+                   <div class="panel p-4 space-y-2 z-10">
+                       <div class="flex justify-between items-center">
+                           <p class="text-sm text-gray-300">Filter Inventory</p>
+                           <div class="flex items-center space-x-2">
+                               <span class="text-sm">Bulk Select</span>
+                               <input type="checkbox" id="bulk-sell-toggle" class="form-checkbox h-5 w-5 text-orange-400 bg-gray-800 border-gray-600 rounded">
+                           </div>
+                       </div>
+                       <div class="grid grid-cols-2 gap-4">
+                           <div id="sell-category-filter-container" class="custom-dropdown"></div>
+                           <div id="sell-tier-filter-container" class="custom-dropdown"></div>
+                       </div>
+                        <button id="sell-selected-button" class="hidden w-full action-button sell-button mt-2">Sell Selected Items</button>
+                   </div>
+                   <div id="sell-list-container" class="panel p-2 space-y-2 h-[350px] overflow-y-auto"></div>
+               </div>
+ 
+               <!-- Universal Panels -->
+               <div id="item-display-panel" class="panel p-4 h-[260px] overflow-y-auto mt-4">
+                   <div id="item-display-content"></div>
+               </div>
+               <div id="buyback-content" class="hidden panel p-4 space-y-2"></div>
+           </div>
+       </main>
+ 
+       <!-- Confirmation Modal -->
+       <div id="confirmation-modal" class="modal-overlay hidden">
+           <div class="modal-content panel p-6 text-center space-y-4">
+               <h2 id="modal-title" class="text-xl font-bold font-cinzel">Confirm Sale</h2>
+               <p id="modal-message">Are you sure you want to sell this item?</p>
+               <div class="grid grid-cols-2 gap-4">
+                   <button id="modal-cancel-button" class="action-button examine-button">Cancel</button>
+                   <button id="modal-confirm-button" class="action-button sell-button">Confirm</button>
+               </div>
+           </div>
+       </div>
+   </div>
+ 
+<script type="module">
+   // --- GDD-DRIVEN DATA & CONFIG ---
+ 
+   const mockPlayer = {
+       name: 'PlayerOne',
+       race: 'Dwarf', // Example race for specialization
+       level: 80,
+       gold: 50000000,
+       inventory: [],
+       equipped: {
+           weapon: null,
+           helmet: null
+       }
+   };
+ 
+   const racialSpecializations = {
+       Centaur: ['Bow'], Dragonborn: ['Sword'], Dwarf: ['Axe'],
+       Halfling: ['Dagger'], Hobbit: ['Dagger'], Human: ['Sword'],
+       Minotaur: ['Axe'], Orc: ['Mace'], Troll: ['Staff'],
+       Werewolf: ['Claw'], Demon: ['Axe']
+   };
+ 
+   const itemData = {
+       Weapons: {
+           Axe: { slot: 'weapon', stat: 'WC' }, Bow: { slot: 'weapon', stat: 'WC' },
+           Claw: { slot: 'weapon', stat: 'WC' }, Dagger: { slot: 'weapon', stat: 'WC' },
+           Mace: { slot: 'weapon', stat: 'WC' }, Staff: { slot: 'weapon', stat: 'WC' },
+           Sword: { slot: 'weapon', stat: 'WC' },
+       },
+       Armor: {
+           Helmet: { slot: 'helmet', stat: 'AC', proportionality: 0.75 },
+           Gloves: { slot: 'gloves', stat: 'AC', proportionality: 0.50, bonus: '+15% to final WC/SC' },
+           Chest: { slot: 'chest', stat: 'AC', proportionality: 1.0 },
+           Leggings: { slot: 'leggings', stat: 'AC', proportionality: 0.50, bonus: '+10% to final Hit Chance' },
+           Boots: { slot: 'boots', stat: 'AC', proportionality: 0.75 },
+       },
+       Jewelry: {
+           Ring: { slot: 'ring', stat: 'Crit %', bonus: '+5% Crit Chance' },
+           Necklace: { slot: 'necklace', stat: 'HP Regen', bonus: '+2% HP/Heal per turn' },
+       }
+   };
+   
+   const tierCostData = {
+       1: 50000, 2: 87500, 3: 153125, 4: 267968, 5: 468945, 6: 820654, 7: 1436145, 
+       8: 2513253, 9: 4398193, 10: 7696838, 11: 13469467, 12: 23571567, 13: 41250242, 
+       14: 72187924, 15: 126328867, 16: 221075517, 17: 386882155, 18: 677043771, 
+       19: 1184826599, 20: 2073446549
+   };
+ 
+   const levelReqData = {
+       1: 1, 2: 1, 3: 100, 4: 135, 5: 184, 6: 253, 7: 386, 8: 1000, 9: 3571, 10: 6143,
+       11: 8714, 12: 17272, 13: 28180, 14: 39088, 15: 50000, 16: 83333, 17: 127777,
+       18: 172222, 19: 216666, 20: 400000
+   };
+ 
+   const getGemSlotsByTier = (tier) => {
+       if (tier >= 1 && tier <= 20) return 2;
+       return 0;
+   };
+ 
+   //================================================================
+   // MODULE: Shop Manager
+   //================================================================
+   const ShopManager = {
+       player: null, shopStock: [], buybackItems: [], activeMode: 'buy', ui: {},
+       buySelection: { category: 'Weapons', type: 'Axe', tier: 1 },
+       sellSelection: { uuid: null, categoryFilter: 'All', tierFilter: 'All' },
+       bulkSellMode: false,
+       bulkSellSelection: new Set(),
+ 
+       init(player) {
+           this.player = { ...player };
+           this.generateShopStock();
+           this.cacheUI(); 
+           this.addMockInventory(); 
+           this.addEventListeners();
+           this.switchMode('buy');
+       },
+ 
+       generateShopStock() {
+           this.shopStock = [];
+           for (const category in itemData) {
+               for (const type in itemData[category]) {
+                   for (let tier = 1; tier <= 20; tier++) {
+                       const baseData = itemData[category][type];
+                       const classValue = 13 * Math.pow(1.22, tier - 1);
+                       
+                       const item = {
+                           baseId: `${type}-${tier}`, name: `${type} T${tier}`, category, type, tier,
+                           cost: tierCostData[tier], levelReq: levelReqData[tier],
+                           slot: baseData.slot, stat: {}, bonus: baseData.bonus || null,
+                           gemSlots: getGemSlotsByTier(tier)
+                       };
+ 
+                       if (baseData.stat === 'WC' || baseData.stat === 'AC') {
+                           const proportionality = baseData.proportionality !== undefined ? baseData.proportionality : 1.0;
+                           item.stat[baseData.stat] = Math.floor(classValue * proportionality);
+                       } else {
+                           item.stat[baseData.stat] = baseData.bonus;
+                       }
+                       this.shopStock.push(item);
+                   }
+               }
+           }
+       },
+       
+       addMockInventory() {
+           const createInstance = (baseId, isLocked = false) => {
+               const baseItem = this.shopStock.find(i => i.baseId === baseId);
+               if (baseItem) {
+                   const newItem = {
+                       ...baseItem,
+                       uuid: crypto.randomUUID(),
+                       sellValue: Math.floor(baseItem.cost * 0.25),
+                       locked: isLocked,
+                   };
+                   this.player.inventory.push(newItem);
+                   return newItem;
+               }
+               return null;
+           };
+           
+           const item1 = createInstance('Axe-5');
+           createInstance('Axe-5', true);
+           createInstance('Helmet-3');
+           
+           if (item1) {
+                this.player.equipped.weapon = item1.uuid;
+           }
+       },
+ 
+       cacheUI() {
+           this.ui = {
+               shopTabs: document.querySelectorAll('.shop-tab'),
+               itemDisplayPanel: document.getElementById('item-display-panel'),
+               itemDisplay: document.getElementById('item-display-content'),
+               playerGold: document.getElementById('player-gold'),
+               
+               buyContent: document.getElementById('buy-content'),
+               buyCategorySelect: document.getElementById('buy-category-select-container'),
+               buyTypeSelect: document.getElementById('buy-type-select-container'),
+               buyTierSelect: document.getElementById('buy-tier-select-container'),
+               buyExamineButton: document.getElementById('buy-examine-button'),
+               buyActionButton: document.getElementById('buy-action-button'),
+               
+               sellContent: document.getElementById('sell-content'),
+               sellCategoryFilter: document.getElementById('sell-category-filter-container'),
+               sellTierFilter: document.getElementById('sell-tier-filter-container'),
+               sellListContainer: document.getElementById('sell-list-container'),
+               bulkSellToggle: document.getElementById('bulk-sell-toggle'),
+               sellSelectedButton: document.getElementById('sell-selected-button'),
+ 
+               buybackContent: document.getElementById('buyback-content'),
+               upgradeAdvisorPanel: document.getElementById('upgrade-advisor-panel'),
+               upgradeAdvisorHeader: document.getElementById('upgrade-advisor-header'),
+               upgradeAdvisorContent: document.getElementById('upgrade-advisor-content'),
+ 
+               modal: document.getElementById('confirmation-modal'),
+               modalTitle: document.getElementById('modal-title'),
+               modalMessage: document.getElementById('modal-message'),
+               modalConfirm: document.getElementById('modal-confirm-button'),
+               modalCancel: document.getElementById('modal-cancel-button'),
+           };
+           this.ui.itemDisplayPanel.style.visibility = 'hidden';
+       },
+ 
+       addEventListeners() {
+           this.ui.shopTabs.forEach(tab => tab.addEventListener('click', () => this.switchMode(tab.dataset.mode)));
+           this.ui.buyExamineButton.addEventListener('click', () => this.renderItemDisplay(true));
+           this.ui.buyActionButton.addEventListener('click', () => this.handleAction());
+           this.ui.upgradeAdvisorHeader.addEventListener('click', () => this.ui.upgradeAdvisorPanel.classList.toggle('advisor-collapsed'));
+           this.ui.bulkSellToggle.addEventListener('change', () => this.toggleBulkSellMode());
+           this.ui.sellSelectedButton.addEventListener('click', () => this.handleBulkSell());
+           this.ui.modalCancel.addEventListener('click', () => this.ui.modal.classList.add('hidden'));
+           document.addEventListener('click', (e) => {
+               if (!e.target.closest('.custom-dropdown')) {
+                   document.querySelectorAll('.custom-dropdown-options').forEach(el => el.classList.add('hidden'));
+               }
+           });
+       },
+ 
+       switchMode(mode) {
+           this.activeMode = mode;
+           this.ui.shopTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === mode));
+           this.ui.itemDisplayPanel.style.visibility = 'hidden';
+           
+           this.ui.buyContent.classList.toggle('hidden', mode !== 'buy');
+           this.ui.sellContent.classList.toggle('hidden', mode !== 'sell');
+           this.ui.buybackContent.classList.toggle('hidden', mode !== 'buyback');
+           
+           if (mode === 'buy') {
+               this.populateBuySelectors();
+               this.renderUpgradeAdvisor();
+           } else if (mode === 'sell') {
+               this.bulkSellMode = false;
+               this.ui.bulkSellToggle.checked = false;
+               this.toggleBulkSellMode(); // to reset UI
+               this.populateSellFilters();
+               this.renderSellList();
+           } else if (mode === 'buyback') {
+               this.renderBuybackList();
+           }
+           this.updateUI();
+       },
+       
+       // --- BUY MODE ---
+       populateBuySelectors() {
+           this.populateBuyCategorySelect();
+           this.populateBuyTypeSelect();
+           this.populateBuyTierSelect();
+       },
+       populateBuyCategorySelect() {
+           const categories = Object.keys(itemData);
+           if (!categories.includes(this.buySelection.category)) this.buySelection.category = categories[0];
+           const optionsHTML = categories.map(cat => `<div class="custom-dropdown-option" data-value="${cat}">${cat}</div>`).join('');
+           this.createCustomDropdown(this.ui.buyCategorySelect, this.buySelection.category, optionsHTML, (value) => {
+               this.buySelection.category = value;
+               this.populateBuyTypeSelect();
+           });
+       },
+       populateBuyTypeSelect() {
+           const types = Object.keys(itemData[this.buySelection.category]);
+           if (!types.includes(this.buySelection.type)) this.buySelection.type = types[0];
+           const playerSpecializations = racialSpecializations[this.player.race] || [];
+           const optionsHTML = types.map(type => {
+               const isSpecialization = playerSpecializations.includes(type);
+               const optionClass = isSpecialization ? 'custom-dropdown-option specialization-glow' : 'custom-dropdown-option';
+               return `<div class="${optionClass}" data-value="${type}">${type}</div>`;
+           }).join('');
+           this.createCustomDropdown(this.ui.buyTypeSelect, this.buySelection.type, optionsHTML, (value) => {
+               this.buySelection.type = value;
+               this.populateBuyTierSelect();
+           });
+       },
+       populateBuyTierSelect() {
+           const tiers = Array.from({ length: 20 }, (_, i) => i + 1);
+           if (!tiers.includes(this.buySelection.tier)) this.buySelection.tier = tiers[0];
+           const optionsHTML = tiers.map(tier => {
+               const canEquip = this.player.level >= levelReqData[tier];
+               const optionClass = `custom-dropdown-option ${canEquip ? 'equippable' : 'unequippable'}`;
+               return `<div class="${optionClass}" data-value="${tier}">T${tier}</div>`;
+           }).join('');
+           this.createCustomDropdown(this.ui.buyTierSelect, `T${this.buySelection.tier}`, optionsHTML, (value) => {
+               this.buySelection.tier = parseInt(value, 10);
+               this.updateUI();
+               if(this.ui.itemDisplayPanel.style.visibility === 'visible') {
+                   this.renderItemDisplay(true);
+               }
+           });
+       },
+ 
+       // --- SELL MODE ---
+       populateSellFilters() {
+           const categories = ['All', ...new Set(this.player.inventory.map(item => item.category))];
+           const catOptions = categories.map(c => `<div class="custom-dropdown-option" data-value="${c}">${c}</div>`).join('');
+           this.createCustomDropdown(this.ui.sellCategoryFilter, this.sellSelection.categoryFilter, catOptions, (value) => {
+               this.sellSelection.categoryFilter = value;
+               this.renderSellList();
+           });
+ 
+           const tiers = ['All', ...new Set(this.player.inventory.map(item => item.tier))].sort((a,b) => (a === 'All' ? -1 : b === 'All' ? 1 : a - b));
+           const tierOptions = tiers.map(t => `<div class="custom-dropdown-option" data-value="${t}">${t === 'All' ? 'All Tiers' : `T${t}`}</div>`).join('');
+           this.createCustomDropdown(this.ui.sellTierFilter, this.sellSelection.tierFilter === 'All' ? 'All Tiers' : `T${this.sellSelection.tierFilter}`, tierOptions, (value) => {
+               this.sellSelection.tierFilter = value;
+               this.renderSellList();
+           });
+       },
+ 
+       renderSellList() {
+           let filteredInventory = this.player.inventory;
+           if (this.sellSelection.categoryFilter !== 'All') {
+               filteredInventory = filteredInventory.filter(i => i.category === this.sellSelection.categoryFilter);
+           }
+           if (this.sellSelection.tierFilter !== 'All') {
+               filteredInventory = filteredInventory.filter(i => i.tier == this.sellSelection.tierFilter);
+           }
+ 
+           if(filteredInventory.length === 0) {
+               this.ui.sellListContainer.innerHTML = `<p class="text-center text-gray-400">No items match filters.</p>`;
+               return;
+           }
+ 
+           this.ui.sellListContainer.innerHTML = filteredInventory.map(item => {
+               const isEquipped = Object.values(this.player.equipped).includes(item.uuid);
+               const isLocked = item.locked || isEquipped;
+               const lockIcon = isLocked ? '🔒' : '';
+               const checkboxHTML = this.bulkSellMode ? `<input type="checkbox" data-uuid="${item.uuid}" class="sell-checkbox form-checkbox h-5 w-5 text-orange-400 bg-gray-800 border-gray-600 rounded mr-4" ${isLocked ? 'disabled' : ''}>` : '';
+               
+               return `
+               <div class="flex items-center justify-between p-2 bg-black/20 rounded-md">
+                   ${checkboxHTML}
+                   <div class="flex-grow">
+                       <p class="font-bold">${item.name} ${lockIcon}</p>
+                       <p class="text-sm text-yellow-300">${item.sellValue.toLocaleString()} Gold</p>
+                   </div>
+                   <div class="flex space-x-2">
+                       <button data-uuid="${item.uuid}" class="action-button examine-button sell-examine-btn text-xs px-2 py-1">Examine</button>
+                       <button data-uuid="${item.uuid}" class="action-button sell-button sell-btn text-xs px-2 py-1 ${this.bulkSellMode ? 'hidden' : ''}" ${isLocked ? 'disabled' : ''}>Sell</button>
+                   </div>
+               </div>
+               `;
+           }).join('');
+ 
+           this.ui.sellListContainer.querySelectorAll('.sell-examine-btn').forEach(btn => {
+               btn.addEventListener('click', e => {
+                   this.sellSelection.uuid = e.target.dataset.uuid;
+                   this.renderItemDisplay(true);
+               });
+           });
+           this.ui.sellListContainer.querySelectorAll('.sell-btn').forEach(btn => {
+               btn.addEventListener('click', e => this.confirmSell([e.target.dataset.uuid]));
+           });
+           this.ui.sellListContainer.querySelectorAll('.sell-checkbox').forEach(box => {
+               box.addEventListener('change', e => {
+                   if (e.target.checked) this.bulkSellSelection.add(e.target.dataset.uuid);
+                   else this.bulkSellSelection.delete(e.target.dataset.uuid);
+               });
+           });
+       },
+       
+       createCustomDropdown(container, initialText, optionsHTML, onSelect) {
+           container.innerHTML = `
+               <button class="custom-dropdown-button"><span>${initialText}</span><span>▼</span></button>
+               <div class="custom-dropdown-options hidden">${optionsHTML}</div>`;
+           const button = container.querySelector('button');
+           const optionsPanel = container.querySelector('.custom-dropdown-options');
+           button.addEventListener('click', () => {
+               document.querySelectorAll('.custom-dropdown-options').forEach(el => {
+                   if(el !== optionsPanel) el.classList.add('hidden');
+               });
+               optionsPanel.classList.toggle('hidden');
+           });
+           optionsPanel.querySelectorAll('.custom-dropdown-option').forEach(option => {
+               option.addEventListener('click', () => {
+                   button.querySelector('span').textContent = option.textContent.replace(' 🔒', '');
+                   optionsPanel.classList.add('hidden');
+                   onSelect(option.dataset.value);
+               });
+           });
+       },
+ 
+       getSelectedItem() {
+           if (this.activeMode === 'buy') {
+               const baseId = `${this.buySelection.type}-${this.buySelection.tier}`;
+               return this.shopStock.find(i => i.baseId === baseId);
+           }
+           if (this.activeMode === 'sell') {
+               return this.player.inventory.find(i => i.uuid === this.sellSelection.uuid);
+           }
+           return null;
+       },
+       
+       handleAction() {
+           if (this.activeMode !== 'buy') return;
+           const item = this.getSelectedItem();
+           if (item) this.purchaseItem(item.baseId);
+       },
+ 
+       purchaseItem(baseId) {
+           const itemToBuy = this.shopStock.find(i => i.baseId === baseId);
+           if (itemToBuy && this.player.gold >= itemToBuy.cost) {
+               this.player.gold -= itemToBuy.cost;
+               const newItem = {
+                   ...itemToBuy,
+                   uuid: crypto.randomUUID(),
+                   sellValue: Math.floor(itemToBuy.cost * 0.25),
+                   locked: false,
+               };
+               this.player.inventory.push(newItem);
+               this.updateUI();
+               this.renderUpgradeAdvisor();
+           }
+       },
+ 
+       confirmSell(uuids) {
+           const itemsToSell = this.player.inventory.filter(i => uuids.includes(i.uuid));
+           if(itemsToSell.length === 0) return;
+ 
+           const totalValue = itemsToSell.reduce((sum, i) => sum + i.sellValue, 0);
+           const message = `Sell ${itemsToSell.length} item(s) for ${totalValue.toLocaleString()} Gold?`;
+           
+           this.ui.modalMessage.textContent = message;
+           this.ui.modal.classList.remove('hidden');
+ 
+           this.ui.modalConfirm.onclick = () => {
+               this.sellItems(uuids);
+               this.ui.modal.classList.add('hidden');
+           };
+       },
+ 
+       sellItems(uuids) {
+           const itemsToSell = [];
+           const newInventory = [];
+           
+           this.player.inventory.forEach(item => {
+               if (uuids.includes(item.uuid)) {
+                   itemsToSell.push(item);
+               } else {
+                   newInventory.push(item);
+               }
+           });
+ 
+           this.player.inventory = newInventory;
+           
+           const totalValue = itemsToSell.reduce((sum, i) => sum + i.sellValue, 0);
+           this.player.gold += totalValue;
+ 
+           this.buybackItems.unshift(...itemsToSell);
+           while (this.buybackItems.length > 5) {
+               this.buybackItems.pop();
+           }
+ 
+           this.ui.itemDisplayPanel.style.visibility = 'hidden';
+           this.renderSellList();
+           this.updateUI();
+       },
+       
+       buybackItem(itemIndex) {
+           const itemToBuyback = this.buybackItems[itemIndex];
+           if (itemToBuyback && this.player.gold >= itemToBuyback.sellValue) {
+               this.player.gold -= itemToBuyback.sellValue;
+               this.player.inventory.push(itemToBuyback);
+               this.buybackItems.splice(itemIndex, 1);
+               this.renderBuybackList();
+               this.updateUI();
+           }
+       },
+       renderBuybackList() {
+           if (this.buybackItems.length === 0) {
+               this.ui.buybackContent.innerHTML = `<p class="text-center text-gray-400">No items to buy back.</p>`;
+               return;
+           }
+           this.ui.buybackContent.innerHTML = this.buybackItems.map((item, index) => `
+               <div class="flex items-center justify-between p-2 bg-black/20 rounded-md">
+                   <div>
+                       <p class="font-bold">${item.name}</p>
+                       <p class="text-sm text-yellow-300">${item.sellValue.toLocaleString()} Gold</p>
+                   </div>
+                   <button data-index="${index}" class="action-button buy-button buyback-btn">Buy Back</button>
+               </div>
+           `).join('');
+           this.ui.buybackContent.querySelectorAll('.buyback-btn').forEach(btn => {
+               btn.addEventListener('click', (e) => this.buybackItem(parseInt(e.target.dataset.index)));
+           });
+       },
+       renderUpgradeAdvisor() {
+           const availableUpgrades = [];
+           const slots = [...new Set(this.shopStock.map(i => i.slot))]; // Get all possible slots
+ 
+           for (const slot of slots) {
+               if (!this.player.equipped.hasOwnProperty(slot)) {
+                   this.player.equipped[slot] = null; // Ensure all slots exist on player
+               }
+               const equippedItemUuid = this.player.equipped[slot];
+               const equippedItem = this.player.inventory.find(i => i.uuid === equippedItemUuid);
+               
+               // Determine primary stat for the slot, default to WC/AC if not found
+               const itemDef = Object.values(itemData).flatMap(cat => Object.values(cat)).find(def => def.slot === slot);
+               const primaryStat = itemDef ? (itemDef.stat) : (slot === 'weapon' ? 'WC' : 'AC');
+ 
+               const currentStatValue = equippedItem ? (equippedItem.stat[primaryStat] || 0) : 0;
+               
+               const potentialUpgrades = this.shopStock.filter(item => 
+                   item.slot === slot &&
+                   item.stat[primaryStat] > currentStatValue &&
+                   this.player.gold >= item.cost &&
+                   this.player.level >= item.levelReq
+               );
+ 
+               if (potentialUpgrades.length > 0) {
+                   const bestUpgrade = potentialUpgrades.sort((a, b) => b.stat[primaryStat] - a.stat[primaryStat])[0];
+                   availableUpgrades.push({ slot, item: bestUpgrade, improvement: bestUpgrade.stat[primaryStat] - currentStatValue });
+               }
+           }
+ 
+           if (availableUpgrades.length === 0) {
+               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400">No upgrades available for your level and gold.</p>';
+               return;
+           }
+ 
+           this.ui.upgradeAdvisorContent.innerHTML = availableUpgrades.map(({ slot, item, improvement }) => `
+               <div class="text-sm">
+                   <p class="font-semibold">${item.name} (${slot})</p>
+                   <p class="stat-upgrade ml-2">+${improvement} ${Object.keys(item.stat)[0]}</p>
+               </div>
+           `).join('');
+       },
+       renderItemDisplay(forceShow = false) {
+           const item = this.getSelectedItem();
+           if (!item) {
+               this.ui.itemDisplayPanel.style.visibility = 'hidden';
+               return;
+           }
+ 
+           if (forceShow) {
+               this.ui.itemDisplayPanel.style.visibility = 'visible';
+           }
+ 
+           const equippedItemUuid = this.player.equipped[item.slot];
+           const equippedItem = this.player.inventory.find(i => i.uuid === equippedItemUuid);
+ 
+           const isSpecialization = (racialSpecializations[this.player.race] || []).includes(item.type);
+           const levelReqClass = this.player.level >= item.levelReq ? 'text-gray-300' : 'text-red-400';
+ 
+           let statsHTML = '';
+           for (const statName in item.stat) {
+               const statValue = item.stat[statName];
+               let comparisonHTML = '';
+               if (equippedItem && typeof equippedItem.stat[statName] === 'number' && typeof statValue === 'number') {
+                   const diff = statValue - equippedItem.stat[statName];
+                   if (diff > 0) comparisonHTML = `<span class="stat-upgrade ml-2">(+${diff})</span>`;
+                   else if (diff < 0) comparisonHTML = `<span class="stat-downgrade ml-2">(${diff})</span>`;
+               }
+               statsHTML += `<p>${statName}: <span class="text-sky-300 font-semibold">${statValue}</span> ${comparisonHTML}</p>`;
+           }
+ 
+           let gemSlotsHTML = '';
+           if (item.gemSlots > 0) {
+               gemSlotsHTML = `<div class="flex items-center space-x-2 mt-2"><span>Slots:</span>` + 
+               Array(item.gemSlots).fill('<div class="gem-slot"></div>').join('') + '</div>';
+           }
+           
+           let lockButtonHTML = '';
+           if(item.uuid) { // Only show lock button for items the player owns
+                const isEquipped = Object.values(this.player.equipped).includes(item.uuid);
+                const isLocked = item.locked || isEquipped;
+                const lockClass = item.locked ? 'locked' : '';
+                const lockText = item.locked ? 'Unlock' : 'Lock';
+                lockButtonHTML = `<button data-uuid="${item.uuid}" class="action-button lock-button ${lockClass} text-xs px-3 py-1" ${isEquipped ? 'disabled' : ''}>${isEquipped ? 'Equipped' : lockText}</button>`;
+           }
+ 
+ 
+           this.ui.itemDisplay.innerHTML = `
+               <div class="flex justify-between items-start">
+                   <div>
+                       <h3 class="font-cinzel text-xl text-orange-300">${item.name}</h3>
+                       <p class="text-yellow-400">${(item.cost || item.sellValue).toLocaleString()} Gold</p>
+                   </div>
+                   <div class="flex space-x-2">
+                        ${lockButtonHTML}
+                       <button class="close-button" id="close-item-display">X</button>
+                   </div>
+               </div>
+               <div class="mt-2 space-y-1 text-sm">
+                   <p class="${levelReqClass}">Requires Level: ${item.levelReq}</p>
+                   ${isSpecialization ? '<p class="specialization-glow p-1 text-center">Racial Specialization Bonus!</p>' : ''}
+                   <div class="border-t border-white/10 my-2"></div>
+                   ${statsHTML}
+                   ${item.bonus ? `<p>Bonus: <span class="text-sky-300">${item.bonus}</span></p>` : ''}
+                   ${gemSlotsHTML}
+               </div>
+           `;
+ 
+           this.ui.itemDisplay.querySelector('#close-item-display')?.addEventListener('click', () => {
+               this.ui.itemDisplayPanel.style.visibility = 'hidden';
+           });
+           this.ui.itemDisplay.querySelector('.lock-button')?.addEventListener('click', (e) => {
+                this.toggleItemLock(e.target.dataset.uuid);
+           });
+       },
+       toggleItemLock(uuid) {
+            const item = this.player.inventory.find(i => i.uuid === uuid);
+            if (item && !Object.values(this.player.equipped).includes(uuid)) {
+                item.locked = !item.locked;
+                this.renderSellList(); // Refresh the list to show the lock icon change
+                this.renderItemDisplay(true); // Re-render the display to update the button
+            }
+       },
+       updateUI() {
+           this.ui.playerGold.textContent = this.player.gold.toLocaleString();
+           if(this.activeMode === 'buy') {
+               const item = this.getSelectedItem();
+               this.ui.buyExamineButton.disabled = !item;
+               this.ui.buyActionButton.disabled = !item || this.player.gold < item.cost || this.player.level < item.levelReq;
+           }
+       },
+ 
+       toggleBulkSellMode() {
+           this.bulkSellMode = this.ui.bulkSellToggle.checked;
+           this.bulkSellSelection.clear();
+           this.ui.sellSelectedButton.classList.toggle('hidden', !this.bulkSellMode);
+           this.renderSellList();
+       },
+ 
+       handleBulkSell() {
+           const uuidsToSell = Array.from(this.bulkSellSelection);
+           this.confirmSell(uuidsToSell);
+       },
+   };
+ 
+   // --- INITIALIZATION ---
+   // Expose to global window so GameManager can trigger it
+window.ShopManager = ShopManager;
+</script>
+</body>
+</html>
+ 
+

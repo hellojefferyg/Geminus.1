@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estate Building</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: transparent; font-family: 'Inter', sans-serif; color: #e0f8ff; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .glass-panel { background: rgba(16, 20, 24, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.2); }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col p-8 overflow-hidden">
+    
+    <div class="text-center mb-8">
+        <h1 id="building-title" class="font-cinzel text-4xl text-cyan-400 tracking-widest uppercase drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">Building</h1>
+        <div class="h-1 w-32 bg-cyan-500/50 mx-auto mt-2 rounded-full"></div>
+    </div>
+
+    <div class="flex gap-6 max-w-5xl mx-auto w-full h-full">
+        
+        <div class="w-1/3 glass-panel rounded-xl p-6 flex flex-col items-center text-center">
+            <div class="w-32 h-32 bg-slate-800 rounded-full border-2 border-cyan-500/30 flex items-center justify-center text-5xl mb-4 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                🏛️
+            </div>
+            <h2 class="font-cinzel text-2xl text-white">Tier I</h2>
+            <p class="text-cyan-200/60 text-sm mb-6">Operational</p>
+            
+            <div class="w-full space-y-2 text-left bg-black/20 p-4 rounded border border-white/5">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Efficiency</span>
+                    <span class="text-green-400">100%</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Workers</span>
+                    <span class="text-white">2 / 5</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Upkeep</span>
+                    <span class="text-red-300">5g / hr</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-2/3 flex flex-col gap-4">
+            
+            <div class="glass-panel p-6 rounded-xl flex-1">
+                <h3 class="font-cinzel text-xl text-cyan-100 mb-4 border-b border-white/10 pb-2">Building Operations</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button class="p-4 bg-cyan-900/20 border border-cyan-500/30 rounded hover:bg-cyan-500/20 transition-all text-left group">
+                        <div class="font-cinzel text-cyan-300 group-hover:text-white">Manage Resources</div>
+                        <div class="text-xs text-slate-400 mt-1">Deposit or Withdraw</div>
+                    </button>
+                    <button class="p-4 bg-cyan-900/20 border border-cyan-500/30 rounded hover:bg-cyan-500/20 transition-all text-left group">
+                        <div class="font-cinzel text-cyan-300 group-hover:text-white">Assign Workers</div>
+                        <div class="text-xs text-slate-400 mt-1">Increase productivity</div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-xl border-t-4 border-t-yellow-600/50">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-cinzel text-xl text-yellow-500">Upgrade to Tier II</h3>
+                        <p class="text-sm text-yellow-200/50 mt-1">Unlocks advanced processing and storage.</p>
+                    </div>
+                    <button class="px-6 py-2 bg-yellow-700/30 border border-yellow-500 text-yellow-200 font-cinzel rounded hover:bg-yellow-600 hover:text-black transition-colors">
+                        Upgrade
+                    </button>
+                </div>
+                <div class="flex gap-4 mt-4 text-xs text-slate-400 font-mono">
+                    <span class="bg-black/40 px-2 py-1 rounded">🪵 500 Wood</span>
+                    <span class="bg-black/40 px-2 py-1 rounded">🪨 250 Stone</span>
+                    <span class="bg-black/40 px-2 py-1 rounded">🪙 1000 Gold</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Script to automatically name the building based on the file name
+        const filename = window.location.pathname.split('/').pop().replace('.html', '');
+        const formattedName = filename.replace(/_/g, ' ').toUpperCase();
+        document.getElementById('building-title').textContent = formattedName;
+        document.title = formattedName + " - Geminus";
+    </script>
+</body>
+</html>
