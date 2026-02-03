@@ -319,10 +319,23 @@
        bulkSellSelection: new Set(),
  
        init(player) {
+           // 1. Store Player
            this.player = { ...player };
-           this.generateShopStock();
+           
+           // [FIX] Initialize Data Safety (Prevents crashes if data is missing)
+           if (!this.player.equipped) this.player.equipped = {}; 
+           if (!this.player.inventory) this.player.inventory = [];
+
+           // 2. [FIX] Cache UI FIRST (So we have elements to update)
            this.cacheUI(); 
-           this.addMockInventory(); 
+
+           // 3. Generate Stock
+           this.generateShopStock();
+
+           // 4. [FIX] Fetch Data LAST (Now that UI exists, we can safely update it)
+           this.fetchData(); 
+           
+           // 5. Setup Listeners
            this.addEventListeners();
            this.switchMode('buy');
        },
@@ -415,13 +428,42 @@
        },
  
        addEventListeners() {
+           // Tabs & Modes
            this.ui.shopTabs.forEach(tab => tab.addEventListener('click', () => this.switchMode(tab.dataset.mode)));
+           
+           // Buying
            this.ui.buyExamineButton.addEventListener('click', () => this.renderItemDisplay(true));
-           this.ui.buyActionButton.addEventListener('click', () => this.handleAction());
+           this.ui.buyActionButton.addEventListener('click', () => {
+               this.executeBuy(); // <--- Correct, calls the Engine
+           });
+
+           // Advisor Panel
            this.ui.upgradeAdvisorHeader.addEventListener('click', () => this.ui.upgradeAdvisorPanel.classList.toggle('advisor-collapsed'));
+
+           // Selling (Triggers the flow)
            this.ui.bulkSellToggle.addEventListener('change', () => this.toggleBulkSellMode());
            this.ui.sellSelectedButton.addEventListener('click', () => this.handleBulkSell());
+
+           // Modal Actions
            this.ui.modalCancel.addEventListener('click', () => this.ui.modal.classList.add('hidden'));
+           
+           // [NEW] Modal Confirm - actually executes the sell to the engine
+           this.ui.modalConfirm.addEventListener('click', () => {
+               if (this.pendingSellUUIDs && this.pendingSellUUIDs.length > 0) {
+                   // Loop through all selected items and sell them one by one
+                   this.pendingSellUUIDs.forEach(uuid => {
+                       this.executeSell(uuid);
+                   });
+                   
+                   // Cleanup
+                   this.pendingSellUUIDs = null;
+                   this.ui.modal.classList.add('hidden');
+                   this.bulkSellSelection.clear();
+                   this.ui.sellSelectedButton.classList.add('hidden');
+               }
+           });
+
+           // Close dropdowns on outside click
            document.addEventListener('click', (e) => {
                if (!e.target.closest('.custom-dropdown')) {
                    document.querySelectorAll('.custom-dropdown-options').forEach(el => el.classList.add('hidden'));
@@ -623,19 +665,30 @@
        },
  
        confirmSell(uuids) {
-           const itemsToSell = this.player.inventory.filter(i => uuids.includes(i.uuid));
-           if(itemsToSell.length === 0) return;
- 
-           const totalValue = itemsToSell.reduce((sum, i) => sum + i.sellValue, 0);
-           const message = `Sell ${itemsToSell.length} item(s) for ${totalValue.toLocaleString()} Gold?`;
+           if (!uuids || uuids.length === 0) return;
            
-           this.ui.modalMessage.textContent = message;
+           // 1. Store the IDs so the "Confirm" button (in addEventListeners) knows what to sell
+           this.pendingSellUUIDs = uuids;
+
+           // 2. Calculate Totals for Display
+           let totalValue = 0;
+           uuids.forEach(uuid => {
+               // Find item in inventory
+               const item = this.player.inventory.find(i => i.uuid === uuid || i.instanceId === uuid);
+               // Use goldValue if it exists, otherwise estimate sell price (20% of buy price)
+               if (item) totalValue += (item.goldValue || Math.floor((item.price || 0) * 0.2));
+           });
+
+           // 3. Update & Show Modal
+           this.ui.modalTitle.textContent = `Sell ${uuids.length} Item(s)?`;
+           this.ui.modalMessage.innerHTML = `
+               <div class="text-center">
+                   <p class="text-gray-400 mb-2">You are about to sell these items for:</p>
+                   <p class="text-2xl font-bold text-yellow-400">${totalValue.toLocaleString()} G</p>
+                   <p class="text-xs text-red-400 mt-4">This action cannot be undone.</p>
+               </div>
+           `;
            this.ui.modal.classList.remove('hidden');
- 
-           this.ui.modalConfirm.onclick = () => {
-               this.sellItems(uuids);
-               this.ui.modal.classList.add('hidden');
-           };
        },
  
        sellItems(uuids) {
@@ -817,7 +870,7 @@
             }
        },
        updateUI() {
-           this.ui.playerGold.textContent = this.player.gold.toLocaleString();
+           this.ui.playerGold.textContent = (this.player.gold || 0).toLocaleString();
            if(this.activeMode === 'buy') {
                const item = this.getSelectedItem();
                this.ui.buyExamineButton.disabled = !item;
@@ -836,11 +889,124 @@
            const uuidsToSell = Array.from(this.bulkSellSelection);
            this.confirmSell(uuidsToSell);
        },
+       // --- [NEW] ENGINE CONNECTION BRIDGE ---
+       fetchData() {
+           const gm = window.parent.gameManager || window.gameManager;
+           
+           if (gm && gm.MerchantManager) {
+               const rawItems = gm.MerchantManager.getShopData('armory');
+
+               this.shopStock = rawItems.map(item => {
+                   const tier = item.tier || 1;
+                   
+                   // 1. Construct UI ID
+                   const uiType = item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Unknown';
+                   const uiBaseId = `${uiType}-${tier}`;
+
+                   // 2. Build the 'stat' object the UI expects
+                   const stats = {};
+                   if (item.wc) stats['WC'] = item.wc;
+                   if (item.ac) stats['AC'] = item.ac;
+                   // Jewelry Stats
+                   if (item.hp_pct) stats['HP'] = `+${Math.round(item.hp_pct * 100)}%`;
+                   if (item.regen_pct) stats['Regen'] = `+${Math.round(item.regen_pct * 100)}%`;
+                   if (item.crit_bonus) stats['Crit'] = `+${Math.round(item.crit_bonus * 100)}%`;
+                   if (item.exp_bonus) stats['EXP'] = `+${Math.round(item.exp_bonus * 100)}%`;
+                   if (item.gold_bonus) stats['Gold'] = `+${Math.round(item.gold_bonus * 100)}%`;
+                   if (item.shadow_bonus) stats['Shadow'] = `+${Math.round(item.shadow_bonus * 100)}%`;
+                   if (item.gem_bonus) stats['Gems'] = `+${Math.round(item.gem_bonus * 100)}%`;
+
+                   return {
+                       ...item,
+                       baseId: uiBaseId,
+                       cost: item.price || item.cost || 0,
+                       levelReq: item.levelReq || levelReqData[tier] || 1,
+                       sellValue: Math.floor((item.price || 0) * 0.25),
+                       stat: stats, // <--- NOW POPULATED CORRECTLY
+                       bonus: item.bonus || null
+                   };
+               });
+               
+               this.items = this.shopStock;
+               console.log(`⚔️ Armory Loaded: ${this.items.length} items.`);
+               this.updateUI(); 
+           } else {
+               console.error("Merchant Link Failed.");
+               this.items = []; 
+           }
+       },
+
+       // Call this when the "BUY" button is clicked
+       executeBuy() {
+           const item = this.getSelectedItem();
+           if (!item) return;
+
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm && gm.MerchantManager) {
+               const success = gm.MerchantManager.buyItem(item);
+               if (success) {
+                   this.refreshState(); // Update Gold & Inventory
+               }
+           }
+       },
+
+       // Call this when "SELL" is clicked (Singular or Bulk)
+       executeSell(uuidOrItem) {
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm && gm.MerchantManager) {
+               // Handle both direct item object or UUID string
+               const success = gm.MerchantManager.sellItem(uuidOrItem);
+               if (success) {
+                   this.refreshState();
+               }
+               return success;
+           }
+           return false;
+       },
+
+       // Syncs the UI with the real Engine Player Data
+       refreshState() {
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm) {
+               this.player = gm.state.player;
+               this.updateUI();
+               this.renderSellList(); // Re-draw inventory
+           }
+       }
    };
  
-   // --- INITIALIZATION ---
+// --- INITIALIZATION ---
    // Expose to global window so GameManager can trigger it
-window.ShopManager = ShopManager;
+   window.ShopManager = ShopManager;
+
+   // --- ROBUST AUTO-START ---
+   // Tries to connect to the engine every 200ms until successful
+   (function connectToEngine() {
+       // Search for the engine in Parent, Self, or Opener
+       const findEngine = () => window.parent.gameManager || window.gameManager || (window.opener ? window.opener.gameManager : null);
+       
+       const attemptConnection = () => {
+           const gm = findEngine();
+           
+           // Check if we found the Game Manager AND the Player State
+           if (gm && gm.state && gm.state.player) {
+               console.log("⚔️ Armory Connected to Engine.");
+               
+               // Initialize the Shop with Real Player Data
+               ShopManager.init(gm.state.player);
+               
+               // Force UI Update to show Gold immediately
+               ShopManager.updateUI(); 
+               
+           } else {
+               console.log("⚔️ Armory waiting for Engine...");
+               setTimeout(attemptConnection, 200); // Retry in 200ms
+           }
+       };
+       
+       // Start trying immediately
+       attemptConnection();
+   })();
 </script>
 </body>
 </html>

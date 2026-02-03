@@ -324,9 +324,19 @@
  
        init(player) {
            this.player = { ...player };
-           this.generateShopStock();
+
+           // [FIX] Safety: Ensure equipped object exists
+           if (!this.player.equipped) this.player.equipped = {}; 
+           if (!this.player.inventory) this.player.inventory = [];
+
+           // [FIX] Cache UI FIRST
            this.cacheUI(); 
-           this.addMockInventory(); 
+
+           this.generateShopStock();
+
+           // [FIX] Fetch Data LAST
+           this.fetchData(); 
+
            this.addEventListeners();
            this.switchMode('buy');
        },
@@ -424,13 +434,43 @@
        },
  
        addEventListeners() {
+           // Tabs & Modes
            this.ui.shopTabs.forEach(tab => tab.addEventListener('click', () => this.switchMode(tab.dataset.mode)));
+           
+           // Buying
            this.ui.buyExamineButton.addEventListener('click', () => this.renderItemDisplay(true));
-           this.ui.buyActionButton.addEventListener('click', () => this.handleAction());
-           this.ui.upgradeAdvisorHeader.addEventListener('click', () => this.ui.upgradeAdvisorPanel.classList.toggle('advisor-collapsed'));
+           this.ui.buyActionButton.addEventListener('click', () => {
+               this.executeBuy(); // <--- UPDATED: Calls the Engine
+           });
+
+           // Advisor Panel
+           if (this.ui.upgradeAdvisorHeader) {
+               this.ui.upgradeAdvisorHeader.addEventListener('click', () => this.ui.upgradeAdvisorPanel.classList.toggle('advisor-collapsed'));
+           }
+
+           // Selling
            this.ui.bulkSellToggle.addEventListener('change', () => this.toggleBulkSellMode());
            this.ui.sellSelectedButton.addEventListener('click', () => this.handleBulkSell());
+
+           // Modal Actions (Cancel)
            this.ui.modalCancel.addEventListener('click', () => this.ui.modal.classList.add('hidden'));
+           
+           // [NEW] Modal Confirm - Executes the sell to the engine
+           this.ui.modalConfirm.addEventListener('click', () => {
+               if (this.pendingSellUUIDs && this.pendingSellUUIDs.length > 0) {
+                   this.pendingSellUUIDs.forEach(uuid => {
+                       this.executeSell(uuid);
+                   });
+                   
+                   // Cleanup
+                   this.pendingSellUUIDs = null;
+                   this.ui.modal.classList.add('hidden');
+                   this.bulkSellSelection.clear();
+                   this.ui.sellSelectedButton.classList.add('hidden');
+               }
+           });
+
+           // Dropdowns
            document.addEventListener('click', (e) => {
                if (!e.target.closest('.custom-dropdown')) {
                    document.querySelectorAll('.custom-dropdown-options').forEach(el => el.classList.add('hidden'));
@@ -653,19 +693,29 @@
        },
  
        confirmSell(uuids) {
-           const itemsToSell = this.player.inventory.filter(i => uuids.includes(i.uuid));
-           if(itemsToSell.length === 0) return;
- 
-           const totalValue = itemsToSell.reduce((sum, i) => sum + i.sellValue, 0);
-           const message = `Sell ${itemsToSell.length} item(s) for ${totalValue.toLocaleString()} Gold?`;
+           if (!uuids || uuids.length === 0) return;
            
-           this.ui.modalMessage.textContent = message;
+           // 1. Store IDs for the Confirm Listener
+           this.pendingSellUUIDs = uuids;
+
+           // 2. Calculate Value
+           let totalValue = 0;
+           uuids.forEach(uuid => {
+               const item = this.player.inventory.find(i => i.uuid === uuid || i.instanceId === uuid);
+               // Default to 20% of price if goldValue is missing
+               if (item) totalValue += (item.goldValue || Math.floor((item.price || 0) * 0.2));
+           });
+
+           // 3. Show Modal
+           this.ui.modalTitle.textContent = `Sell ${uuids.length} Spell(s)?`;
+           this.ui.modalMessage.innerHTML = `
+               <div class="text-center">
+                   <p class="text-gray-400 mb-2">You are about to sell these spells for:</p>
+                   <p class="text-2xl font-bold text-cyan-400">${totalValue.toLocaleString()} G</p>
+                   <p class="text-xs text-red-400 mt-4">This action cannot be undone.</p>
+               </div>
+           `;
            this.ui.modal.classList.remove('hidden');
- 
-           this.ui.modalConfirm.onclick = () => {
-               this.sellItems(uuids);
-               this.ui.modal.classList.add('hidden');
-           };
        },
  
        sellItems(uuids) {
@@ -722,11 +772,16 @@
            });
        },
        
-       // --- UPDATED FUNCTION ---
- 
        renderUpgradeAdvisor() {
            this.ui.upgradeAdvisorContent.innerHTML = '';
            let recommendationsHTML = '';
+           
+           // [FIX] Safety Check: Stop immediately if equipped list is missing or empty
+           // This prevents the "Cannot convert undefined or null to object" crash
+           if (!this.player.equipped || Object.keys(this.player.equipped).length === 0) {
+               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400 p-2">Equip items to see upgrades.</p>';
+               return;
+           }
            
            const equippedItems = Object.values(this.player.equipped)
                .map(uuid => this.player.inventory.find(item => item.uuid === uuid))
@@ -735,7 +790,6 @@
            equippedItems.forEach(equippedItem => {
                if (!equippedItem.tier) return; // Skip non-tiered items
  
-               // --- LOGIC CORRECTION: Filter by level, not gold ---
                const potentialUpgrades = this.shopStock.filter(shopItem =>
                    shopItem.category === equippedItem.category &&
                    shopItem.type === equippedItem.type &&
@@ -760,7 +814,7 @@
                    `;
                }
            });
- 
+
            if(recommendationsHTML === '') {
                this.ui.upgradeAdvisorContent.innerHTML = `<p class="text-sm text-gray-400 p-2">No available upgrades for your equipped items.</p>`;
            } else {
@@ -868,7 +922,7 @@
        },
  
        updateUI() {
-           this.ui.playerGold.textContent = this.player.gold.toLocaleString();
+           this.ui.playerGold.textContent = (this.player.gold || 0).toLocaleString();
            if(this.activeMode === 'buy') {
                const item = this.getSelectedItem();
                this.ui.buyExamineButton.disabled = !item;
@@ -887,11 +941,115 @@
            const uuidsToSell = Array.from(this.bulkSellSelection);
            this.confirmSell(uuidsToSell);
        },
+       // --- [NEW] ENGINE CONNECTION BRIDGE ---
+       fetchData() {
+           const gm = window.parent.gameManager || window.gameManager;
+           
+           if (gm && gm.MerchantManager) {
+               const rawItems = gm.MerchantManager.getShopData('arcanum');
+
+               this.shopStock = rawItems.map(item => {
+                   const tier = item.tier || 1;
+                   
+                   // 1. Construct UI ID
+                   const uiType = item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Unknown';
+                   const uiBaseId = `${uiType}-${tier}`;
+
+                   // 2. Build the 'stat' object
+                   const stats = {};
+                   if (item.sc) stats['SC'] = item.sc; // Spell Power
+                   if (item.wc) stats['Potency'] = item.wc; // Buff Power
+                   if (item.bonus) stats['Effect'] = item.bonus;
+
+                   return {
+                       ...item,
+                       baseId: uiBaseId,
+                       cost: item.price || item.cost || 0,
+                       levelReq: item.levelReq || levelReqData[tier] || 1,
+                       sellValue: Math.floor((item.price || 0) * 0.25),
+                       stat: stats, // <--- NOW POPULATED
+                   };
+               });
+               
+               this.items = this.shopStock;
+               console.log(`🔮 Arcanum Loaded: ${this.items.length} spells.`);
+               this.updateUI(); 
+           } else {
+               console.error("Merchant Link Failed.");
+               this.items = []; 
+           }
+       },
+
+       // Call this when the "BUY" button is clicked
+       executeBuy() {
+           const item = this.getSelectedItem();
+           if (!item) return;
+
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm && gm.MerchantManager) {
+               const success = gm.MerchantManager.buyItem(item);
+               if (success) {
+                   this.refreshState(); // Update Gold & Inventory
+               }
+           }
+       },
+
+       // Call this when "SELL" is clicked (Singular or Bulk)
+       executeSell(uuidOrItem) {
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm && gm.MerchantManager) {
+               const success = gm.MerchantManager.sellItem(uuidOrItem);
+               if (success) {
+                   this.refreshState();
+               }
+               return success;
+           }
+           return false;
+       },
+
+       // Syncs the UI with the real Engine Player Data
+       refreshState() {
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm) {
+               this.player = gm.state.player;
+               this.updateUI();
+               this.renderSellList(); // Re-draw inventory
+           }
+       },
    };
  
-   // --- INITIALIZATION ---
+// --- INITIALIZATION ---
    // Expose to global window so GameManager can trigger it
-window.ShopManager = ShopManager;
+   window.ShopManager = ShopManager;
+
+   // --- ROBUST AUTO-START ---
+   // Tries to connect to the engine every 200ms until successful
+   (function connectToEngine() {
+       // Search for the engine in Parent, Self, or Opener
+       const findEngine = () => window.parent.gameManager || window.gameManager || (window.opener ? window.opener.gameManager : null);
+       
+       const attemptConnection = () => {
+           const gm = findEngine();
+           
+           // Check if we found the Game Manager AND the Player State
+           if (gm && gm.state && gm.state.player) {
+               console.log("🔮 Arcanum Connected to Engine.");
+               
+               // Initialize the Shop with Real Player Data
+               ShopManager.init(gm.state.player);
+               
+               // Force UI Update to show Gold immediately
+               ShopManager.updateUI(); 
+               
+           } else {
+               console.log("🔮 Arcanum waiting for Engine...");
+               setTimeout(attemptConnection, 200); // Retry in 200ms
+           }
+       };
+       
+       // Start trying immediately
+       attemptConnection();
+   })();
 </script>
 </body>
 </html>

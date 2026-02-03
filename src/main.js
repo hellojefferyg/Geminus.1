@@ -1,5 +1,6 @@
 import Systems from './utils/systems.js';
 import { VaultManager } from './managers/economy/VaultManager.js';
+import { MerchantManager } from './managers/economy/MerchantManager.js';
 import { 
     initializeGlobals, DataManager, ChatManager, SettingsManager, MapDataStore, MapLoader, MapRenderer, WorldMapManager, 
     ModalManager, CreationManager, ProfileManager, CombatManager, SanctuaryManager, 
@@ -333,6 +334,12 @@ async function main() {
     gameManager.ZoneManager = zoneManager;
     gameManager.MapLoader = mapLoader;
     gameManager.MapDataStore = mapDataStore;
+    // [NEW] Initialize Merchant System
+    gameManager.MerchantManager = new MerchantManager({
+        state: state, // <--- ADD THIS LINE
+        gameManager: gameManager,
+        ui: ui
+    });
     
     // Set up ZoneManager's late dependencies
     zoneManager.setManagers({

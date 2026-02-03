@@ -288,9 +288,9 @@ export class GameManager {
       }
     } // <--- This closes switchTab
 
-    // [PASTE STEP 3 HERE]
     /**
      * [NEW] Opens a game module (HTML file) in the overlay iframe.
+     * Includes Active Handshake to force-load data.
      * @param {string} moduleId - The ID from the trigger (e.g., 'armory_shop')
      */
     openModule(moduleId) {
@@ -304,7 +304,7 @@ export class GameManager {
   
         console.log(`📂 Opening Module: ${fileName} (ID: ${moduleId})`);
   
-        // 1. Get UI Elements (Ensure these exist in your index.html)
+        // 1. Get UI Elements
         let overlay = document.getElementById('module-overlay');
         let iframe = document.getElementById('module-iframe');
         let closeBtn = document.getElementById('module-close-btn');
@@ -315,9 +315,25 @@ export class GameManager {
         }
   
         // 2. Load the File
-        // Modules are in 'public/modules/'
         iframe.src = `./modules/${fileName}`; 
   
+        // [CRITICAL FIX] Active Handshake
+        // We wait for the file to load, then we manually START the shop from here.
+        iframe.onload = () => {
+            const childWin = iframe.contentWindow;
+            
+            // Check if the loaded file has a ShopManager (Armory/Arcanum)
+            if (childWin && childWin.ShopManager) {
+                console.log(`⚡ GameManager: Injecting Player Data into ${moduleId}...`);
+                
+                // 1. Create the bridge so the child can talk back (for Buying)
+                childWin.gameManager = this; 
+                
+                // 2. Force Start the Shop with the current Player State
+                childWin.ShopManager.init(this.state.player);
+            }
+        };
+
         // 3. Show Overlay
         overlay.classList.remove('hidden');
         
@@ -325,9 +341,9 @@ export class GameManager {
         closeBtn.onclick = () => {
             overlay.classList.add('hidden');
             iframe.src = ""; // Clear source to stop scripts
-            // Optional: Return focus to the game canvas
+            // Return focus to the game canvas
             if (this.ui.zoneCanvas) this.ui.zoneCanvas.focus();
         };
-    } 
+    }
 
 }
