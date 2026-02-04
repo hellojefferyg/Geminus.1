@@ -35,7 +35,8 @@ export class InventoryManager {
             const filterBtn = e.target.closest('.inventory-filter-btn');
 
             if (itemCard) {
-                this.showItemDetails(itemCard.dataset.instanceId);
+                this.showItemDetails(itemCard.dataset.instanceId); 
+// (This line is actually fine as long as step 1 fills the data attribute correctly, but double check it matches the variable name)
             }
 
             if (filterBtn) {
@@ -102,7 +103,7 @@ export class InventoryManager {
 
         return `
             <div class="item-card relative aspect-square glass-panel cursor-pointer transition-all hover:scale-105 group ${specializationGlow} ${levelError}" 
-                 data-instance-id="${item.instanceId}">
+                 data-instance-id="${item.uuid || item.instanceId}">
                 ${shadowOverlay}
                 <img src="${item.imageUrl}" class="w-full h-full object-contain p-1" alt="${item.name}">
                 
@@ -127,7 +128,8 @@ export class InventoryManager {
     }
 
     showItemDetails(instanceId) {
-        const item = this.state.player.inventory.find(i => i.instanceId === instanceId);
+        // [FIX] Support both UUID (Shop) and InstanceID (Legacy)
+const item = this.state.player.inventory.find(i => i.uuid === instanceId || i.instanceId === instanceId);
         if (!item) return;
 
         // Bridge to ModalManager for the "Item Examination" panel (Section 4.3.1.2)

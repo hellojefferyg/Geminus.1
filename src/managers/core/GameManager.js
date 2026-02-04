@@ -285,8 +285,17 @@ export class GameManager {
 
     if (managers[tabName] && !managers[tabName].isInitialized) {
         managers[tabName].init();
-      }
-    } // <--- This closes switchTab
+    }
+
+    // [FIX] Force UI Update when switching to Equipment/Inventory
+    // This ensures newly bought items appear immediately without a reload.
+    if (tabName === 'equipment' || tabName === 'inventory') {
+        if (this.ProfileManager) {
+            console.log(`🔄 Refreshing Profile UI for tab: ${tabName}`);
+            this.ProfileManager.updateAllProfileUI();
+        }
+    }
+  } // <--- End of switchTab function
 
     /**
      * [NEW] Opens a game module (HTML file) in the overlay iframe.
