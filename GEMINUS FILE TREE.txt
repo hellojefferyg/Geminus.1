@@ -1,0 +1,158 @@
+# GEMINUS - Project File Structure
+
+/
+├── .vite/
+├── node_modules/
+├── public/
+│   ├── data/
+│   │   └── zones/
+│   │       ├── ZONES TRIGGERS C.../
+│   │       ├── manifest.json
+│   │       ├── Z00.json
+│   │       ├── ... (Z01.json through Z102.json)
+│   │       └── Z103.json
+│   ├── modules/
+│   │   ├── arcanum.html
+│   │   ├── armory.html
+│   │   ├── battle.html
+│   │   ├── clan_hall.html
+│   │   ├── crafting.html
+│   │   ├── estate_bank.html
+│   │   ├── gem_cutter.html
+│   │   ├── gilded_vault.html
+│   │   ├── market.html
+│   │   ├── mob_select.html
+│   │   ├── portal.html
+│   │   ├── quest_board.html
+│   │   ├── research.html
+│   │   ├── sanctuary.html
+│   │   ├── soulforge.html
+│   │   ├── storehouse.html
+│   │   ├── tannery.html
+│   │   ├── TheClanBastion.html
+│   │   └── TheEstate.html
+│   ├── devtools.html
+│   └── vite.svg
+│
+├── src/
+│   ├── assets/
+│   │   └── react.svg
+│   │
+│   ├── components/
+│   │   ├── Administrator/
+│   │   │   ├── admin.css
+│   │   │   ├── AdminDashboard.jsx
+│   │   │   ├── AlignmentEditor.jsx
+│   │   │   ├── BestiaryEditor.jsx
+│   │   │   ├── DropTableEditor.jsx
+│   │   │   ├── EnchantmentEditor.jsx
+│   │   │   ├── EquipmentEditor.jsx
+│   │   │   ├── EstateEditor.jsx
+│   │   │   ├── GameConfigEditor.jsx
+│   │   │   ├── GemcutterEditor.jsx
+│   │   │   ├── ItemEditor.jsx
+│   │   │   ├── MasteryEditor.jsx
+│   │   │   ├── PortalEditor.jsx
+│   │   │   ├── QuestBuilder.jsx
+│   │   │   ├── RaceEditor.jsx
+│   │   │   ├── ResurrectionEditor.jsx
+│   │   │   ├── ShopManager.jsx
+│   │   │   ├── TitleBalancer.jsx
+│   │   │   ├── VaultEditor.jsx
+│   │   │   └── ZoneEditor.jsx
+│   │   └── Visualizer/
+│   │       ├── GodEditor.jsx
+│   │       ├── InteractionModal.jsx
+│   │       ├── MapMakerBridge.jsx
+│   │       └── ObjectConfigModal.jsx
+│   │
+│   ├── config/
+│   │   ├── gdd.js
+│   │   ├── InteractionRegistry.js
+│   │   ├── MasterAssets.js
+│   │   └── ModuleMap.js
+│   │
+│   ├── data/
+│   │   ├── alignmentData.js
+│   │   ├── arcanumData.js
+│   │   ├── armoryData.js
+│   │   ├── bestiaryData.js
+│   │   ├── clanData.js
+│   │   ├── dropTables.js
+│   │   ├── enchantmentData.js
+│   │   ├── gdd_seed.js
+│   │   ├── gemsData.js
+│   │   ├── jewelryData.js
+│   │   ├── masteryData.js
+│   │   ├── monsterTitles.js
+│   │   ├── racesData.js
+│   │   ├── requirementSchema.js
+│   │   ├── resourceData.js
+│   │   ├── soulforgeData.js
+│   │   ├── vaultData.js
+│   │   └── zonesData.js
+│   │
+│   ├── managers/
+│   │   ├── combat/
+│   │   │   ├── CombatManager.js
+│   │   │   └── SanctuaryManager.js
+│   │   ├── core/
+│   │   │   ├── DataManager.js
+│   │   │   └── GameManager.js
+│   │   ├── economy/
+│   │   │   ├── MerchantManager.js
+│   │   │   └── VaultManager.js
+│   │   ├── inventory/
+│   │   │   ├── EquipmentManager.js
+│   │   │   └── InventoryManager.js
+│   │   ├── player/
+│   │   │   ├── CreationManager.js
+│   │   │   ├── ProfileManager.js
+│   │   │   └── StatsManager.js
+│   │   ├── social/
+│   │   │   └── ChatManager.js
+│   │   ├── ui/
+│   │   │   ├── LayoutManager.js
+│   │   │   ├── ModalManager.js
+│   │   │   ├── SettingsManager.js
+│   │   │   └── UIManager.js
+│   │   └── world/
+│   │       ├── MapDataStore.js
+│   │       ├── MapLoader.js
+│   │       ├── MapRenderer.js
+│   │       ├── WorldMapManager.js
+│   │       └── ZoneManager.js
+│   │
+│   ├── stores/
+│   │   └── StudioStore.js
+│   │
+│   ├── types/
+│   │   └── InteractionTypes.js
+│   │
+│   ├── utils/
+│   │   ├── CombatTest.js
+│   │   ├── combatUtils.js
+│   │   ├── InteractionBridge.js
+│   │   ├── InteractionFactory.js
+│   │   ├── MapDataStore.js
+│   │   ├── ReceiverBridge.js
+│   │   └── systems.js
+│   │
+│   ├── App.css
+│   ├── App.jsx
+│   ├── index.css
+│   ├── main.js
+│   ├── main.jsx
+│   ├── managers.js
+│   ├── README 2.txt
+│   └── Updategdd.txt.txt
+│
+├── Test/
+├── .gitignore
+├── eslint.config.js
+├── generateManifest.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── player.html
+└── postcss.config.js

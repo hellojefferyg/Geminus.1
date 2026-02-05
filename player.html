@@ -70,12 +70,30 @@
                             <button class="main-tab-button flex-shrink-0" data-tab="stats">Stats</button>
                             <button class="main-tab-button flex-shrink-0" data-tab="combat">Combat</button>
                         </div>
-                        <div id="main-tab-content" class="flex-grow p-4 overflow-y-auto custom-scrollbar">
-                            <div id="tab-content-equipment" class="main-tab-panel active"></div>
-                            <div id="tab-content-inventory" class="main-tab-panel"></div>
-                            <div id="tab-content-stats" class="main-tab-panel"></div>
-                            <div id="tab-content-combat" class="main-tab-panel"></div>
+                        <div id="main-tab-content" class="flex-grow p-4 overflow-y-auto custom-scrollbar relative">
+    
+                        <div id="tab-content-equipment" class="main-tab-panel active">
+                            </div>
+                        
+                        <div id="tab-content-inventory" class="main-tab-panel h-full flex flex-col">
+                            <div class="flex gap-2 p-2 border-b border-gray-800 bg-black/40 shrink-0">
+                                <button class="inventory-filter-btn text-xs px-2 py-1 bg-cyan-900/50 hover:bg-cyan-700 text-cyan-100 rounded border border-cyan-800" data-filter="all">All</button>
+                                <button class="inventory-filter-btn text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-600" data-filter="weapon">Weapons</button>
+                                <button class="inventory-filter-btn text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-600" data-filter="armor">Armor</button>
+                                <button class="inventory-filter-btn text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-600" data-filter="jewelry">Jewelry</button>
+                            </div>
+
+                            <div id="inventory-grid" class="inventory-grid grid grid-cols-5 gap-2 p-2 overflow-y-auto content-start">
+                                </div>
                         </div>
+
+                        <div id="tab-content-stats" class="main-tab-panel">
+                            </div>
+                        
+                        <div id="tab-content-combat" class="main-tab-panel h-full flex flex-col">
+                            <div id="combat-log-display" class="flex-grow p-2 overflow-y-auto custom-scrollbar text-sm"></div>
+                        </div>
+                    </div>
                     </main>
                 </div>
 

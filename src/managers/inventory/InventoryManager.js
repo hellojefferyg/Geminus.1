@@ -47,39 +47,82 @@ export class InventoryManager {
     }
 
     /**
-     * Renders the grid with GDD-mandated highlights for racial specialization 
-     * and equippability warnings.
+     * [ARCHITECT FIX] Renders inventory with Master Data Merge.
+     * Fixes "undefined" names/images by looking up the GDD source of truth.
      */
     render() {
-        const container = this.ui.tabContentInventory;
-        if (!container || !this.state.player) return;
+        // 1. Find Container (Robust Check)
+        let container = this.ui.inventoryGrid || document.getElementById('inventory-grid');
+        if (!container && this.ui.tabContentInventory) {
+             container = this.ui.tabContentInventory.querySelector('#inventory-grid') || this.ui.tabContentInventory.querySelector('.inventory-grid');
+        }
 
-        const inventory = this.state.player.inventory || [];
-        const playerRace = this.state.player.race.toLowerCase();
-        // GDD: Highlight items matching racial specialization (e.g., Swords for Humans)
-        const racialFocus = races[playerRace]?.specialization || '';
+        if (!container) return; // Silent fail if tab isn't ready
 
-        const filteredItems = this.currentFilter === 'all' 
-            ? inventory 
-            : inventory.filter(item => item.type.toLowerCase() === this.currentFilter);
+        container.innerHTML = '';
 
-        container.innerHTML = `
-            <div class="inventory-wrapper p-4 flex flex-col h-full">
-                <div class="inventory-filters flex gap-2 mb-4 border-b border-gray-800 pb-3">
-                    ${['all', 'weapons', 'armor', 'spells', 'amulet', 'ring'].map(f => `
-                        <button class="inventory-filter-btn px-2 py-1 text-[10px] font-orbitron glass-panel ${this.currentFilter === f ? 'border-cyan-500 text-cyan-400' : 'text-gray-500'}" 
-                                data-filter="${f}">
-                            ${f.toUpperCase()}
-                        </button>
-                    `).join('')}
+        // 2. Get Items & Filter
+        const rawInventory = this.state.player.inventory || [];
+        
+        const filteredItems = rawInventory.filter(item => {
+            // [MERGE FIX] Look up base data to filter correctly
+            const base = items[item.id] || items[item.baseItemId] || {};
+            const full = { ...base, ...item };
+            
+            if (this.currentFilter === 'all') return true;
+
+            const cat = (full.category || full.type || '').toLowerCase();
+            const slot = (full.slot || '').toLowerCase();
+            
+            if (this.currentFilter === 'weapon') return cat.includes('weapon') || ['axe','sword','bow','staff','dagger','mace','claw'].includes(cat);
+            if (this.currentFilter === 'armor') return cat.includes('armor') || ['helmet','chest','leggings','gloves','boots'].includes(cat);
+            if (this.currentFilter === 'jewelry') return ['ring','necklace','artifact'].includes(cat);
+            
+            return false;
+        });
+
+        // 3. Render Empty State
+        if (filteredItems.length === 0) {
+            container.innerHTML = `<div class="col-span-full text-gray-500 text-center p-4">Empty</div>`;
+            return;
+        }
+
+        // 4. Render Items (With Data Merge)
+        container.innerHTML = filteredItems.map(item => {
+            // [CRITICAL MERGE]
+            const baseItem = items[item.id] || items[item.baseItemId] || {};
+            // Instance overwrites Base, but Base fills the gaps (Name, Image, Tier)
+            const displayItem = { ...baseItem, ...item };
+
+            // Fallback Name
+            const name = displayItem.name || "Unknown Item";
+            
+            // Image Logic
+            const type = (displayItem.type || 'misc').toLowerCase();
+            const tier = displayItem.tier || 1;
+            // Use specific image URL if exists, else construct it
+            const imgPath = displayItem.imageUrl || `assets/items/${type}_t${tier}.png`;
+            
+            // Quality Color
+            let borderColor = 'border-gray-600';
+            if (displayItem.qualityMultiplier > 1.2) borderColor = 'border-purple-500';
+
+            return `
+                <div class="item-card relative border ${borderColor} bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group"
+                     onclick="window.gameManager.InventoryManager.showItemDetails('${item.uuid || item.instanceId}')">
+                    
+                    <img src="${imgPath}" class="w-full h-12 object-contain" 
+                         onerror="this.src='https://placehold.co/48x48/333?text=${name.charAt(0)}'">
+                    
+                    <span class="absolute top-0 right-0 bg-black/60 text-xs px-1 text-white">T${tier}</span>
+                    ${displayItem.qty > 1 ? `<span class="absolute bottom-0 right-0 bg-blue-900 text-xs px-1">${displayItem.qty}</span>` : ''}
+                    
+                    <div class="hidden group-hover:flex absolute inset-0 bg-black/90 items-center justify-center text-[10px] text-center p-1 border border-cyan-500/30 text-cyan-100">
+                        ${name}
+                    </div>
                 </div>
-
-                <div class="inventory-grid grid grid-cols-5 gap-2 overflow-y-auto">
-                    ${filteredItems.map(item => this.generateItemCardHTML(item, playerRace, racialFocus)).join('')}
-                    ${this.generateEmptySlotsHTML(40 - filteredItems.length)}
-                </div>
-            </div>
-        `;
+            `;
+        }).join('');
     }
 
     /**
@@ -127,18 +170,29 @@ export class InventoryManager {
         `).join('');
     }
 
+    /**
+     * [ARCHITECT FIX] Shows item details using the Master Registry.
+     * Fixes "No Stats" by correctly looking up base data.
+     */
     showItemDetails(instanceId) {
-        // [FIX] Support both UUID (Shop) and InstanceID (Legacy)
-const item = this.state.player.inventory.find(i => i.uuid === instanceId || i.instanceId === instanceId);
+        const item = this.state.player.inventory.find(i => i.uuid === instanceId || i.instanceId === instanceId);
         if (!item) return;
 
-        // Bridge to ModalManager for the "Item Examination" panel (Section 4.3.1.2)
+        // [ARCHITECT FIX] Merge Registry Data with Instance Data
+        // This ensures we get the Stats from the Registry AND the UUID from the Instance
+        const registryData = items[item.id] || items[item.baseItemId] || {};
+        const fullItemData = { ...registryData, ...item };
+
         if (window.gameManager?.ModalManager) {
-            window.gameManager.ModalManager.showItemInspector(item);
+            window.gameManager.ModalManager.showItemInspector(fullItemData);
         } else {
-            const baseItem = this.findBaseItem(item.baseItemId);
-            const itemName = baseItem?.name || item.baseItemId || 'Unknown Item';
-            this.showToast(`${itemName} (Tier ${item.tier || 1})`, false);
+            // Fallback
+            const name = fullItemData.name || 'Unknown Item';
+            const stats = [];
+            if (fullItemData.wc) stats.push(`WC: ${fullItemData.wc}`);
+            if (fullItemData.ac) stats.push(`AC: ${fullItemData.ac}`);
+            
+            this.showToast(`${name} ${stats.join(' ')}`, false);
         }
     }
     /**

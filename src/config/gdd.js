@@ -176,9 +176,65 @@ export const soulforge = soulforgeData;
 export const vault = vaultData;
 export const zones = zonesData;
 
+// [ARCHITECT FIX] Flatten all data into a Master Registry AND Inject Types
+// This ensures items[id] returns { type: 'Axe', category: 'Weapons', ... }
+const flattenItems = () => {
+    const allItems = {};
+
+    // 1. Flatten Armory (Weapons & Armor)
+    if (armoryData.weapons) {
+        Object.entries(armoryData.weapons).forEach(([type, categoryObj]) => {
+            Object.values(categoryObj).forEach(item => {
+                allItems[item.id] = { ...item, type: type, category: 'Weapons' }; // Inject Type!
+            });
+        });
+    }
+    if (armoryData.armor) {
+        Object.entries(armoryData.armor).forEach(([type, categoryObj]) => {
+            Object.values(categoryObj).forEach(item => {
+                allItems[item.id] = { ...item, type: type, category: 'Armor' }; // Inject Type!
+            });
+        });
+    }
+
+    // 2. Flatten Arcanum (Spells & Buffs)
+    if (arcanumData.spells) {
+        Object.entries(arcanumData.spells).forEach(([type, categoryObj]) => {
+            Object.values(categoryObj).forEach(item => {
+                allItems[item.id] = { ...item, type: type, category: 'Spell' };
+            });
+        });
+    }
+    if (arcanumData.buffs) {
+        // Handle nested or flat buff structures
+        Object.entries(arcanumData.buffs).forEach(([key, val]) => {
+             // If val is an object of items (nested)
+             if (val.id) {
+                 allItems[val.id] = { ...val, type: 'Buff', category: 'Buff' };
+             } else {
+                 Object.values(val).forEach(item => {
+                     allItems[item.id] = { ...item, type: 'Buff', category: 'Buff' };
+                 });
+             }
+        });
+    }
+
+    // 3. Flatten Jewelry
+    if (jewelryData) {
+        if (jewelryData.necklace) Object.values(jewelryData.necklace).forEach(i => allItems[i.id] = { ...i, type: 'Necklace', category: 'Jewelry' });
+        if (jewelryData.ring) Object.values(jewelryData.ring).forEach(i => allItems[i.id] = { ...i, type: 'Ring', category: 'Jewelry' });
+        if (jewelryData.artifact) Object.values(jewelryData.artifact).forEach(i => allItems[i.id] = { ...i, type: 'Artifact', category: 'Jewelry' });
+    }
+
+    return allItems;
+};
+
+// Export the Master Registry
+export const items = flattenItems();
+
 // Exporting Master Formulas & Config
 export { formulas, gddConstants, equipmentSlotConfig };
 
 // Export aliases for backward compatibility
 export const progression = formulas.progression;
-export const items = armory; // items refers to armory (weapons/armor)
+// export const items = armory; // [REMOVED] Replaced by the intelligent flattenItems registry above
