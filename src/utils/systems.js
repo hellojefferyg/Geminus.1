@@ -6,29 +6,11 @@ import { races, progression, items, gddConstants, bestiary, gems, zones, enchant
 const safeVal = (val) => (typeof val === 'number' && !isNaN(val)) ? val : 0;
 const safeMult = (val, mult) => safeVal(val) * safeVal(mult);
 
-// Helper function to find an item by ID in the nested armory structure
+// [ARCHITECT FIX] Helper to find an item by ID in the FLAT Master Registry
 function findItemById(itemId) {
   if (!items || !itemId) return null;
-  
-  // Search in weapons
-  if (items.weapons) {
-    for (const weaponType in items.weapons) {
-      if (items.weapons[weaponType] && items.weapons[weaponType][itemId]) {
-        return items.weapons[weaponType][itemId];
-      }
-    }
-  }
-  
-  // Search in armor
-  if (items.armor) {
-    for (const armorType in items.armor) {
-      if (items.armor[armorType] && items.armor[armorType][itemId]) {
-        return items.armor[armorType][itemId];
-      }
-    }
-  }
-  
-  return null;
+  // Direct lookup because 'items' is now a flat object { "Axe-1": {...}, ... }
+  return items[itemId];
 }
 
 const Systems = {
@@ -56,29 +38,48 @@ const Systems = {
     let bonusWcScMultiplier = 1.0;
     let totalHpRegenPercent = 0;
 
-    // 1. Process Equipment Stats
-    if (player.equipment && player.inventory) {
-        for (const slotName in player.equipment) {
-          const instanceId = player.equipment[slotName];
-          if (!instanceId) continue;
+    // 1. Process Equipment Stats (ARCHITECT FIX)
+    // We check 'equipped' (New System) first, then 'equipment' (Legacy)
+    const equipmentSource = player.equipped || player.equipment || {};
 
-          const item = player.inventory.find(i => i.instanceId === instanceId);
-          if (!item) continue;
+    // Iterate through all equipped items
+    Object.values(equipmentSource).forEach(entry => {
+        let item = entry;
 
-          const baseItem = findItemById(item.baseItemId);
-          if (!baseItem) continue;
-
-          const qm = safeVal(item.qualityMultiplier) || 1.0; 
-          
-          totalGearWC += safeMult(baseItem.wc, qm);
-          totalGearAC += safeMult(baseItem.ac, qm);
-          totalGearSC += safeMult(baseItem.sc, qm);
-          
-          if (baseItem.wc_bonus) bonusWcScMultiplier += safeVal(baseItem.wc_bonus);
-          if (baseItem.sc_bonus) bonusWcScMultiplier += safeVal(baseItem.sc_bonus);
-          if (baseItem.hp_regen_percent) totalHpRegenPercent += safeVal(baseItem.hp_regen_percent);
+        // Legacy Support: If entry is just an ID string, try to find it in inventory
+        // (Note: In the new system, items are removed from inventory, so this is just a fallback)
+        if (typeof item === 'string') {
+             item = player.inventory ? player.inventory.find(i => i.instanceId === item || i.uuid === item) : null;
         }
-    }
+
+        if (!item || typeof item !== 'object') return;
+
+        // Resolve Base Item (Source of Truth for Stats)
+        const baseItem = findItemById(item.baseItemId || item.id) || {};
+        
+        // Merge Instance + Base to get the most accurate data
+        // Priority: Item Instance > Base Item
+        const statsItem = { ...baseItem, ...item };
+
+        // [CRITICAL] Apply Quality Multiplier
+        // If the item has a specific multiplier, use it. Otherwise default to 1.0.
+        const qm = safeVal(item.qualityMultiplier) || 1.0; 
+        
+        // Calculate Stats (Base Stat * Quality)
+        // We use baseItem stats for the multiplication to avoid double-scaling if item.wc is already scaled
+        const wc = baseItem.wc !== undefined ? baseItem.wc : (item.wc || 0);
+        const ac = baseItem.ac !== undefined ? baseItem.ac : (item.ac || 0);
+        const sc = baseItem.sc !== undefined ? baseItem.sc : (item.sc || 0);
+
+        totalGearWC += safeMult(wc, qm);
+        totalGearAC += safeMult(ac, qm);
+        totalGearSC += safeMult(sc, qm);
+        
+        // Apply Bonuses
+        if (statsItem.wc_bonus) bonusWcScMultiplier += safeVal(statsItem.wc_bonus);
+        if (statsItem.sc_bonus) bonusWcScMultiplier += safeVal(statsItem.sc_bonus);
+        if (statsItem.hp_regen_percent) totalHpRegenPercent += safeVal(statsItem.hp_regen_percent);
+    });
 
     // 2. Archetype Scaling Logic
     let finalWC = 0, finalSC = 0;
@@ -91,42 +92,26 @@ const Systems = {
     const DEX = safeVal(player.baseStats?.DEX);
     const WIS = safeVal(player.baseStats?.WIS);
 
-    // [FIX] Base Spell Power (The "Spell Class" of the default cast)
-    // Even without a weapon, the spell itself has power that grows with level.
+    // Base Spell Power
     const basePower = 5 + (player.level * 2);
 
     switch (racialData.archetype) {
       case 'True Fighter':
-        // Fighter Scaling (WC)
-        // If Troll, Scale with VIT. Else, Scale with DEX.
         const fighterStat = isTroll ? VIT : scalingStatValue;
         finalWC = (totalGearWC + basePower) * (1 + (fighterStat * 0.0055));
-        
-        // Fighter Magic (SC) - Minimal aptitude
-        // They get gear stats + half base power, but NO stat scaling.
         finalSC = totalGearSC + (basePower * 0.5); 
         break;
 
       case 'True Caster':
-        // [FIX] Staff Fallback: If Item has WC but no SC, use 80% of WC as SC
-        // This handles cases where a "Staff" was defined only as a physical weapon.
         if (totalGearSC === 0 && totalGearWC > 0) {
             totalGearSC = totalGearWC * 0.8;
         }
-
-        // Caster Scaling (SC)
-        // If Vampire, Scale with VIT. Else, Scale with WIS.
         const casterStat = isVampire ? VIT : scalingStatValue;
-        
-        // The Spell (basePower) + The Wand (GearSC) * Mastery (Int/Vit)
         finalSC = (totalGearSC + basePower) * (1 + (casterStat * 0.0055));
-
-        // Caster Physical (WC) - Minimal aptitude
         finalWC = totalGearWC + (basePower * 0.5);
         break;
         
       case 'Hybrid':
-        // Hybrid scales BOTH with Primary Stat
         finalWC = (totalGearWC + basePower) * (1 + (scalingStatValue * 0.0055));
         finalSC = (totalGearSC + basePower) * (1 + (scalingStatValue * 0.0055));
         break;
@@ -166,7 +151,7 @@ const Systems = {
 
     player.stats = player.derivedStats;
     return player;
-  },
+  }, 
 
   MonsterScaling(monster, targetGearTier, zoneId = null) {
     const baseMonster = { ...monster };
@@ -377,56 +362,69 @@ const Systems = {
     return selected;
   },
 
-  // --- [NEW] SHADOW EVOLUTION LOGIC (GDD 2.2 + Drop Tables) ---
+  // --- [ARCHITECT FIX] SHADOW LOGIC + RESTORED DROP TABLES ---
+  // PRESERVED: Drop Tables, Cross-Drop Logic, Dropper Logic.
+  // UPDATED: Data access (player.equipped) and Registry Lookups (Flat List).
   generateShadowLoot(player, currentZoneId) {
-      // 1. Pick a Random Equipment Slot to Roll On
-      const slots = ['mainHand', 'offHand', 'head', 'body', 'legs', 'feet', 'hands'];
-      const selectedSlot = slots[Math.floor(Math.random() * slots.length)];
+      // 1. Slot Map: Maps Legacy/GDD Keys to New EquipmentManager Keys
+      // We pick a key (e.g., 'mainHand'), then map it to the actual slot 'MAIN_HAND'
+      const slotKeyMap = {
+          'mainHand': 'MAIN_HAND',
+          'offHand': 'OFF_HAND',
+          'head': 'HEAD',
+          'body': 'BODY',
+          'legs': 'LEGS',
+          'feet': 'FEET',
+          'hands': 'HANDS'
+      };
       
-      const instanceId = player.equipment[selectedSlot];
-      const mother = instanceId ? player.inventory.find(i => i.instanceId === instanceId) : null;
+      const legacySlots = Object.keys(slotKeyMap);
+      const selectedLegacySlot = legacySlots[Math.floor(Math.random() * legacySlots.length)];
+      const actualSlotKey = slotKeyMap[selectedLegacySlot];
+      
+      // [FIX] Access the NEW equipped structure
+      let mother = player.equipped ? player.equipped[actualSlotKey] : null;
+      
+      // Legacy support: If it's still a string ID, find the object
+      if (typeof mother === 'string') {
+          mother = player.inventory.find(i => i.instanceId === mother || i.uuid === mother);
+      }
 
-      // 2. Define Drop Tables (As provided)
+      // 2. DROP TABLES (YOUR ORIGINAL LOGIC RESTORED)
       const dropTables = {
-          "DT2": { name: "Heavy Weapons", pool: ["sword", "axe", "scythe", "mace"], crossDrop: "DT3" },
-          "DT3": { name: "Light/Ranged", pool: ["bow", "arrow", "claw"], crossDrop: "DT2" },
-          "DT4": { name: "Lower Armor", pool: ["legs", "boots"], crossDrop: null },
-          "DT5": { name: "Upper Armor", pool: ["helm", "gloves"], crossDrop: null },
-          "DT6": { name: "Elemental Magic", pool: ["damageSpell1", "damageSpell2"], crossDrop: null },
-          "DT7": { name: "Armor", pool: ["helm", "chest", "legs", "boots", "gloves"], crossDrop: null },
-          "DT8": { name: "Support Magic", pool: ["buffSpell1", "buffSpell2", "healSpell1"], crossDrop: "DT6" }
+          "DT2": { name: "Heavy Weapons", pool: ["Sword", "Axe", "Scythe", "Mace"], crossDrop: "DT3" },
+          "DT3": { name: "Light/Ranged", pool: ["Bow", "Arrow", "Claw", "Dagger"], crossDrop: "DT2" },
+          "DT4": { name: "Lower Armor", pool: ["Leggings", "Boots"], crossDrop: null },
+          "DT5": { name: "Upper Armor", pool: ["Helmet", "Gloves"], crossDrop: null },
+          "DT6": { name: "Elemental Magic", pool: ["Air", "Fire", "Earth", "Water"], crossDrop: null },
+          "DT7": { name: "Armor", pool: ["Helmet", "Chest", "Leggings", "Boots", "Gloves"], crossDrop: null },
+          "DT8": { name: "Support Magic", pool: ["Buff", "Heal"], crossDrop: "DT6" }
       };
 
-      // Helper to find a base item definition by Type and Tier
-      const findBaseItem = (type, tier) => {
-          // Check Weapons
-          if (items.weapons && items.weapons[type]) {
-              return Object.values(items.weapons[type]).find(i => i.tier === tier);
-          }
-          // Check Armor
-          if (items.armor && items.armor[type]) {
-              return Object.values(items.armor[type]).find(i => i.tier === tier);
-          }
-          // Check Magic (Arcanum)
-          if (items.magic && items.magic[type]) {
-               return Object.values(items.magic[type]).find(i => i.tier === tier);
-          }
-          return null;
+      // [FIX] Updated Helper to find items in the new FLAT registry
+      const findBaseItem = (targetType, targetTier) => {
+          if (!targetType) return null;
+          const lowerType = targetType.toLowerCase();
+          // The new 'items' object is flat, so we search values directly
+          return Object.values(items).find(i => 
+              (i.type || '').toLowerCase() === lowerType && 
+              i.tier === targetTier
+          );
       };
 
       let child = {};
 
       // SCENARIO A: Slot is Empty -> Drop Random Shadow Tier 1 for that slot
       if (!mother) {
-          // Map slot to a default type
-          let defaultType = 'sword'; // Fallback
-          if (selectedSlot === 'head') defaultType = 'helm';
-          if (selectedSlot === 'body') defaultType = 'chest';
-          if (selectedSlot === 'legs') defaultType = 'legs';
-          if (selectedSlot === 'feet') defaultType = 'boots';
-          if (selectedSlot === 'hands') defaultType = 'gloves';
-          if (selectedSlot === 'offHand') defaultType = 'shield';
-          
+          // Map the legacy slot name (e.g. 'head') to a default item type (e.g. 'Helmet')
+          let defaultType = 'Sword';
+          if (selectedLegacySlot === 'head') defaultType = 'Helmet';
+          if (selectedLegacySlot === 'body') defaultType = 'Chest';
+          if (selectedLegacySlot === 'legs') defaultType = 'Leggings';
+          if (selectedLegacySlot === 'feet') defaultType = 'Boots';
+          if (selectedLegacySlot === 'hands') defaultType = 'Gloves';
+          if (selectedLegacySlot === 'offHand') defaultType = 'Shield';
+
           const baseItem = findBaseItem(defaultType, 1);
           if (!baseItem) return null;
 
@@ -438,20 +436,18 @@ const Systems = {
           child.enchantments = this.generateEnchantments(child, child.qualityMultiplier, currentZoneId);
       }
       
-      // SCENARIO B: Mother is a Shadow -> Drop Echo (Exact Weak Copy)
+      // SCENARIO B: Mother is a Shadow -> Drop Echo
       else if (mother.type === 'Shadow') {
           child = { ...mother };
           child.type = 'Echo';
           child.name = `Echo of ${mother.name}`;
-          child.qualityMultiplier = 0.5; // Fixed Weakness
-          child.enchantments = []; // Echoes lose enchants? Or keep them? Assuming lose for now based on "Weak Copy"
+          child.qualityMultiplier = 0.5;
+          child.enchantments = []; 
           
-          // Tier Rule: Random 1 to Mother-1
           if (mother.tier > 1) {
              const maxTier = mother.tier - 1;
              child.tier = Math.floor(Math.random() * maxTier) + 1;
-             // Re-fetch base item stats for the new lower tier to ensure stats align
-             const downgradedBase = findBaseItem(mother.subType || 'sword', child.tier); // assuming subType exists or derived
+             const downgradedBase = findBaseItem(mother.type, child.tier); 
              if (downgradedBase) {
                  child.wc = downgradedBase.wc;
                  child.ac = downgradedBase.ac;
@@ -462,36 +458,43 @@ const Systems = {
           }
       }
 
-      // SCENARIO C: Mother is a Dropper -> Drop Shadow (Cross-Drop Enabled)
-      else if (mother.type === 'Dropper' || !mother.type) {
-          // 1. Determine which Drop Table to use
-          // We infer the DT based on the mother's type
+      // SCENARIO C: Mother is Dropper OR Standard -> Use Drop Tables
+      else {
+          // 1. Determine Drop Table based on Mother's Type
           let dtKey = null;
+          const mType = mother.type || mother.subType || '';
+          
           for (const [key, dt] of Object.entries(dropTables)) {
-              if (dt.pool.includes(mother.subType) || dt.pool.includes(mother.itemType)) { // Check flexible type props
+              // Case-insensitive check against pool
+              if (dt.pool.some(t => t.toLowerCase() === mType.toLowerCase())) {
                   dtKey = key;
                   break;
               }
           }
-          // Fallback if no DT found, use generic pool based on slot?
-          // Using the mother's own type as default pool if no DT match
-          const pool = dtKey ? dropTables[dtKey].pool : [mother.subType || 'sword'];
+
+          // 2. Select Pool (Cross-Drop logic handles here if needed, or we just pick from pool)
+          // Note: Your original code selected the CrossDrop table if the mother was a "Dropper".
+          // Since "Dropper" isn't a type in the new system (it's handled by 'Unknown' fix),
+          // we assume ANY matched table is valid.
+          const pool = dtKey ? dropTables[dtKey].pool : [mType];
           
-          // 2. Pick Type from Pool (Cross-Drop Logic)
-          // Simple logic: Pick any item from the pool
+          // 3. Pick Type from Pool
           const newType = pool[Math.floor(Math.random() * pool.length)];
           
-          // 3. Determine Tier (X or X-1)
-          let newTier = mother.tier;
-          if (mother.tier > 1 && Math.random() < 0.5) newTier -= 1;
+          // 4. Determine Tier
+          let newTier = mother.tier || 1;
+          if (newTier > 1 && Math.random() < 0.5) newTier -= 1;
 
-          // 4. Fetch the actual Item Data for this Type + Tier
-          const baseItem = findBaseItem(newType, newTier);
-          if (!baseItem) return null; // Should not happen if data is complete
+          // 5. Fetch Data
+          let baseItem = findBaseItem(newType, newTier);
+          
+          // Safety Fallback
+          if (!baseItem) baseItem = findBaseItem(mType, newTier);
+          if (!baseItem) return null;
 
           child = { ...baseItem };
           child.type = 'Shadow';
-          child.name = `Shadow of ${baseItem.name}`;
+          child.name = `Shadow of ${child.name}`;
           child.tier = newTier;
           child.qualityMultiplier = 0.75 + (Math.random() * 0.75);
           child.enchantments = this.generateEnchantments(child, child.qualityMultiplier, currentZoneId);
@@ -499,9 +502,8 @@ const Systems = {
       
       if (!child.name) return null;
 
-      // Finalize Instance ID
-      child.instanceId = `${child.baseItemId || 'GEN'}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      child.sockets = []; // Reset sockets
+      child.instanceId = `${child.baseItemId || 'GEN'}_SHADOW_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+      child.sockets = []; 
 
       return child;
   },

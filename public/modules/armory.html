@@ -495,6 +495,7 @@
            this.ui.buybackContent.classList.toggle('hidden', mode !== 'buyback');
            
            if (mode === 'buy') {
+               this.refreshState(); // [FIX] Force sync with engine so Advisor sees current gear
                this.populateBuySelectors();
                this.renderUpgradeAdvisor();
            } else if (mode === 'sell') {
@@ -781,43 +782,56 @@
        renderUpgradeAdvisor() {
            this.ui.upgradeAdvisorContent.innerHTML = '';
            
-           // Safety Check: Stop if player data is incomplete
-           if (!this.player.equipped) return;
+           // Safety Check
+           if (!this.player.equipped) {
+               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400 p-2">Equip items to see upgrades.</p>';
+               return;
+           }
 
            const availableUpgrades = [];
-           // Get unique slots from the shop stock
            const slots = [...new Set(this.shopStock.map(i => i.slot))]; 
  
            for (const slot of slots) {
-               const equippedItemUuid = this.player.equipped[slot];
-               const equippedItem = this.player.inventory.find(i => i.uuid === equippedItemUuid);
+               // [FIX] Read equipped item directly (it is now an object, not a UUID)
+               let equippedItem = this.player.equipped[slot];
                
-               // Determine primary stat for sorting (WC for weapons, AC for armor)
+               // Legacy fallback: If it is a string UUID, try to find it (rare)
+               if (typeof equippedItem === 'string') {
+                   equippedItem = this.player.inventory.find(i => i.uuid === equippedItem);
+               }
+
+               // Determine primary stat for sorting
                const itemDef = Object.values(itemData).flatMap(cat => Object.values(cat)).find(def => def.slot === slot);
                const primaryStat = itemDef ? (itemDef.stat) : (slot === 'weapon' ? 'WC' : 'AC');
  
-               const currentStatValue = (equippedItem && equippedItem.stat) ? (equippedItem.stat[primaryStat] || 0) : 0;
+               // Get current stats
+               let currentStatValue = 0;
+               if (equippedItem && equippedItem.stat) {
+                   currentStatValue = equippedItem.stat[primaryStat] || 0;
+               } else if (equippedItem) {
+                   if (primaryStat === 'WC') currentStatValue = equippedItem.wc || 0;
+                   if (primaryStat === 'AC') currentStatValue = equippedItem.ac || 0;
+               }
                
                // Find upgrades
                const potentialUpgrades = this.shopStock.filter(item => 
                    item.slot === slot &&
-                   item.stat[primaryStat] > currentStatValue &&
+                   (item.stat[primaryStat] || 0) > currentStatValue && 
                    this.player.gold >= item.cost &&
                    this.player.level >= item.levelReq
                );
  
                if (potentialUpgrades.length > 0) {
-                   const bestUpgrade = potentialUpgrades.sort((a, b) => b.stat[primaryStat] - a.stat[primaryStat])[0];
+                   const bestUpgrade = potentialUpgrades.sort((a, b) => (b.stat[primaryStat]||0) - (a.stat[primaryStat]||0))[0];
                    availableUpgrades.push({ slot, currentItem: equippedItem, newItem: bestUpgrade });
                }
            }
  
            if (availableUpgrades.length === 0) {
-               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400 p-2">No upgrades available for your level and gold.</p>';
+               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400 p-2">No available upgrades for your level and gold.</p>';
                return;
            }
  
-           // Use the helper to generate clean HTML
            this.ui.upgradeAdvisorContent.innerHTML = availableUpgrades.map(({ slot, currentItem, newItem }) => `
                <div class="bg-black/20 p-2 rounded-md border border-white/10 mb-2">
                    <div class="flex justify-between items-center mb-1">

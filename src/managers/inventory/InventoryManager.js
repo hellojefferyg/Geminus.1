@@ -47,83 +47,74 @@ export class InventoryManager {
     }
 
     /**
-     * [ARCHITECT FIX] Renders inventory with Master Data Merge.
-     * Fixes "undefined" names/images by looking up the GDD source of truth.
-     */
-    render() {
-        // 1. Find Container (Robust Check)
-        let container = this.ui.inventoryGrid || document.getElementById('inventory-grid');
-        if (!container && this.ui.tabContentInventory) {
-             container = this.ui.tabContentInventory.querySelector('#inventory-grid') || this.ui.tabContentInventory.querySelector('.inventory-grid');
-        }
+   * [ARCHITECT FIX] Renders inventory with Stat Tooltips.
+   * Hovering now shows "WC: 5" instead of just the name.
+   */
+  render() {
+      // 1. Container Check
+      let container = this.ui.inventoryGrid || document.getElementById('inventory-grid');
+      if (!container && this.ui.tabContentInventory) {
+           container = this.ui.tabContentInventory.querySelector('#inventory-grid') || this.ui.tabContentInventory.querySelector('.inventory-grid');
+      }
+      if (!container) return;
 
-        if (!container) return; // Silent fail if tab isn't ready
+      container.innerHTML = '';
 
-        container.innerHTML = '';
+      // 2. Get & Filter Items
+      const rawInventory = this.state.player.inventory || [];
+      const filteredItems = rawInventory.filter(item => {
+          const base = items[item.id] || items[item.baseItemId] || {};
+          const full = { ...base, ...item };
+          const cat = (full.category || full.type || '').toLowerCase();
+          
+          if (this.currentFilter === 'all') return true;
+          if (this.currentFilter === 'weapon') return cat.includes('weapon') || ['axe','sword','bow','staff','dagger','mace','claw'].includes(cat);
+          if (this.currentFilter === 'armor') return cat.includes('armor') || ['helmet','chest','leggings','gloves','boots'].includes(cat);
+          if (this.currentFilter === 'jewelry') return ['ring','necklace','artifact'].includes(cat);
+          return false;
+      });
 
-        // 2. Get Items & Filter
-        const rawInventory = this.state.player.inventory || [];
-        
-        const filteredItems = rawInventory.filter(item => {
-            // [MERGE FIX] Look up base data to filter correctly
-            const base = items[item.id] || items[item.baseItemId] || {};
-            const full = { ...base, ...item };
-            
-            if (this.currentFilter === 'all') return true;
+      if (filteredItems.length === 0) {
+          container.innerHTML = `<div class="col-span-full text-gray-500 text-center p-4">Empty</div>`;
+          return;
+      }
 
-            const cat = (full.category || full.type || '').toLowerCase();
-            const slot = (full.slot || '').toLowerCase();
-            
-            if (this.currentFilter === 'weapon') return cat.includes('weapon') || ['axe','sword','bow','staff','dagger','mace','claw'].includes(cat);
-            if (this.currentFilter === 'armor') return cat.includes('armor') || ['helmet','chest','leggings','gloves','boots'].includes(cat);
-            if (this.currentFilter === 'jewelry') return ['ring','necklace','artifact'].includes(cat);
-            
-            return false;
-        });
+      // 3. Render Cards with Tooltips
+      container.innerHTML = filteredItems.map(item => {
+          const baseItem = items[item.id] || items[item.baseItemId] || {};
+          const displayItem = { ...baseItem, ...item };
+          
+          const name = displayItem.name || "Item";
+          const tier = displayItem.tier || 1;
+          const type = (displayItem.type || 'misc').toLowerCase();
+          const imgPath = displayItem.imageUrl || `assets/items/${type}_t${tier}.png`;
+          
+          // [NEW] Generate Stat String for Tooltip
+          let statString = "";
+          if (displayItem.wc) statString = `WC: ${displayItem.wc}`;
+          else if (displayItem.ac) statString = `AC: ${displayItem.ac}`;
+          else if (displayItem.sc) statString = `SC: ${displayItem.sc}`;
+          else if (displayItem.hp_regen_percent) statString = "Regen";
+          else statString = displayItem.type || "Misc";
 
-        // 3. Render Empty State
-        if (filteredItems.length === 0) {
-            container.innerHTML = `<div class="col-span-full text-gray-500 text-center p-4">Empty</div>`;
-            return;
-        }
-
-        // 4. Render Items (With Data Merge)
-        container.innerHTML = filteredItems.map(item => {
-            // [CRITICAL MERGE]
-            const baseItem = items[item.id] || items[item.baseItemId] || {};
-            // Instance overwrites Base, but Base fills the gaps (Name, Image, Tier)
-            const displayItem = { ...baseItem, ...item };
-
-            // Fallback Name
-            const name = displayItem.name || "Unknown Item";
-            
-            // Image Logic
-            const type = (displayItem.type || 'misc').toLowerCase();
-            const tier = displayItem.tier || 1;
-            // Use specific image URL if exists, else construct it
-            const imgPath = displayItem.imageUrl || `assets/items/${type}_t${tier}.png`;
-            
-            // Quality Color
-            let borderColor = 'border-gray-600';
-            if (displayItem.qualityMultiplier > 1.2) borderColor = 'border-purple-500';
-
-            return `
-                <div class="item-card relative border ${borderColor} bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group"
-                     onclick="window.gameManager.InventoryManager.showItemDetails('${item.uuid || item.instanceId}')">
-                    
-                    <img src="${imgPath}" class="w-full h-12 object-contain" 
-                         onerror="this.src='https://placehold.co/48x48/333?text=${name.charAt(0)}'">
-                    
-                    <span class="absolute top-0 right-0 bg-black/60 text-xs px-1 text-white">T${tier}</span>
-                    ${displayItem.qty > 1 ? `<span class="absolute bottom-0 right-0 bg-blue-900 text-xs px-1">${displayItem.qty}</span>` : ''}
-                    
-                    <div class="hidden group-hover:flex absolute inset-0 bg-black/90 items-center justify-center text-[10px] text-center p-1 border border-cyan-500/30 text-cyan-100">
-                        ${name}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
+          return `
+              <div class="item-card relative border border-gray-600 bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group"
+                   onclick="window.gameManager.InventoryManager.showItemDetails('${item.uuid || item.instanceId}')">
+                  
+                  <img src="${imgPath}" class="w-full h-12 object-contain" 
+                       onerror="this.src='https://placehold.co/48x48/333?text=${name.charAt(0)}'">
+                  
+                  <span class="absolute top-0 right-0 bg-black/60 text-xs px-1 text-white">T${tier}</span>
+                  ${displayItem.qty > 1 ? `<span class="absolute bottom-0 right-0 bg-blue-900 text-xs px-1">${displayItem.qty}</span>` : ''}
+                  
+                  <div class="hidden group-hover:flex flex-col absolute inset-0 bg-black/95 z-20 items-center justify-center text-center p-1 border border-cyan-500/50">
+                      <span class="text-[9px] text-cyan-100 font-bold leading-tight mb-1">${name}</span>
+                      <span class="text-[9px] text-yellow-400 font-mono">${statString}</span>
+                  </div>
+              </div>
+          `;
+      }).join('');
+  }
 
     /**
      * @param {Object} item - The item instance

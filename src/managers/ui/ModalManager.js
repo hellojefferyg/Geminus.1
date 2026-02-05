@@ -1,9 +1,8 @@
 // src/managers/ui/ModalManager.js
-// [ARCHITECT FIX] Import all data sources directly to ensure we find everything
 import { armory, arcanum, jewelry } from '../../config/gdd.js';
 
 // [ARCHITECT FIX] Robust Lookup Helper
-// Searches Weapons, Armor, Spells, Buffs, and Jewelry to find static data.
+// Searches all data sources to ensure we find stats for everything.
 function findItemById(itemId) {
   if (!itemId) return null;
 
@@ -29,7 +28,6 @@ function findItemById(itemId) {
           }
       }
       if (arcanum.buffs) {
-           // Buffs might be directly in arcanum.buffs or nested
            if (arcanum.buffs[itemId]) return { ...arcanum.buffs[itemId], type: 'Buff' };
            for (const type in arcanum.buffs) {
               if (arcanum.buffs[type][itemId]) return { ...arcanum.buffs[type][itemId], type: 'Buff' };
@@ -65,18 +63,16 @@ export class ModalManager {
         <div class="glass-panel p-4 rounded-lg flex flex-col ${widthClass}">
           <div class="flex-shrink-0 flex justify-between items-center mb-4">
             <h3 class="font-orbitron text-xl capitalize text-glow-subtle">${title}</h3>
-            <button id="modal-close-btn" class="text-2xl leading-none transition-colors hover:text-[var(--highlight-color)]">&times;</button>
+            <button id="modal-close-btn" class="text-2xl leading-none transition-colors hover:text-cyan-400">&times;</button>
           </div>
           <div id="modal-content-body" class="flex-grow overflow-y-auto custom-scrollbar">${contentHTML}</div>
         </div>
       </div>`;
 
-    const closeBtn = this.ui.modalContainer.querySelector('#modal-close-btn');
-    if (closeBtn) closeBtn.onclick = () => this.hide();
+    this.ui.modalContainer.querySelector('#modal-close-btn').onclick = () => this.hide();
 
     if (onContentReady) {
-      const body = this.ui.modalContainer.querySelector('#modal-content-body');
-      if (body) onContentReady(body);
+      onContentReady(this.ui.modalContainer.querySelector('#modal-content-body'));
     }
   }
 
@@ -85,16 +81,14 @@ export class ModalManager {
   }
 
   /**
-   * [ARCHITECT FIX] Item Inspector
-   * Now correctly resolves Spells, Buffs, and Jewelry stats.
+   * [ARCHITECT FIX] Item Inspector with Context
+   * Handles both "Equip" and "Unequip" states.
    */
-  showItemInspector(item) {
+  showItemInspector(item, context = {}) {
     if (!item) return;
 
-    // 1. Resolve Base Data using the new Robust Helper
+    // 1. Resolve Base Data
     const baseItem = findItemById(item.baseItemId || item.id);
-    
-    // Merge Instance data (inventory) with Base data (GDD)
     const fullItem = { ...baseItem, ...item };
 
     const name = fullItem.name || "Unknown Item";
@@ -107,11 +101,25 @@ export class ModalManager {
     if (fullItem.ac) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Armor Class (AC)</span> <span class="text-blue-400 font-bold">${fullItem.ac}</span></div>`;
     if (fullItem.sc) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Spell Class (SC)</span> <span class="text-purple-400 font-bold">${fullItem.sc}</span></div>`;
     
-    // Handle Buff/Jewelry specific stats (regen, crit, etc)
     if (fullItem.hp_regen_percent) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">HP Regen</span> <span class="text-green-400 font-bold">+${(fullItem.hp_regen_percent * 100).toFixed(0)}%</span></div>`;
     if (fullItem.crit_bonus) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Crit Chance</span> <span class="text-yellow-400 font-bold">+${fullItem.crit_bonus}%</span></div>`;
 
-    // 3. Render HTML
+    // 3. Dynamic Action Button (Equip vs Unequip)
+    // [THIS IS THE MISSING PART IN YOUR VERSION]
+    let actionBtnHTML;
+    if (context.isEquipped) {
+        actionBtnHTML = `
+            <button id="inspector-action-btn" class="glass-button py-3 text-yellow-400 border-yellow-900/50 hover:bg-yellow-900/20 font-bold tracking-wider">
+                UNEQUIP
+            </button>`;
+    } else {
+        actionBtnHTML = `
+            <button id="inspector-action-btn" class="glass-button py-3 text-green-400 border-green-900/50 hover:bg-green-900/20 font-bold tracking-wider">
+                EQUIP
+            </button>`;
+    }
+
+    // 4. Render HTML
     const contentHTML = `
       <div class="flex flex-col gap-4">
         <div class="flex justify-center py-4 bg-black/20 rounded-lg">
@@ -133,9 +141,7 @@ export class ModalManager {
         <p class="text-xs text-gray-400 italic text-center px-4 leading-relaxed">"${desc}"</p>
 
         <div class="grid grid-cols-2 gap-3 mt-4">
-            <button id="inspector-equip-btn" class="glass-button py-3 text-green-400 border-green-900/50 hover:bg-green-900/20 font-bold tracking-wider">
-                EQUIP
-            </button>
+            ${actionBtnHTML}
             <button id="inspector-trash-btn" class="glass-button py-3 text-red-400 border-red-900/50 hover:bg-red-900/20 font-bold tracking-wider">
                 DESTROY
             </button>
@@ -146,33 +152,45 @@ export class ModalManager {
     this.show(name, contentHTML, {
         widthClass: 'w-80',
         onContentReady: (contentDiv) => {
-            const equipBtn = contentDiv.querySelector('#inspector-equip-btn');
+            const actionBtn = contentDiv.querySelector('#inspector-action-btn');
             const trashBtn = contentDiv.querySelector('#inspector-trash-btn');
             const gm = window.gameManager;
 
-            if (equipBtn) {
-                equipBtn.onclick = () => {
-                    // Pass the FULL item object so EquipmentManager doesn't have to look it up again
-                    if (gm && gm.EquipmentManager) {
-                        gm.EquipmentManager.equipItem(fullItem); 
-                        this.hide();
+            if (actionBtn) {
+                actionBtn.onclick = () => {
+                    if (context.isEquipped) {
+                        // UNEQUIP ACTION
+                        if (gm && gm.EquipmentManager) {
+                            gm.EquipmentManager.unequipItem(context.slotKey);
+                            this.hide();
+                        }
+                    } else {
+                        // EQUIP ACTION
+                        if (gm && gm.EquipmentManager) {
+                            gm.EquipmentManager.equipItem(fullItem); 
+                            this.hide();
+                        }
                     }
                 };
             }
             
             if (trashBtn) {
                 trashBtn.onclick = () => {
-                     if (confirm(`Destroy ${name}?`)) {
-                         if (gm && gm.state && gm.state.player) {
-                             const idx = gm.state.player.inventory.findIndex(i => i.instanceId === item.instanceId || i.uuid === item.uuid);
-                             if (idx > -1) {
-                                 gm.state.player.inventory.splice(idx, 1);
-                                 if (gm.InventoryManager) gm.InventoryManager.render();
-                                 gm.showToast(`${name} destroyed.`, false);
-                                 this.hide();
-                             }
-                         }
-                     }
+                    if (context.isEquipped) {
+                        gm.showToast("Cannot destroy equipped item. Unequip first.", true);
+                        return;
+                    }
+                    if (confirm(`Destroy ${name}?`)) {
+                        if (gm && gm.state && gm.state.player) {
+                            const idx = gm.state.player.inventory.findIndex(i => i.instanceId === item.instanceId || i.uuid === item.uuid);
+                            if (idx > -1) {
+                                gm.state.player.inventory.splice(idx, 1);
+                                if (gm.InventoryManager) gm.InventoryManager.render();
+                                gm.showToast(`${name} destroyed.`, false);
+                                this.hide();
+                            }
+                        }
+                    }
                 };
             }
         }

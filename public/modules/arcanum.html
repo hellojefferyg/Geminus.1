@@ -504,6 +504,7 @@
            this.ui.buybackContent.classList.toggle('hidden', mode !== 'buyback');
            
            if (mode === 'buy') {
+               this.refreshState(); // [FIX] Force sync here too
                this.populateBuySelectors();
                this.renderUpgradeAdvisor();
            } else if (mode === 'sell') {
@@ -809,51 +810,57 @@
        
        renderUpgradeAdvisor() {
            this.ui.upgradeAdvisorContent.innerHTML = '';
-           let recommendationsHTML = '';
            
-           // [FIX] Safety Check: Stop immediately if equipped list is missing or empty
-           // This prevents the "Cannot convert undefined or null to object" crash
-           if (!this.player.equipped || Object.keys(this.player.equipped).length === 0) {
+           if (!this.player.equipped) {
                this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400 p-2">Equip items to see upgrades.</p>';
                return;
            }
            
-           const equippedItems = Object.values(this.player.equipped)
-               .map(uuid => this.player.inventory.find(item => item.uuid === uuid))
-               .filter(Boolean);
+           const availableUpgrades = [];
+           const slots = [...new Set(this.shopStock.map(i => i.slot))];
+
+           for (const slot of slots) {
+               // [FIX] Read equipped item directly
+               let equippedItem = this.player.equipped[slot];
+               if (typeof equippedItem === 'string') {
+                   equippedItem = this.player.inventory.find(i => i.uuid === equippedItem);
+               }
  
-           equippedItems.forEach(equippedItem => {
-               if (!equippedItem.tier) return; // Skip non-tiered items
- 
-               const potentialUpgrades = this.shopStock.filter(shopItem =>
-                   shopItem.category === equippedItem.category &&
-                   shopItem.type === equippedItem.type &&
-                   shopItem.tier > equippedItem.tier &&
-                   this.player.level >= shopItem.levelReq
+               const itemDef = Object.values(itemData).flatMap(cat => Object.values(cat)).find(def => def.slot === slot);
+               const primaryStat = itemDef ? itemDef.stat : 'SC'; 
+               
+               let currentStatValue = 0;
+               if (equippedItem && equippedItem.stat) {
+                   currentStatValue = equippedItem.stat[primaryStat] || 0;
+               } else if (equippedItem) {
+                   if (primaryStat === 'SC') currentStatValue = equippedItem.sc || 0;
+               }
+
+               const potentialUpgrades = this.shopStock.filter(item => 
+                   item.slot === slot &&
+                   (typeof item.stat[primaryStat] === 'number' && item.stat[primaryStat] > currentStatValue) &&
+                   this.player.gold >= item.cost &&
+                   this.player.level >= item.levelReq
                );
  
                if (potentialUpgrades.length > 0) {
-                   const bestUpgrade = potentialUpgrades.reduce((best, current) => current.tier > best.tier ? current : best);
-                   
-                   const canAfford = this.player.gold >= bestUpgrade.cost;
-                   const costColor = canAfford ? 'text-green-400' : 'text-red-400';
- 
-                   recommendationsHTML += `
-                       <div class="bg-black/20 p-2 rounded-md border border-white/10">
-                           <div class="flex justify-between items-center">
-                              <h4 class="text-sm font-bold text-cyan-200">${equippedItem.name} → ${bestUpgrade.name}</h4>
-                              <p class="text-xs ${costColor}">${bestUpgrade.cost.toLocaleString()} Gold</p>
-                           </div>
-                           <div class="text-xs mt-1">${this.generateStatComparisonHTML(equippedItem, bestUpgrade, false)}</div>
-                       </div>
-                   `;
+                   const bestUpgrade = potentialUpgrades.sort((a, b) => (b.stat[primaryStat]||0) - (a.stat[primaryStat]||0))[0];
+                   availableUpgrades.push({ slot, currentItem: equippedItem, newItem: bestUpgrade });
                }
-           });
+           }
 
-           if(recommendationsHTML === '') {
-               this.ui.upgradeAdvisorContent.innerHTML = `<p class="text-sm text-gray-400 p-2">No available upgrades for your equipped items.</p>`;
+           if(availableUpgrades.length === 0) {
+               this.ui.upgradeAdvisorContent.innerHTML = `<p class="text-sm text-gray-400 p-2">No available upgrades.</p>`;
            } else {
-               this.ui.upgradeAdvisorContent.innerHTML = recommendationsHTML;
+               this.ui.upgradeAdvisorContent.innerHTML = availableUpgrades.map(({ slot, currentItem, newItem }) => `
+                   <div class="bg-black/20 p-2 rounded-md border border-white/10 mb-2">
+                       <div class="flex justify-between items-center mb-1">
+                          <h4 class="text-sm font-bold text-cyan-200">${newItem.name}</h4>
+                          <p class="text-xs text-green-400">${newItem.cost.toLocaleString()} G</p>
+                       </div>
+                       <div class="text-xs mt-1">${this.generateStatComparisonHTML(currentItem, newItem, false)}</div>
+                   </div>
+               `).join('');
            }
        },
        
