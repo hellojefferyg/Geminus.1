@@ -185,14 +185,14 @@ const flattenItems = () => {
     if (armoryData.weapons) {
         Object.entries(armoryData.weapons).forEach(([type, categoryObj]) => {
             Object.values(categoryObj).forEach(item => {
-                allItems[item.id] = { ...item, type: type, category: 'Weapons' }; // Inject Type!
+                allItems[item.id] = { ...item, type: type, category: 'Weapons' };
             });
         });
     }
     if (armoryData.armor) {
         Object.entries(armoryData.armor).forEach(([type, categoryObj]) => {
             Object.values(categoryObj).forEach(item => {
-                allItems[item.id] = { ...item, type: type, category: 'Armor' }; // Inject Type!
+                allItems[item.id] = { ...item, type: type, category: 'Armor' };
             });
         });
     }
@@ -206,9 +206,7 @@ const flattenItems = () => {
         });
     }
     if (arcanumData.buffs) {
-        // Handle nested or flat buff structures
         Object.entries(arcanumData.buffs).forEach(([key, val]) => {
-             // If val is an object of items (nested)
              if (val.id) {
                  allItems[val.id] = { ...val, type: 'Buff', category: 'Buff' };
              } else {
@@ -226,6 +224,26 @@ const flattenItems = () => {
         if (jewelryData.artifact) Object.values(jewelryData.artifact).forEach(i => allItems[i.id] = { ...i, type: 'Artifact', category: 'Jewelry' });
     }
 
+    // 4. [NEW] Flatten Gems
+    // Fixes "Type: Misc" / "No Description" bug for dropped gems
+    if (gemsData && gemsData.base_gems) {
+        Object.entries(gemsData.base_gems).forEach(([gemType, gemGroup]) => {
+            // gemGroup is an object of grades { "GEM-X": {...}, ... }
+            Object.values(gemGroup).forEach(gem => {
+                if (gem.id) {
+                    // Inject Type and Category so the Inspector recognizes them
+                    allItems[gem.id] = { 
+                        ...gem, 
+                        type: 'Gem', 
+                        category: 'Gem',
+                        // Ensure stat descriptions exist if missing
+                        description: gem.description || `A ${gemType} of grade ${gem.grade}.`
+                    };
+                }
+            });
+        });
+    }
+
     return allItems;
 };
 
@@ -237,4 +255,3 @@ export { formulas, gddConstants, equipmentSlotConfig };
 
 // Export aliases for backward compatibility
 export const progression = formulas.progression;
-// export const items = armory; // [REMOVED] Replaced by the intelligent flattenItems registry above

@@ -551,13 +551,21 @@ const Systems = {
     if (isDevMode || Math.random() < GEM_CHANCE) {
         if (gems && gems.base_gems) {
              const allGems = [];
-             if (gems.base_gems.lorestone) allGems.push(...Object.values(gems.base_gems.lorestone));
-             if (gems.base_gems.warstone) allGems.push(...Object.values(gems.base_gems.warstone));
-             if (gems.base_gems.obsidian) allGems.push(...Object.values(gems.base_gems.obsidian));
+             
+             // [ARCHITECT FIX] Dynamic Collection
+             // Previously, you manually listed only 3 types (Lore, War, Obsidian).
+             // Now, we grab ALL gem families defined in gemsData.js automatically.
+             Object.values(gems.base_gems).forEach(familyGroup => {
+                 allGems.push(...Object.values(familyGroup));
+             });
              
              if (allGems.length > 0) {
+                // 1. Determine Grade Weights based on Zone
+                // (Default to equal chance if zone doesn't specify)
                 const weightsStr = (zone && zone.gemGradeWeights) ? zone.gemGradeWeights : "100";
                 const weights = weightsStr.split(',').map(Number);
+                
+                // 2. Roll for Grade
                 const totalWeight = weights.reduce((a,b) => a+b, 0);
                 let randomWeight = Math.random() * totalWeight;
                 let selectedGradeIndex = 0;
@@ -565,10 +573,20 @@ const Systems = {
                     randomWeight -= weights[i];
                     if (randomWeight <= 0) { selectedGradeIndex = i; break; }
                 }
-                const gradeGems = allGems.filter(g => g.grade === (selectedGradeIndex + 1));
+                
+                // 3. Filter Pool by Grade (e.g., only Grade 1 gems)
+                const targetGrade = selectedGradeIndex + 1;
+                const gradeGems = allGems.filter(g => g.grade === targetGrade);
+                
+                // Fallback: If no gems of that grade exist, pick from full pool
                 const pool = gradeGems.length > 0 ? gradeGems : allGems; 
+                
+                // 4. Select Final Gem
                 const randomGem = pool[Math.floor(Math.random() * pool.length)];
-                const gemDrop = { ...randomGem, instanceId: `GEM_${Date.now()}` };
+                
+                // 5. Grant to Player
+                // We assign a unique instanceId so they stack properly in the backend if needed
+                const gemDrop = { ...randomGem, instanceId: `GEM_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
                 player.inventory.push(gemDrop);
                 lootMessages.push(`Loot: ${gemDrop.name}`);
              }

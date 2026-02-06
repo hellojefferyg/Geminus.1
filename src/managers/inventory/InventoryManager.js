@@ -47,8 +47,8 @@ export class InventoryManager {
     }
 
    /**
-   * [ARCHITECT FIX] Text-Only Mode (Dev)
-   * Disables images to prevent 404/CORB errors. Shows "Type T#" instead.
+   * [ARCHITECT FIX] Renders inventory in Text-Only Mode.
+   * Now includes data-instance-id to prevent Ghost Click conflicts.
    */
   render() {
       // 1. Container Check
@@ -86,9 +86,10 @@ export class InventoryManager {
           
           const name = displayItem.name || "Item";
           const tier = displayItem.tier || 1;
-          const type = (displayItem.type || 'Misc'); // Keep casing for display
+          const type = (displayItem.type || 'Misc'); 
+          const targetId = item.uuid || item.instanceId; // Resolve ID once
           
-          // Generate Stat String for Tooltip
+          // Generate Stat String
           let statString = "";
           if (displayItem.wc) statString = `WC: ${displayItem.wc}`;
           else if (displayItem.ac) statString = `AC: ${displayItem.ac}`;
@@ -98,7 +99,8 @@ export class InventoryManager {
 
           return `
               <div class="item-card relative border border-gray-600 bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group h-14 flex items-center justify-center"
-                   onclick="window.gameManager.InventoryManager.showItemDetails('${item.uuid || item.instanceId}')">
+                   data-instance-id="${targetId}" 
+                   onclick="window.gameManager.InventoryManager.showItemDetails('${targetId}')">
                   
                   <div class="flex flex-col items-center justify-center text-center w-full">
                       <span class="text-[10px] font-bold text-cyan-200 leading-none">${type}</span>
