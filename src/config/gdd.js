@@ -176,8 +176,7 @@ export const soulforge = soulforgeData;
 export const vault = vaultData;
 export const zones = zonesData;
 
-// [ARCHITECT FIX] Flatten all data into a Master Registry AND Inject Types
-// This ensures items[id] returns { type: 'Axe', category: 'Weapons', ... }
+// [ARCHITECT FIX] Flatten all data into a Master Registry AND Inject Types & Stats
 const flattenItems = () => {
     const allItems = {};
 
@@ -224,20 +223,45 @@ const flattenItems = () => {
         if (jewelryData.artifact) Object.values(jewelryData.artifact).forEach(i => allItems[i.id] = { ...i, type: 'Artifact', category: 'Jewelry' });
     }
 
-    // 4. [NEW] Flatten Gems
-    // Fixes "Type: Misc" / "No Description" bug for dropped gems
+    // 4. [NEW] Flatten Gems & Map Stats for UI
     if (gemsData && gemsData.base_gems) {
+        // List of all possible stat keys in your gemsData.js
+        const statKeys = [
+            'wc_bonus', 'ac_bonus', 'sc_bonus', 
+            'str_bonus', 'dex_bonus', 'vit_bonus', 'int_bonus', 'wis_bonus',
+            'crit_chance_bonus', 'hit_chance_bonus', 'double_hit_bonus', 'mastery_chance_bonus',
+            'exp_bonus', 'gold_bonus', 'shadow_drop_bonus', 'drop_chance_bonus', 'resource_drop_bonus',
+            'str_steal', 'dex_steal', 'wis_steal', 'int_steal', 'health_steal',
+            'enemy_str_debuff', 'enemy_dex_debuff', 'enemy_wis_debuff', 'enemy_int_debuff', 'enemy_hit_debuff'
+        ];
+
         Object.entries(gemsData.base_gems).forEach(([gemType, gemGroup]) => {
-            // gemGroup is an object of grades { "GEM-X": {...}, ... }
             Object.values(gemGroup).forEach(gem => {
                 if (gem.id) {
-                    // Inject Type and Category so the Inspector recognizes them
+                    // Create a dedicated 'stat' object for the UI to read
+                    const stats = {};
+                    statKeys.forEach(key => {
+                        if (gem[key] !== undefined) {
+                            // Convert key to readable label (e.g. 'wc_bonus' -> 'WC')
+                            let label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                                             .replace('Bonus', '').trim();
+                            
+                            // Special casing for clarity
+                            if (label === 'Wc') label = 'WC';
+                            if (label === 'Ac') label = 'AC';
+                            if (label === 'Sc') label = 'SC';
+                            
+                            // Format value
+                            stats[label] = `+${gem[key]}`; 
+                        }
+                    });
+
                     allItems[gem.id] = { 
                         ...gem, 
                         type: 'Gem', 
                         category: 'Gem',
-                        // Ensure stat descriptions exist if missing
-                        description: gem.description || `A ${gemType} of grade ${gem.grade}.`
+                        stat: stats, 
+                        description: gem.description || `A ${gemType} of grade ${gem.grade}. Socket to add stats.`
                     };
                 }
             });

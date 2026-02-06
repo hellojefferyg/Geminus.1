@@ -1,6 +1,5 @@
 // src/managers/combat/CombatManager.js
 
-// 1. Corrected Path to step out of 'managers' and 'combat' into 'config'
 import { bestiary } from '../../config/gdd.js';
 
 export class CombatManager {
@@ -9,17 +8,20 @@ export class CombatManager {
     this.ui = deps.ui;
     this.Systems = deps.Systems;
     this.ProfileManager = deps.ProfileManager;
-    this.SanctuaryManager = null; // Set later via GameManager.setManagers
+    this.SanctuaryManager = null; 
+    this.UIManager = null; 
     this.isInitialized = false;
     this.currentMonster = null;
     this.logMessages = [];
+    
+    // Persist UI preference
+    this.handedness = localStorage.getItem('combatHandedness') || 'right';
   }
 
-  // Without this line, the Combat Manager is "blind" and cannot see the screen to draw the floating text.
   setManagers(managers) {
     this.ProfileManager = managers.ProfileManager;
     this.SanctuaryManager = managers.SanctuaryManager;
-    this.UIManager = managers.UIManager; // [NEW] Connects the visual layer
+    this.UIManager = managers.UIManager; 
     if (managers.Systems) this.Systems = managers.Systems;
   }
 
@@ -31,16 +33,12 @@ export class CombatManager {
     this.addEventListeners();
     this.updateCombatInfoPanel();
     
-    // [NEW] SMART INITIALIZATION
-    // Check if the ZoneManager already has a map-specific list ready for us
     const initialZone = this.state.game.currentZoneId || 'Z01';
     
     if (window.gameManager && window.gameManager.ZoneManager && window.gameManager.ZoneManager.syncCombatData) {
         console.log("⚔️ CombatManager: UI Initialized. Requesting live data from ZoneManager...");
-        // This forces the map to re-send its data to us now that we are awake
         window.gameManager.ZoneManager.syncCombatData(); 
     } else {
-        // Fallback to static GDD data if the map isn't ready
         this.populateMonsterList(initialZone);
     }
 
@@ -50,14 +48,13 @@ export class CombatManager {
 
   logToGame(message) {
     this.logMessages.push(message);
-    if (this.logMessages.length > 5) {
+    if (this.logMessages.length > 50) { 
       this.logMessages.shift();
     }
     this.renderLog();
   }
 
   renderLog() {
-    // Note: Ensure this ID exists in your final HUD HTML
     const logDisplay = document.querySelector('#tab-content-combat #combat-log-display');
     if (logDisplay) {
       logDisplay.innerHTML = this.logMessages.join('<br>');
@@ -65,24 +62,122 @@ export class CombatManager {
     }
   }
 
+  /**
+   * [ARCHITECT FIX] High-Speed Grinding Layout
+   * Order: Stats -> Fight Bar -> Actions -> Log (Bottom)
+   * This keeps Fight and Action buttons close together for rapid clicks.
+   */
   render() {
     if (!this.ui.tabContentCombat) return;
     this.ui.tabContentCombat.innerHTML = `
-      <div class="space-y-4 flex flex-col h-full">
-        <div id="combat-info-panel" class="w-full p-2 rounded-lg bg-black/20 border" style="border-color: var(--border-color-main)">
+      <div class="flex flex-col h-full relative">
+        
+        <div id="combat-info-panel" class="w-full p-2 mb-1 rounded-lg bg-black/20 border shrink-0" style="border-color: var(--border-color-main)">
           <div id="combat-stats-container"></div>
         </div>
-        <div class="combat-control-bar flex gap-2 p-2 bg-black/20 rounded-lg">
+
+        <div class="w-full flex justify-end px-1 mb-1">
+            <button id="handedness-toggle" class="text-[9px] text-gray-500 hover:text-cyan-400 font-mono border border-gray-800/50 px-2 py-0.5 rounded bg-black/40 transition-colors uppercase">
+                UI: ${this.handedness}
+            </button>
+        </div>
+
+        <div class="combat-control-bar flex gap-2 p-2 mb-1 bg-black/20 rounded-lg shrink-0">
           <select id="monsterSelect" class="editor-input flex-grow"></select>
           <button class="glass-button px-4 py-2" id="fightBtn">FIGHT</button>
         </div>
-        <div class="flex justify-center gap-2">
-          <button class="glass-button py-2 rounded-md w-1/2" id="attackBtn" style="display: none;">ATTACK</button>
-          <button class="glass-button py-2 rounded-md w-1/2" id="castBtn" style="display: none;">CAST</button>
-          <button class="glass-button py-2 rounded-md w-1/2" id="spellstrikeBtn" style="display: none;">SPELLSTRIKE</button>
+
+        <div id="combat-actions-container" class="p-2 mb-2 border-b border-gray-800/50 bg-black/40 backdrop-blur-sm hidden shrink-0 rounded-lg">
         </div>
-        <div id="combat-log-display" class="flex-grow p-2 overflow-y-auto custom-scrollbar text-sm"></div>
+
+        <div id="combat-log-display" class="flex-grow p-2 overflow-y-auto custom-scrollbar text-sm bg-black/10 rounded border border-white/5 shadow-inner"></div>
       </div>`;
+  }
+
+  /**
+   * [ARCHITECT FIX] Dynamic Button Rendering
+   * Handles Universal Actions, Handedness Sorting, and Toggle Placement.
+   */
+  renderCombatControls() {
+    const container = document.getElementById('combat-actions-container');
+    if (!container) return;
+
+    // 1. Define Available Actions
+    const actions = [
+        { id: 'attack', label: 'ATTACK', type: 'physical' },
+        { id: 'cast', label: 'CAST', type: 'magical' }
+    ];
+
+    // 2. Class Specific Extras
+    const pClass = this.state.player.class || '';
+    const pSub = this.state.player.subType || '';
+    if (pClass === 'SpellStrike' || pSub === 'SpellBlade' || this.state.player.archetype === 'Hybrid') {
+        actions.push({ id: 'spellstrike', label: 'SPELLSTRIKE', type: 'hybrid' });
+    }
+
+    // 3. Determine "Dominant" Action for Sorting
+    const raceData = this.state.player.raceData || {}; 
+    const isCaster = raceData.archetype === 'True Caster';
+    const isHybrid = actions.some(a => a.id === 'spellstrike');
+    const dominantActionId = isHybrid ? 'spellstrike' : (isCaster ? 'cast' : 'attack');
+
+    // 4. Sort based on Handedness
+    actions.sort((a, b) => {
+        const isADom = a.id === dominantActionId;
+        const isBDom = b.id === dominantActionId;
+        
+        if (this.handedness === 'left') {
+            return isADom ? -1 : 1; 
+        } else {
+            return isADom ? 1 : -1; 
+        }
+    });
+
+    // 5. Generate Buttons HTML
+    const buttonsHTML = actions.map(action => {
+        let colorClass = 'border-gray-500 text-gray-200 hover:bg-gray-800'; 
+        if (action.type === 'physical') colorClass = 'border-red-500/50 text-red-100 hover:bg-red-900/40 bg-red-900/10 shadow-[0_0_5px_rgba(220,38,38,0.2)]';
+        if (action.type === 'magical') colorClass = 'border-blue-500/50 text-blue-100 hover:bg-blue-900/40 bg-blue-900/10 shadow-[0_0_5px_rgba(37,99,235,0.2)]';
+        if (action.type === 'hybrid') colorClass = 'border-purple-500/50 text-purple-100 hover:bg-purple-900/40 bg-purple-900/10 shadow-[0_0_5px_rgba(147,51,234,0.2)]';
+
+        const isDominant = action.id === dominantActionId;
+        const sizeClass = isDominant ? 'font-bold tracking-widest border-opacity-100' : 'opacity-90 border-opacity-60';
+
+        return `
+            <button class="combat-action-btn flex-1 h-12 rounded border ${colorClass} ${sizeClass} transition-all active:scale-95 flex items-center justify-center uppercase font-orbitron text-xs sm:text-sm"
+                data-action="${action.id}">
+                ${action.label}
+            </button>
+        `;
+    }).join('');
+
+    // 6. Inject JUST the buttons (Toggle is now handled in render())
+    container.innerHTML = `
+        <div class="flex gap-2 w-full">
+            ${buttonsHTML}
+        </div>
+    `;
+
+    // 7. Attach Listeners
+    this.attachDynamicListeners(container);
+  }
+
+  attachDynamicListeners(container) {
+      container.querySelectorAll('.combat-action-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+              const action = e.target.closest('button').dataset.action;
+              this.performAction(action);
+          });
+      });
+
+      const toggleBtn = container.querySelector('#handedness-toggle');
+      if (toggleBtn) {
+          toggleBtn.addEventListener('click', () => {
+              this.handedness = this.handedness === 'right' ? 'left' : 'right';
+              localStorage.setItem('combatHandedness', this.handedness);
+              this.renderCombatControls(); 
+          });
+      }
   }
 
   updateCombatInfoPanel() {
@@ -125,29 +220,32 @@ export class CombatManager {
         fightBtn.addEventListener('click', () => this.fight());
     }
 
-    ['attackBtn', 'castBtn', 'spellstrikeBtn'].forEach(id => {
-        const btn = combatTab.querySelector(`#${id}`);
-        if (btn) {
-            btn.addEventListener('click', () => this.performAction(id.replace('Btn', '')));
-        }
-    });
-    // [NEW] Listen for Stat Allocation Clicks in the Log
+    // [NEW] Handedness Toggle Listener (Now Static)
+    const toggleBtn = combatTab.querySelector('#handedness-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            // Flip State
+            this.handedness = this.handedness === 'right' ? 'left' : 'right';
+            
+            // Save & Update UI Text
+            localStorage.setItem('combatHandedness', this.handedness);
+            toggleBtn.textContent = `UI: ${this.handedness.toUpperCase()}`;
+            
+            // Re-render the buttons below
+            this.renderCombatControls(); 
+        });
+    }
+
     const logDisplay = combatTab.querySelector('#combat-log-display');
     if (logDisplay) {
         logDisplay.addEventListener('click', (e) => {
             const link = e.target.closest('.stat-allocation-link');
             if (link && this.ProfileManager) {
                 const stat = link.dataset.stat;
-                
-                // Call the Bulk Dump function
                 const success = this.ProfileManager.allocateAllPoints(stat);
-                
                 if (success) {
-                    // [FIX] Visual confirmation: Remove the buttons so they can't be clicked again
-                    const container = link.closest('div'); // The parent container of the links
-                    if (container) {
-                        container.innerHTML = `<div class="text-cyan-400 font-bold text-center">>> Power channeled into ${stat}.</div>`;
-                    }
+                    const container = link.closest('div'); 
+                    if (container) container.innerHTML = `<div class="text-cyan-400 font-bold text-center">>> Power channeled into ${stat}.</div>`;
                     this.updateCombatInfoPanel();
                 }
             }
@@ -173,13 +271,9 @@ export class CombatManager {
     this.resetCombatSelection();
   }
 
-  /**
-   * Populate monster list from zone data (zoneMobs array)
-   * [UPDATED] Stores the mobs so selectMonster can find them later.
-   */
   populateMonsterListFromZone(zoneId, zoneMobs) {
     this.state.game.currentZoneId = zoneId;
-    this.currentZoneMobs = zoneMobs; // <--- [NEW] Save the list!
+    this.currentZoneMobs = zoneMobs; 
     
     const monsterSelect = document.getElementById('monsterSelect');
     if (!monsterSelect) return;
@@ -204,13 +298,11 @@ export class CombatManager {
       return;
     }
 
-    // 1. Try to find the mob in the Dynamic Zone List (from Map)
     let monsterTemplate = null;
     if (this.currentZoneMobs) {
         monsterTemplate = this.currentZoneMobs.find(m => (m.id || m.eid) === monsterId);
     }
 
-    // 2. Fallback: Check Static Bestiary (Legacy Support)
     if (!monsterTemplate) {
         const zoneData = bestiary[this.state.game.currentZoneId];
         if (zoneData && zoneData.monsters) {
@@ -219,26 +311,17 @@ export class CombatManager {
     }
 
     if (!monsterTemplate) {
-        console.warn(`CombatManager: Monster ID '${monsterId}' not found in Zone Mobs or Bestiary.`);
+        console.warn(`CombatManager: Monster ID '${monsterId}' not found.`);
         return;
     }
 
-    // 3. Scale & Set Monster
-    // Check if gearTier exists, default to 1 if not
     const tier = (bestiary[this.state.game.currentZoneId] && bestiary[this.state.game.currentZoneId].gearTier) || 1;
-    
-   // [UPDATED] Pass Zone ID for "Super Easy" Scaling Checks
     const scaledMonster = this.Systems.MonsterScaling(monsterTemplate, tier, this.state.game.currentZoneId);
+    
     this.currentMonster = {
       ...scaledMonster,
       currentHP: scaledMonster.hp,
-      stats: {
-        ATK: scaledMonster.atk,
-        DEF: scaledMonster.def,
-        HP: scaledMonster.hp,
-        XP: scaledMonster.xp,
-        GOLD: scaledMonster.gold
-      }
+      stats: { ATK: scaledMonster.atk, DEF: scaledMonster.def, HP: scaledMonster.hp, XP: scaledMonster.xp, GOLD: scaledMonster.gold }
     };
 
     this.logMessages = [`You are targeting ${this.currentMonster.name}.`];
@@ -248,36 +331,24 @@ export class CombatManager {
 
   fight() {
     if (!this.currentMonster || !this.state.player) return;
-
-    // 1. Prepare State
     this.state.game.combatActive = true;
-    
-    // Always reset monster to full HP at start of new fight (Essential for Re-rolls)
     this.currentMonster.currentHP = this.currentMonster.hp; 
-    
-    // Clear previous logs to keep it clean for high-speed grinding
     this.logMessages = [`⚔️ You engage the ${this.currentMonster.name}!`];
-    
     this.renderLog();
-    this.updateButtons(); // Refresh button states
+    this.updateButtons(); 
     this.updateCombatInfoPanel();
   }
 
   performAction(actionType) {
     if (!this.state.game.combatActive || !this.currentMonster) return;
 
-    // 1. Resolve ONE Turn
     const result = this.Systems.resolveCombatTurn(this.state.player, this.currentMonster, actionType);
 
-    // 2. Log & Visualize Player Action
     if (result.damageDealt) {
-      // VISUALS: Determine if it's a Crit or Normal hit
       const isCrit = result.isCrit;
       const type = isCrit ? 'crit' : 'damage';
       
-      // [FIXED] Use this.UIManager directly (removed .ui)
       if (this.UIManager) {
-          // Try to spawn it over the monster info panel
           const monsterEl = document.querySelector('#combat-info-panel');
           this.UIManager.showFloatingText(Math.floor(result.damageDealt), type, monsterEl);
       }
@@ -288,7 +359,6 @@ export class CombatManager {
       this.logToGame(msg);
     }
 
-    // 3. Check Victory
     if (result.status === 'VICTORY') {
       this.logToGame(`<span class="log-enemy text-red-500 font-bold">${this.currentMonster.name} slain.</span>`);
       
@@ -298,42 +368,23 @@ export class CombatManager {
         this.state.game.currentZoneId
       );
 
-      // [UPDATED] Smart Loot Visualization
       if (this.UIManager) {
-          // 1. Show Standard Gains (XP/Gold)
           const xp = Math.floor(this.currentMonster.xp);
           const gold = Math.floor(this.currentMonster.gold);
-          
           setTimeout(() => this.UIManager.showFloatingText(`+${xp} XP`, 'xp'), 200);
           setTimeout(() => this.UIManager.showFloatingText(`+${gold} Gold`, 'gold'), 600);
 
-          // 2. Scan for Rares (Shadows, Echoes, Gems, Quest Items)
           lootMessages.forEach((msg, index) => {
-              // Stagger the popups so they don't stack perfectly
               const delay = 1000 + (index * 400);
-
-              if (msg.includes('Shadow Found')) {
-                  // Tier 1: Shadow (Purple)
-                  setTimeout(() => this.UIManager.showFloatingText('🟣 SHADOW DROP!', 'shadow'), delay);
-              } 
-              else if (msg.includes('Echo of')) {
-                  // Tier 2: Echo (Purple - Same style, distinct text)
-                  setTimeout(() => this.UIManager.showFloatingText('🌑 ECHO MANIFESTED!', 'shadow'), delay);
-              }
-              else if (msg.includes('Loot:') || msg.includes('Gem')) {
-                  // Gems (Cyan)
-                  setTimeout(() => this.UIManager.showFloatingText('💎 GEM FOUND!', 'gem'), delay);
-              }
-              else if (msg.includes('Quest') || msg.includes('Artifact')) {
-                  // Quest Items (Orange)
-                  setTimeout(() => this.UIManager.showFloatingText('📜 QUEST ITEM!', 'quest'), delay);
-              }
+              if (msg.includes('Shadow Found')) setTimeout(() => this.UIManager.showFloatingText('🟣 SHADOW DROP!', 'shadow'), delay);
+              else if (msg.includes('Echo of')) setTimeout(() => this.UIManager.showFloatingText('🌑 ECHO MANIFESTED!', 'shadow'), delay);
+              else if (msg.includes('Loot:') || msg.includes('Gem')) setTimeout(() => this.UIManager.showFloatingText('💎 GEM FOUND!', 'gem'), delay);
+              else if (msg.includes('Quest') || msg.includes('Artifact')) setTimeout(() => this.UIManager.showFloatingText('📜 QUEST ITEM!', 'quest'), delay);
           });
       }
 
       lootMessages.forEach(msg => this.logToGame(msg));
       
-      // [NEW] Level Up Prompt (Preserved)
       const p = this.state.player;
       if (p.attributePoints > 0) {
           this.renderLevelUpOptions(p.attributePoints);
@@ -343,12 +394,10 @@ export class CombatManager {
       return; 
     }
 
-    // 4. Monster Counter-Attack (Only if alive)
     if (result.damageTaken) {
       this.logToGame(`${this.currentMonster.name} hits you for <span class="log-enemy">${Math.floor(result.damageTaken)}</span>.`);
     }
 
-    // 5. Check Defeat
     if (result.status === 'DEFEAT') {
       this.logToGame(`<span class="log-enemy text-red-600 font-bold">You have been defeated!</span>`);
       this.endCombat();
@@ -358,7 +407,6 @@ export class CombatManager {
       return;
     }
 
-    // 6. Update UI (Health Bars, etc)
     this.ProfileManager.updateAllProfileUI();
     this.updateCombatInfoPanel();
   }
@@ -380,37 +428,25 @@ export class CombatManager {
 
   updateButtons() {
     const fightBtn = document.getElementById('fightBtn');
-    const attackBtn = document.getElementById('attackBtn');
-    const castBtn = document.getElementById('castBtn');
-    const spellstrikeBtn = document.getElementById('spellstrikeBtn');
+    const actionsContainer = document.getElementById('combat-actions-container');
 
-    if (!fightBtn || !attackBtn || !castBtn || !spellstrikeBtn) return;
+    if (fightBtn) {
+        fightBtn.style.display = 'block';
+        fightBtn.disabled = !this.currentMonster; 
+    }
 
-    const isFighting = this.state.game.combatActive;
-    const p = this.state.player;
-
-    // [UPDATED] FIGHT Button is ALWAYS visible to allow skipping/re-rolling
-    fightBtn.style.display = 'block';
-    
-    // Disable Fight button only if no monster is selected at all
-    fightBtn.disabled = !this.currentMonster; 
-
-    // Action Buttons: Only visible when actively fighting
-    // This creates the UI state: [FIGHT] [ATTACK] [CAST] all visible during combat
-    const showActions = isFighting;
-    
-    attackBtn.style.display = (showActions && (p.archetype === 'True Fighter' || p.archetype === 'Hybrid')) ? 'block' : 'none';
-    castBtn.style.display = (showActions && (p.archetype === 'True Caster' || p.archetype === 'Hybrid')) ? 'block' : 'none';
-    spellstrikeBtn.style.display = (showActions && p.archetype === 'Hybrid') ? 'block' : 'none';
+    if (actionsContainer) {
+        if (this.state.game.combatActive) {
+            actionsContainer.classList.remove('hidden');
+            this.renderCombatControls();
+        } else {
+            actionsContainer.classList.add('hidden');
+        }
+    }
   }
-  /**
-   * Renders the clickable stat allocation links.
-   * Shows "DEX (4)" where 4 is the number of levels banked.
-   */
+
   renderLevelUpOptions(points) {
     const stats = ['DEX', 'STR', 'NTL', 'WIS', 'VIT'];
-    
-    // Each link calls the ProfileManager when clicked
     const links = stats.map(stat => 
         `<span class="stat-allocation-link text-green-400 cursor-pointer hover:underline hover:text-white font-bold" data-stat="${stat}">
             ${stat} (${points})
