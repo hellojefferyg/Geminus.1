@@ -262,19 +262,33 @@ export class GameManager {
   }
 
   switchTab(tabName) {
-    // Deactivate all panels and buttons
-    document.querySelectorAll('#main-tabs-container .main-tab-button, #main-tab-content .main-tab-panel').forEach(el => {
-      el.classList.remove('active');
+    // [ARCHITECT FIX] Hardened Tab Switching
+    // We explicitly list tabs to force-hide them by ID, preventing UI bleeding.
+    const knownTabs = ['equipment', 'inventory', 'stats', 'combat', 'settings'];
+
+    // 1. Deactivate & Hide All
+    knownTabs.forEach(t => {
+        const btn = document.querySelector(`.main-tab-button[data-tab="${t}"]`);
+        const panel = document.getElementById(`tab-content-${t}`);
+        
+        if (btn) btn.classList.remove('active');
+        if (panel) {
+            panel.classList.remove('active');
+            panel.style.display = 'none'; // FORCE CSS HIDE
+        }
     });
 
-    // Activate the target tab
+    // 2. Activate Target
     const tabButton = document.querySelector(`.main-tab-button[data-tab="${tabName}"]`);
     const tabPanel = document.getElementById(`tab-content-${tabName}`);
 
     if (tabButton) tabButton.classList.add('active');
-    if (tabPanel) tabPanel.classList.add('active');
+    if (tabPanel) {
+        tabPanel.classList.add('active');
+        tabPanel.style.display = 'block'; // FORCE CSS SHOW
+    }
 
-    // Lazy-load managers only when their tab is first opened
+    // 3. Lazy-load managers (YOUR ORIGINAL LOGIC PRESERVED)
     const managers = {
       combat: this.CombatManager,
       stats: this.StatsManager,
@@ -287,7 +301,7 @@ export class GameManager {
         managers[tabName].init();
     }
 
-    // [FIX] Force UI Update when switching to Equipment/Inventory
+    // 4. Force UI Update (YOUR ORIGINAL LOGIC PRESERVED)
     // This ensures newly bought items appear immediately without a reload.
     if (tabName === 'equipment' || tabName === 'inventory') {
         if (this.ProfileManager) {
@@ -295,7 +309,7 @@ export class GameManager {
             this.ProfileManager.updateAllProfileUI();
         }
     }
-  } // <--- End of switchTab function
+  }
 
     /**
      * [NEW] Opens a game module (HTML file) in the overlay iframe.

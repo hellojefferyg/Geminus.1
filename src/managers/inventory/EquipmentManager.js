@@ -163,7 +163,8 @@ export class EquipmentManager {
   }
 
   /**
-   * [ARCHITECT FIX] Renders equipment with Hover Stats.
+   * [ARCHITECT FIX] Renders equipment in Text-Only Dev Mode.
+   * Eliminates 404 errors by removing <img> tags.
    */
   renderEquipmentView() {
     const equipmentContainer = this.ui.tabContentEquipment;
@@ -190,15 +191,15 @@ export class EquipmentManager {
           item = this.state.player.inventory.find(i => i.uuid === item || i.instanceId === item);
       }
 
+      // Default Empty State
       let contentHTML = '<span class="text-xs text-gray-600 font-mono opacity-50">Empty</span>';
       
       if (item && item.name) {
           const name = item.name || "Item";
-          const type = (item.type || 'misc').toLowerCase();
           const tier = item.tier || 1;
-          const imageUrl = item.imageUrl || `assets/items/${type}_t${tier}.png`;
+          const type = item.type || "Misc";
 
-          // [NEW] Generate Stats for Equipment Tooltip
+          // Generate Stats for Equipment Tooltip
           let statString = "";
           if (item.wc) statString = `WC ${item.wc}`;
           else if (item.ac) statString = `AC ${item.ac}`;
@@ -206,13 +207,14 @@ export class EquipmentManager {
           else if (item.type === 'Buff') statString = "Passive";
           else statString = item.type;
 
+          // [DEV MODE] Text-Based Representation
           contentHTML = `
-            <img src="${imageUrl}" class="h-10 w-10 object-contain drop-shadow-md" 
-                 onerror="this.src='https://placehold.co/40x40/222?text=${name.charAt(0)}'">
+            <div class="flex flex-col items-center justify-center w-full h-full p-1 text-center">
+                <span class="text-[9px] text-cyan-200 font-bold leading-tight break-words w-full">${name}</span>
+                <span class="text-[8px] text-yellow-500 font-mono mt-0.5">T${tier}</span>
+            </div>
             
-            <span class="absolute bottom-0 right-0 bg-black/70 text-[10px] px-1 text-cyan-200 font-bold border-tl border-cyan-900">T${tier}</span>
-            
-            <div class="hidden group-hover:flex flex-col absolute inset-0 bg-black/90 z-20 items-center justify-center p-1 text-center transition-opacity duration-200">
+            <div class="hidden group-hover:flex flex-col absolute inset-0 bg-black/90 z-20 items-center justify-center p-1 text-center transition-opacity duration-200 border border-cyan-500/30">
                 <span class="text-[8px] text-cyan-100 font-bold leading-tight">${name}</span>
                 <span class="text-[8px] text-green-400 font-mono mt-0.5">${statString}</span>
             </div>
@@ -222,7 +224,7 @@ export class EquipmentManager {
       return `
         <div class="flex flex-col items-center group">
             <div class="text-[10px] text-cyan-600 font-orbitron mb-1">${slot.name}</div>
-            <div class="w-16 h-16 glass-panel border border-cyan-900/50 flex items-center justify-center relative cursor-pointer hover:border-cyan-400 transition-colors"
+            <div class="w-16 h-16 glass-panel border border-cyan-900/50 flex items-center justify-center relative cursor-pointer hover:border-cyan-400 transition-colors bg-black/40"
                  onclick="window.gameManager.EquipmentManager.handleSlotClick('${internalKey}')">
                ${contentHTML}
             </div>

@@ -46,9 +46,9 @@ export class InventoryManager {
         });
     }
 
-    /**
-   * [ARCHITECT FIX] Renders inventory with Stat Tooltips.
-   * Hovering now shows "WC: 5" instead of just the name.
+   /**
+   * [ARCHITECT FIX] Text-Only Mode (Dev)
+   * Disables images to prevent 404/CORB errors. Shows "Type T#" instead.
    */
   render() {
       // 1. Container Check
@@ -79,17 +79,16 @@ export class InventoryManager {
           return;
       }
 
-      // 3. Render Cards with Tooltips
+      // 3. Render Cards (TEXT ONLY MODE)
       container.innerHTML = filteredItems.map(item => {
           const baseItem = items[item.id] || items[item.baseItemId] || {};
           const displayItem = { ...baseItem, ...item };
           
           const name = displayItem.name || "Item";
           const tier = displayItem.tier || 1;
-          const type = (displayItem.type || 'misc').toLowerCase();
-          const imgPath = displayItem.imageUrl || `assets/items/${type}_t${tier}.png`;
+          const type = (displayItem.type || 'Misc'); // Keep casing for display
           
-          // [NEW] Generate Stat String for Tooltip
+          // Generate Stat String for Tooltip
           let statString = "";
           if (displayItem.wc) statString = `WC: ${displayItem.wc}`;
           else if (displayItem.ac) statString = `AC: ${displayItem.ac}`;
@@ -98,14 +97,15 @@ export class InventoryManager {
           else statString = displayItem.type || "Misc";
 
           return `
-              <div class="item-card relative border border-gray-600 bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group"
+              <div class="item-card relative border border-gray-600 bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group h-14 flex items-center justify-center"
                    onclick="window.gameManager.InventoryManager.showItemDetails('${item.uuid || item.instanceId}')">
                   
-                  <img src="${imgPath}" class="w-full h-12 object-contain" 
-                       onerror="this.src='https://placehold.co/48x48/333?text=${name.charAt(0)}'">
+                  <div class="flex flex-col items-center justify-center text-center w-full">
+                      <span class="text-[10px] font-bold text-cyan-200 leading-none">${type}</span>
+                      <span class="text-[9px] font-mono text-yellow-500 mt-0.5">T${tier}</span>
+                  </div>
                   
-                  <span class="absolute top-0 right-0 bg-black/60 text-xs px-1 text-white">T${tier}</span>
-                  ${displayItem.qty > 1 ? `<span class="absolute bottom-0 right-0 bg-blue-900 text-xs px-1">${displayItem.qty}</span>` : ''}
+                  ${displayItem.qty > 1 ? `<span class="absolute bottom-0 right-0 bg-blue-900 text-[9px] px-1 rounded-tl">${displayItem.qty}</span>` : ''}
                   
                   <div class="hidden group-hover:flex flex-col absolute inset-0 bg-black/95 z-20 items-center justify-center text-center p-1 border border-cyan-500/50">
                       <span class="text-[9px] text-cyan-100 font-bold leading-tight mb-1">${name}</span>
