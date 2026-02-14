@@ -305,34 +305,32 @@ const Systems = {
     return { outcome: 'VICTORY', finalState: { player, monster }, log: [] };
   },
 
-  // --- [NEW] ENCHANTMENT GENERATOR (GDD 2.4) ---
+  // --- [ARCHITECT FIX] ENCHANTMENT GENERATOR (GDD 2.4) ---
+  // Updated: Uses Item Tier instead of Zone Level for scaling.
   generateEnchantments(item, qm, zoneId) {
     let count = 0;
+    
+    // [TWEAK] Boosted count logic for high quality
     if (qm >= 1.5) count = 4;        
-    else if (qm >= 1.25) count = Math.floor(Math.random() * 2) + 2; 
-    else if (qm >= 1.00) count = Math.floor(Math.random() * 2) + 1; 
+    else if (qm >= 1.25) count = Math.floor(Math.random() * 2) + 2; // 2-3
+    else if (qm >= 1.15) count = 2; // Guarantee 2 for decent Shadows (+15%+)
+    else if (qm >= 1.00) count = Math.floor(Math.random() * 2) + 1; // 1-2
     else count = Math.random() < 0.5 ? 1 : 0; 
 
     if (count === 0 || !enchantments) return [];
 
-    const zone = Array.isArray(zones) 
-        ? zones.find(z => z.id === zoneId) 
-        : (zones && zones[zoneId] ? zones[zoneId] : null);
-        
-    const lvl = (zone && typeof zone.minLevel === 'number') ? zone.minLevel : 1;
+    // [FIX] Scale Magic Tier based on ITEM TIER (The 2.25 Rule)
+    // Example: Tier 20 Item / 2.25 = 8.88 -> Tier 9 Magic
+    const itemTier = item.tier || 1;
+    let magicTier = Math.ceil(itemTier / 2.25);
     
-    let tier = 1;
-    if (lvl >= 13000) tier = 9;
-    else if (lvl >= 6000) tier = 8;
-    else if (lvl >= 3000) tier = 7;
-    else if (lvl >= 1000) tier = 6;
-    else if (lvl >= 500) tier = 5;
-    else if (lvl >= 250) tier = 4;
-    else if (lvl >= 100) tier = 3;
-    else if (lvl >= 50) tier = 2;
+    // Clamp Tier between 1 and 9
+    magicTier = Math.max(1, Math.min(9, magicTier));
 
     const selected = [];
     const allEnchants = [];
+    
+    // Gather all possible enchants
     if (enchantments.caster) allEnchants.push(...Object.values(enchantments.caster));
     if (enchantments.fighter) allEnchants.push(...Object.values(enchantments.fighter));
     if (enchantments.support) allEnchants.push(...Object.values(enchantments.support));
@@ -343,18 +341,19 @@ const Systems = {
         const enchData = allEnchants[randIndex];
         
         let value = 0;
-        if (enchData.tiers && enchData.tiers.length >= tier) {
-            value = enchData.tiers[tier - 1]; 
+        // Logic to pull the correct value for the calculated Magic Tier
+        if (enchData.tiers && enchData.tiers.length >= magicTier) {
+            value = enchData.tiers[magicTier - 1]; 
         } else if (enchData.values) {
-             value = enchData.values[Math.min(tier - 1, enchData.values.length - 1)];
+             value = enchData.values[Math.min(magicTier - 1, enchData.values.length - 1)];
         }
 
         selected.push({ 
             id: enchData.id, 
             name: enchData.name, 
-            effect: enchData.effect,
+            effect: enchData.effect, // Pass the Effect Name (e.g. "Strength")
             value: value, 
-            tier: tier 
+            tier: magicTier 
         });
         
         allEnchants.splice(randIndex, 1);
@@ -362,50 +361,43 @@ const Systems = {
     return selected;
   },
 
-  // --- [ARCHITECT FIX] SHADOW LOGIC + RESTORED DROP TABLES ---
-  // PRESERVED: Drop Tables, Cross-Drop Logic, Dropper Logic.
-  // UPDATED: Data access (player.equipped) and Registry Lookups (Flat List).
+// --- [ARCHITECT FIX] SHADOW DROP SYSTEM ---
+  // Implements: 3x Weighted Target Farming, Echo Degradation, Floor at Tier 1
   generateShadowLoot(player, currentZoneId) {
-      // 1. Slot Map: Maps Legacy/GDD Keys to New EquipmentManager Keys
-      // We pick a key (e.g., 'mainHand'), then map it to the actual slot 'MAIN_HAND'
+      // 1. Select Slot (Updated to include Spells & Jewelry)
       const slotKeyMap = {
-          'mainHand': 'MAIN_HAND',
-          'offHand': 'OFF_HAND',
-          'head': 'HEAD',
-          'body': 'BODY',
-          'legs': 'LEGS',
-          'feet': 'FEET',
-          'hands': 'HANDS'
+          'mainHand': 'MAIN_HAND', 'offHand': 'OFF_HAND', 'head': 'HEAD',
+          'body': 'BODY', 'legs': 'LEGS', 'feet': 'FEET', 'hands': 'HANDS',
+          'spell1': 'SPELL_1', 'spell2': 'SPELL_2',
+          'neck': 'NECK', 'ring': 'RING'
       };
       
       const legacySlots = Object.keys(slotKeyMap);
       const selectedLegacySlot = legacySlots[Math.floor(Math.random() * legacySlots.length)];
       const actualSlotKey = slotKeyMap[selectedLegacySlot];
       
-      // [FIX] Access the NEW equipped structure
       let mother = player.equipped ? player.equipped[actualSlotKey] : null;
-      
-      // Legacy support: If it's still a string ID, find the object
+      // Legacy support for string IDs
       if (typeof mother === 'string') {
           mother = player.inventory.find(i => i.instanceId === mother || i.uuid === mother);
       }
 
-      // 2. DROP TABLES (YOUR ORIGINAL LOGIC RESTORED)
+      // Hardcoded Drop Tables (Mapped to match your dropTables.js)
       const dropTables = {
-          "DT2": { name: "Heavy Weapons", pool: ["Sword", "Axe", "Scythe", "Mace"], crossDrop: "DT3" },
-          "DT3": { name: "Light/Ranged", pool: ["Bow", "Arrow", "Claw", "Dagger"], crossDrop: "DT2" },
-          "DT4": { name: "Lower Armor", pool: ["Leggings", "Boots"], crossDrop: null },
-          "DT5": { name: "Upper Armor", pool: ["Helmet", "Gloves"], crossDrop: null },
-          "DT6": { name: "Elemental Magic", pool: ["Air", "Fire", "Earth", "Water"], crossDrop: null },
-          "DT7": { name: "Armor", pool: ["Helmet", "Chest", "Leggings", "Boots", "Gloves"], crossDrop: null },
-          "DT8": { name: "Support Magic", pool: ["Buff", "Heal"], crossDrop: "DT6" }
+          "DT2": { name: "Fighter Weapons", pool: ["axe", "bow", "arrow", "claw", "dagger", "mace", "sword", "staff"], crossDrop: null },
+          "DT3": { name: "Upper Armor", pool: ["helm", "gloves"], crossDrop: null },
+          "DT4": { name: "Armor", pool: ["chest"], crossDrop: null },
+          "DT5": { name: "Lower Armor", pool: ["legs", "boots"], crossDrop: null },
+          "DT6": { name: "Elemental Magic", pool: ["air", "arcane", "cold", "death", "drain", "earth", "fire" ], crossDrop: null },
+          "DT7": { name: "Caster Weapons", pool: ["caster off hand", "shield" ], crossDrop: "DT7" },
+          "DT8": { name: "Support Magic", pool: ["might", "guard", "swiftness"], crossDrop: "DT8" },
+          "DT9": { name: "Jewelry", pool: ["necklace", "ring"], crossDrop: null }
       };
 
-      // [FIX] Updated Helper to find items in the new FLAT registry
+      // Helper to find base items in the flat registry
       const findBaseItem = (targetType, targetTier) => {
           if (!targetType) return null;
           const lowerType = targetType.toLowerCase();
-          // The new 'items' object is flat, so we search values directly
           return Object.values(items).find(i => 
               (i.type || '').toLowerCase() === lowerType && 
               i.tier === targetTier
@@ -413,98 +405,119 @@ const Systems = {
       };
 
       let child = {};
-
-      // SCENARIO A: Slot is Empty -> Drop Random Shadow Tier 1 for that slot
+      
+      // SCENARIO A: EMPTY SLOT -> Tier 1 Shadow
       if (!mother) {
-          // Map the legacy slot name (e.g. 'head') to a default item type (e.g. 'Helmet')
           let defaultType = 'Sword';
+          // Physical Gear
           if (selectedLegacySlot === 'head') defaultType = 'Helmet';
           if (selectedLegacySlot === 'body') defaultType = 'Chest';
           if (selectedLegacySlot === 'legs') defaultType = 'Leggings';
           if (selectedLegacySlot === 'feet') defaultType = 'Boots';
           if (selectedLegacySlot === 'hands') defaultType = 'Gloves';
           if (selectedLegacySlot === 'offHand') defaultType = 'Shield';
+          // New Slots
+          if (selectedLegacySlot === 'spell1' || selectedLegacySlot === 'spell2') defaultType = 'Fire';
+          if (selectedLegacySlot === 'neck') defaultType = 'Necklace';
+          if (selectedLegacySlot === 'ring') defaultType = 'Ring';
 
           const baseItem = findBaseItem(defaultType, 1);
           if (!baseItem) return null;
 
           child = { ...baseItem };
-          child.type = 'Shadow';
+          child.isShadow = true;
+          child.rarity = 'Shadow';
           child.name = `Shadow of ${baseItem.name}`;
           child.tier = 1;
-          child.qualityMultiplier = 0.75 + (Math.random() * 0.75);
-          child.enchantments = this.generateEnchantments(child, child.qualityMultiplier, currentZoneId);
+          child.qualityMultiplier = 0.75 + (Math.random() * 0.75); // 75% - 150%
+          child.enchantments = this.generateEnchantments(child, child.qualityMultiplier);
+          child.category = baseItem.category || 'Misc';
+          child.type = baseItem.type || 'Misc';
       }
       
-      // SCENARIO B: Mother is a Shadow -> Drop Echo
-      else if (mother.type === 'Shadow') {
-          child = { ...mother };
-          child.type = 'Echo';
-          child.name = `Echo of ${mother.name}`;
-          child.qualityMultiplier = 0.5;
-          child.enchantments = []; 
-          
+      // SCENARIO B: MOTHER IS SHADOW or ECHO -> Drops ECHO
+      // Logic: Drops Echo of [Mother Name]. Tier Random(1 to Current-1). Floor 1.
+      else if (mother.isShadow || mother.isEcho) {
+          // 1. Determine New Tier
+          let newTier = 1;
           if (mother.tier > 1) {
-             const maxTier = mother.tier - 1;
-             child.tier = Math.floor(Math.random() * maxTier) + 1;
-             const downgradedBase = findBaseItem(mother.type, child.tier); 
-             if (downgradedBase) {
-                 child.wc = downgradedBase.wc;
-                 child.ac = downgradedBase.ac;
-                 child.sc = downgradedBase.sc;
-             }
+              // Random between 1 and (MotherTier - 1)
+              newTier = Math.floor(Math.random() * (mother.tier - 1)) + 1;
           } else {
-             child.tier = 1;
+              // Floor: Tier 1 drops Tier 1
+              newTier = 1;
           }
+          
+          // 2. Fetch Base Stats for new Tier
+          let baseItem = findBaseItem(mother.type, newTier);
+          if (!baseItem) baseItem = mother; // Fallback
+
+          child = { ...baseItem };
+          child.tier = newTier;
+          child.isEcho = true;
+          child.rarity = 'Echo';
+          child.name = `Echo of ${baseItem.name}`;
+          
+          // 3. Stats: Fixed 50% of Base Item
+          child.qualityMultiplier = 0.5; 
+          child.category = baseItem.category || mother.category;
+          child.type = baseItem.type || mother.type;
+
+          // 4. Enchants: Inherit from Mother, slashed by 50%
+          child.enchantments = (mother.enchantments || []).map(e => ({
+              ...e,
+              value: safeVal(e.value) * 0.5 // Slash power
+          }));
       }
 
-      // SCENARIO C: Mother is Dropper OR Standard -> Use Drop Tables
+      // SCENARIO C: STANDARD ITEM ("Dropper") -> Drops SHADOW
+      // Logic: 3x Weighted Drop Table -> Current/-1 Tier -> High Stats
       else {
-          // 1. Determine Drop Table based on Mother's Type
+          // 1. Identify Drop Table
           let dtKey = null;
           const mType = mother.type || mother.subType || '';
           
           for (const [key, dt] of Object.entries(dropTables)) {
-              // Case-insensitive check against pool
               if (dt.pool.some(t => t.toLowerCase() === mType.toLowerCase())) {
                   dtKey = key;
                   break;
               }
           }
 
-          // 2. Select Pool (Cross-Drop logic handles here if needed, or we just pick from pool)
-          // Note: Your original code selected the CrossDrop table if the mother was a "Dropper".
-          // Since "Dropper" isn't a type in the new system (it's handled by 'Unknown' fix),
-          // we assume ANY matched table is valid.
+          // 2. Build Weighted Pool (Target Farming: 3x Chance for Mother Type)
           const pool = dtKey ? dropTables[dtKey].pool : [mType];
+          const weightedPool = [];
           
-          // 3. Pick Type from Pool
-          const newType = pool[Math.floor(Math.random() * pool.length)];
+          pool.forEach(type => {
+              if (type.toLowerCase() === mType.toLowerCase()) {
+                  weightedPool.push(type, type, type); // 3 Tickets for Mother
+              } else {
+                  weightedPool.push(type); // 1 Ticket for others
+              }
+          });
           
-          // 4. Determine Tier
+          const newType = weightedPool[Math.floor(Math.random() * weightedPool.length)];
+          
+          // 3. Determine Tier (Current or -1)
           let newTier = mother.tier || 1;
           if (newTier > 1 && Math.random() < 0.5) newTier -= 1;
 
-          // 5. Fetch Data
-          let baseItem = findBaseItem(newType, newTier);
-          
-          // Safety Fallback
-          if (!baseItem) baseItem = findBaseItem(mType, newTier);
+          const baseItem = findBaseItem(newType, newTier);
           if (!baseItem) return null;
 
           child = { ...baseItem };
-          child.type = 'Shadow';
-          child.name = `Shadow of ${child.name}`;
           child.tier = newTier;
-          child.qualityMultiplier = 0.75 + (Math.random() * 0.75);
-          child.enchantments = this.generateEnchantments(child, child.qualityMultiplier, currentZoneId);
+          child.isShadow = true;
+          child.rarity = 'Shadow';
+          child.name = `Shadow of ${baseItem.name}`;
+          child.qualityMultiplier = 0.75 + (Math.random() * 0.75); // 75-150%
+          child.enchantments = this.generateEnchantments(child, child.qualityMultiplier);
+          child.category = baseItem.category || 'Misc';
+          child.type = baseItem.type || 'Misc';
       }
+
+      child.instanceId = `${child.baseItemId || 'GEN'}_${child.isEcho ? 'ECHO' : 'SHADOW'}_${Date.now()}_${Math.floor(Math.random()*1000)}`;
       
-      if (!child.name) return null;
-
-      child.instanceId = `${child.baseItemId || 'GEN'}_SHADOW_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-      child.sockets = []; 
-
       return child;
   },
 
@@ -602,11 +615,12 @@ const Systems = {
         const drop = this.generateShadowLoot(player, currentZoneId);
         if (drop) {
             player.inventory.push(drop);
-            if (drop.type === 'Shadow') {
+            // [FIX] Check for boolean flags, not 'type' string
+            if (drop.isShadow) {
                 const qmPct = Math.round((drop.qualityMultiplier - 1) * 100);
                 const enchCount = drop.enchantments ? drop.enchantments.length : 0;
                 lootMessages.push(`Shadow Found: ${drop.name} (+${qmPct}%) [${enchCount} Enchants]`);
-            } else if (drop.type === 'Echo') {
+            } else if (drop.isEcho) {
                 lootMessages.push(`Echo of ${drop.name} manifested!`);
             }
         }

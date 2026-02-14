@@ -1,9 +1,11 @@
 export const dropTableData = {
-    "DT2": { name: "Heavy Weapons", pool: ["sword", "axe", "scythe", "mace"], crossDrop: "DT3" },
-    "DT3": { name: "Light/Ranged", pool: ["bow", "arrow", "claw"], crossDrop: "DT2" },
-    "DT4": { name: "Lower Armor", pool: ["legs", "boots"], crossDrop: null },
-    "DT5": { name: "Upper Armor", pool: ["helm", "gloves"], crossDrop: null },
-    "DT6": { name: "Elemental Magic", pool: ["damageSpell1", "damageSpell2"], crossDrop: null },
-    "DT7": { name: "Armor", pool: ["helm", "chest", "legs", "boots", "gloves"], crossDrop: null },
-    "DT8": { name: "Support Magic", pool: ["buffSpell1", "buffSpell2", "healSpell1"], crossDrop: "DT6" }
-};
+    "DT2": { name: "Fighter Weapons", pool: ["axe", "bow", "arrow", "claw", "dagger", "mace", "sword", "staff"], crossDrop: null },
+    "DT3": { name: "Upper Armor", pool: ["helm", "gloves"], crossDrop: null },
+    "DT4": { name: "Armor", pool: ["chest"], crossDrop: null },
+    "DT5": { name: "Lower Armor", pool: ["legs", "boots"], crossDrop: null },
+    "DT6": { name: "Elemental Magic", pool: ["air", "arcane", "cold", "death", "drain", "earth", "fire" ], crossDrop: null },
+    "DT7": { name: "Caster Weapons", pool: ["caster off hand", "shield" ], crossDrop: "DT7" },
+    "DT8": { name: "Support Magic", pool: ["might", "guard", "swiftness"], crossDrop: "DT8" },
+    "DT9": { name: "Jewelry", pool: ["necklace", "ring"], crossDrop: null }
+   
+};  

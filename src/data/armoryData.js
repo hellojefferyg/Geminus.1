@@ -1281,6 +1281,552 @@ export const armoryData = {
         sourceType: "dropper"
       }
     },
+    arrow: {
+      "ARR-WPN-T01": {
+        id: "ARR-WPN-T01",
+        name: "Novice Arrow",
+        tier: 1,
+        wc: 13.00,
+        str_req: 5,
+        price: 50000,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T02": {
+        id: "ARR-WPN-T02",
+        name: "Apprentice Arrow",
+        tier: 2,
+        wc: 15.86,
+        str_req: 15,
+        price: 87500,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T03": {
+        id: "ARR-WPN-T03",
+        name: "Journeyman Arrow",
+        tier: 3,
+        wc: 19.35,
+        str_req: 25,
+        price: 153125,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T04": {
+        id: "ARR-WPN-T04",
+        name: "Soldier Arrow",
+        tier: 4,
+        wc: 23.61,
+        str_req: 40,
+        price: 267968,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T05": {
+        id: "ARR-WPN-T05",
+        name: "Veteran Arrow",
+        tier: 5,
+        wc: 28.80,
+        str_req: 55,
+        price: 468945,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T06": {
+        id: "ARR-WPN-T06",
+        name: "Commander Arrow",
+        tier: 6,
+        wc: 35.14,
+        str_req: 70,
+        price: 820654,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T07": {
+        id: "ARR-WPN-T07",
+        name: "Elite Arrow",
+        tier: 7,
+        wc: 42.87,
+        str_req: 90,
+        price: 1436145,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T08": {
+        id: "ARR-WPN-T08",
+        name: "Imperial Arrow",
+        tier: 8,
+        wc: 52.30,
+        str_req: 110,
+        price: 2513253,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T09": {
+        id: "ARR-WPN-T09",
+        name: "Master Arrow",
+        tier: 9,
+        wc: 63.81,
+        str_req: 130,
+        price: 4398193,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T10": {
+        id: "ARR-WPN-T10",
+        name: "Legendary Arrow",
+        tier: 10,
+        wc: 77.85,
+        str_req: 155,
+        price: 7696838,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T11": {
+        id: "ARR-WPN-T11",
+        name: "Mythic Arrow",
+        tier: 11,
+        wc: 94.97,
+        str_req: 180,
+        price: 13469467,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T12": {
+        id: "ARR-WPN-T12",
+        name: "Celestial Arrow",
+        tier: 12,
+        wc: 115.87,
+        str_req: 205,
+        price: 23571567,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T13": {
+        id: "ARR-WPN-T13",
+        name: "Eternal Arrow",
+        tier: 13,
+        wc: 141.36,
+        str_req: 230,
+        price: 41250242,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T14": {
+        id: "ARR-WPN-T14",
+        name: "Ancestral Arrow",
+        tier: 14,
+        wc: 172.46,
+        str_req: 260,
+        price: 72187924,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T15": {
+        id: "ARR-WPN-T15",
+        name: "Primal Arrow",
+        tier: 15,
+        wc: 210.40,
+        str_req: 290,
+        price: 126328867,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T16": {
+        id: "ARR-WPN-T16",
+        name: "Godly Arrow",
+        tier: 16,
+        wc: 256.69,
+        str_req: 320,
+        price: 221075517,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T17": {
+        id: "ARR-WPN-T17",
+        name: "Cosmic Arrow",
+        tier: 17,
+        wc: 313.16,
+        str_req: 350,
+        price: 386882155,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T18": {
+        id: "ARR-WPN-T18",
+        name: "Galactic Arrow",
+        tier: 18,
+        wc: 382.06,
+        str_req: 385,
+        price: 677043771,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T19": {
+        id: "ARR-WPN-T19",
+        name: "Universal Arrow",
+        tier: 19,
+        wc: 466.11,
+        str_req: 420,
+        price: 1184826599,
+        sourceType: "dropper"
+      },
+      "ARR-WPN-T20": {
+        id: "ARR-WPN-T20",
+        name: "Infinite Arrow",
+        tier: 20,
+        wc: 568.65,
+        str_req: 455,
+        price: 2073446549,
+        sourceType: "dropper"
+      }
+    },
+    caster_offhand: {
+      "COH-WPN-T01": {
+        id: "COH-WPN-T01",
+        name: "Novice Orb",
+        tier: 1,
+        sc: 3.25,
+        int_req: 5,
+        price: 50000,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T02": {
+        id: "COH-WPN-T02",
+        name: "Apprentice Orb",
+        tier: 2,
+        sc: 3.97,
+        int_req: 15,
+        price: 87500,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T03": {
+        id: "COH-WPN-T03",
+        name: "Journeyman Orb",
+        tier: 3,
+        sc: 4.84,
+        int_req: 25,
+        price: 153125,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T04": {
+        id: "COH-WPN-T04",
+        name: "Soldier Orb",
+        tier: 4,
+        sc: 5.90,
+        int_req: 40,
+        price: 267968,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T05": {
+        id: "COH-WPN-T05",
+        name: "Veteran Orb",
+        tier: 5,
+        sc: 7.20,
+        int_req: 55,
+        price: 468945,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T06": {
+        id: "COH-WPN-T06",
+        name: "Commander Orb",
+        tier: 6,
+        sc: 8.79,
+        int_req: 70,
+        price: 820654,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T07": {
+        id: "COH-WPN-T07",
+        name: "Elite Orb",
+        tier: 7,
+        sc: 10.72,
+        int_req: 90,
+        price: 1436145,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T08": {
+        id: "COH-WPN-T08",
+        name: "Imperial Orb",
+        tier: 8,
+        sc: 13.08,
+        int_req: 110,
+        price: 2513253,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T09": {
+        id: "COH-WPN-T09",
+        name: "Master Orb",
+        tier: 9,
+        sc: 15.95,
+        int_req: 130,
+        price: 4398193,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T10": {
+        id: "COH-WPN-T10",
+        name: "Legendary Orb",
+        tier: 10,
+        sc: 19.46,
+        int_req: 155,
+        price: 7696838,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T11": {
+        id: "COH-WPN-T11",
+        name: "Mythic Orb",
+        tier: 11,
+        sc: 23.74,
+        int_req: 180,
+        price: 13469467,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T12": {
+        id: "COH-WPN-T12",
+        name: "Celestial Orb",
+        tier: 12,
+        sc: 28.97,
+        int_req: 205,
+        price: 23571567,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T13": {
+        id: "COH-WPN-T13",
+        name: "Eternal Orb",
+        tier: 13,
+        sc: 35.34,
+        int_req: 230,
+        price: 41250242,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T14": {
+        id: "COH-WPN-T14",
+        name: "Ancestral Orb",
+        tier: 14,
+        sc: 43.12,
+        int_req: 260,
+        price: 72187924,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T15": {
+        id: "COH-WPN-T15",
+        name: "Primal Orb",
+        tier: 15,
+        sc: 52.60,
+        int_req: 290,
+        price: 126328867,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T16": {
+        id: "COH-WPN-T16",
+        name: "Godly Orb",
+        tier: 16,
+        sc: 64.17,
+        int_req: 320,
+        price: 221075517,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T17": {
+        id: "COH-WPN-T17",
+        name: "Cosmic Orb",
+        tier: 17,
+        sc: 78.29,
+        int_req: 350,
+        price: 386882155,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T18": {
+        id: "COH-WPN-T18",
+        name: "Galactic Orb",
+        tier: 18,
+        sc: 95.52,
+        int_req: 385,
+        price: 677043771,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T19": {
+        id: "COH-WPN-T19",
+        name: "Universal Orb",
+        tier: 19,
+        sc: 116.53,
+        int_req: 420,
+        price: 1184826599,
+        sourceType: "dropper"
+      },
+      "COH-WPN-T20": {
+        id: "COH-WPN-T20",
+        name: "Infinite Orb",
+        tier: 20,
+        sc: 142.16,
+        int_req: 455,
+        price: 2073446549,
+        sourceType: "dropper"
+      }
+    },
+    shield: {
+      "SHD-WPN-T01": {
+        id: "SHD-WPN-T01",
+        name: "Novice Shield",
+        tier: 1,
+        ac: 3.25,
+        int_req: 5,
+        price: 50000,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T02": {
+        id: "SHD-WPN-T02",
+        name: "Apprentice Shield",
+        tier: 2,
+        ac: 3.97,
+        int_req: 15,
+        price: 87500,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T03": {
+        id: "SHD-WPN-T03",
+        name: "Journeyman Shield",
+        tier: 3,
+        ac: 4.84,
+        int_req: 25,
+        price: 153125,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T04": {
+        id: "SHD-WPN-T04",
+        name: "Soldier Shield",
+        tier: 4,
+        ac: 5.90,
+        int_req: 40,
+        price: 267968,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T05": {
+        id: "SHD-WPN-T05",
+        name: "Veteran Shield",
+        tier: 5,
+        ac: 7.20,
+        int_req: 55,
+        price: 468945,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T06": {
+        id: "SHD-WPN-T06",
+        name: "Commander Shield",
+        tier: 6,
+        ac: 8.79,
+        int_req: 70,
+        price: 820654,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T07": {
+        id: "SHD-WPN-T07",
+        name: "Elite Shield",
+        tier: 7,
+        ac: 10.72,
+        int_req: 90,
+        price: 1436145,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T08": {
+        id: "SHD-WPN-T08",
+        name: "Imperial Shield",
+        tier: 8,
+        ac: 13.08,
+        int_req: 110,
+        price: 2513253,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T09": {
+        id: "SHD-WPN-T09",
+        name: "Master Shield",
+        tier: 9,
+        ac: 15.95,
+        int_req: 130,
+        price: 4398193,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T10": {
+        id: "SHD-WPN-T10",
+        name: "Legendary Shield",
+        tier: 10,
+        ac: 19.46,
+        int_req: 155,
+        price: 7696838,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T11": {
+        id: "SHD-WPN-T11",
+        name: "Mythic Shield",
+        tier: 11,
+        ac: 23.74,
+        int_req: 180,
+        price: 13469467,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T12": {
+        id: "SHD-WPN-T12",
+        name: "Celestial Shield",
+        tier: 12,
+        ac: 28.97,
+        int_req: 205,
+        price: 23571567,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T13": {
+        id: "SHD-WPN-T13",
+        name: "Eternal Shield",
+        tier: 13,
+        ac: 35.34,
+        int_req: 230,
+        price: 41250242,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T14": {
+        id: "SHD-WPN-T14",
+        name: "Ancestral Shield",
+        tier: 14,
+        ac: 43.12,
+        int_req: 260,
+        price: 72187924,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T15": {
+        id: "SHD-WPN-T15",
+        name: "Primal Shield",
+        tier: 15,
+        ac: 52.60,
+        int_req: 290,
+        price: 126328867,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T16": {
+        id: "SHD-WPN-T16",
+        name: "Godly Shield",
+        tier: 16,
+        ac: 64.17,
+        int_req: 320,
+        price: 221075517,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T17": {
+        id: "SHD-WPN-T17",
+        name: "Cosmic Shield",
+        tier: 17,
+        ac: 78.29,
+        int_req: 350,
+        price: 386882155,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T18": {
+        id: "SHD-WPN-T18",
+        name: "Galactic Shield",
+        tier: 18,
+        ac: 95.52,
+        int_req: 385,
+        price: 677043771,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T19": {
+        id: "SHD-WPN-T19",
+        name: "Universal Shield",
+        tier: 19,
+        ac: 116.53,
+        int_req: 420,
+        price: 1184826599,
+        sourceType: "dropper"
+      },
+      "SHD-WPN-T20": {
+        id: "SHD-WPN-T20",
+        name: "Infinite Shield",
+        tier: 20,
+        ac: 142.16,
+        int_req: 455,
+        price: 2073446549,
+        sourceType: "dropper"
+      }
+    },
     helmet: {
     "HLM-HLM-T01": {
       id: "HLM-HLM-T01",

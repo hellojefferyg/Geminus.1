@@ -81,13 +81,13 @@ export class ModalManager {
   }
 
   /**
-   * [ARCHITECT FIX] Item Inspector with Context
-   * Handles both "Equip" and "Unequip" states.
+   * [ARCHITECT FIX] Item Inspector - Universal Stat Support
+   * dynamically renders ANY stat found in gemsData, jewelryData, or armoryData.
    */
   showItemInspector(item, context = {}) {
     if (!item) return;
 
-    // 1. Resolve Base Data
+    // 1. Resolve Base Data & Merge
     const baseItem = findItemById(item.baseItemId || item.id);
     const fullItem = { ...baseItem, ...item };
 
@@ -95,47 +95,178 @@ export class ModalManager {
     const desc = fullItem.description || "No description available.";
     const imageUrl = fullItem.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${name.substring(0,2)}`;
     
+    // Calculate Quality Multiplier
+    const qm = (typeof fullItem.qualityMultiplier === 'number') ? fullItem.qualityMultiplier : 1.0;
+    
+    // Helper: Apply QM to stat and format
+    const getEffStat = (val) => (Number(val) * qm).toFixed(2);
+
+    // --- STAT CONFIGURATION ---
+    // Maps internal database keys to readable labels and colors
+    const statConfig = [
+        // Primary Combat (Multiplied)
+        { key: 'wc', label: 'Weapon Class', color: 'text-red-400' },
+        { key: 'ac', label: 'Armor Class', color: 'text-blue-400' },
+        { key: 'sc', label: 'Spell Class', color: 'text-purple-400' },
+        
+        // Base Attributes
+        { key: 'str_bonus', label: 'Strength', color: 'text-red-300' },
+        { key: 'vit_bonus', label: 'Vitality', color: 'text-green-300' },
+        { key: 'dex_bonus', label: 'Dexterity', color: 'text-yellow-300' },
+        { key: 'ntl_bonus', label: 'Intellect', color: 'text-blue-300' },
+        { key: 'int_bonus', label: 'Intellect', color: 'text-blue-300' }, // Handle alias
+        { key: 'wis_bonus', label: 'Wisdom', color: 'text-purple-300' },
+        
+        // Gem/Jewelry Specifics
+        { key: 'wc_bonus', label: 'WC Bonus', color: 'text-red-300' },
+        { key: 'ac_bonus', label: 'AC Bonus', color: 'text-blue-300' },
+        { key: 'sc_bonus', label: 'SC Bonus', color: 'text-purple-300' },
+        { key: 'hp_pct', label: 'Max HP', color: 'text-green-400', isPct: true },
+        { key: 'hp_regen_percent', label: 'HP Regen', color: 'text-green-400', isPct: true },
+        { key: 'regen_pct', label: 'HP Regen', color: 'text-green-400', isPct: true }, // Jewelry alias
+        
+        // Advanced Combat
+        { key: 'crit_bonus', label: 'Crit Chance', color: 'text-yellow-400', isPct: true },
+        { key: 'crit_chance_bonus', label: 'Crit Chance', color: 'text-yellow-400', isPct: true },
+        { key: 'hit_bonus', label: 'Hit Chance', color: 'text-orange-400', isPct: true },
+        { key: 'hit_chance_bonus', label: 'Hit Chance', color: 'text-orange-400', isPct: true },
+        { key: 'double_hit_bonus', label: 'Double Hit', color: 'text-orange-300', isPct: true },
+        { key: 'mastery_chance_bonus', label: 'Mastery', color: 'text-pink-400', isPct: true },
+        
+        // Steals & Debuffs (The "Nasty" Stuff)
+        { key: 'health_steal', label: 'Life Steal', color: 'text-red-500' },
+        { key: 'wis_steal', label: 'Wisdom Steal', color: 'text-purple-500' },
+        { key: 'int_steal', label: 'Intellect Steal', color: 'text-blue-500' },
+        { key: 'str_steal', label: 'Strength Steal', color: 'text-red-500' },
+        { key: 'dex_steal', label: 'Dexterity Steal', color: 'text-yellow-500' },
+        { key: 'enemy_wis_debuff', label: 'Enemy WIS Debuff', color: 'text-gray-400' },
+        { key: 'enemy_int_debuff', label: 'Enemy INT Debuff', color: 'text-gray-400' },
+        { key: 'enemy_str_debuff', label: 'Enemy STR Debuff', color: 'text-gray-400' },
+        { key: 'enemy_dex_debuff', label: 'Enemy DEX Debuff', color: 'text-gray-400' },
+        { key: 'enemy_hit_debuff', label: 'Blind (Hit Debuff)', color: 'text-gray-400' },
+
+        // Economy & Luck
+        { key: 'exp_bonus', label: 'EXP Bonus', color: 'text-cyan-400', isPct: true },
+        { key: 'gold_bonus', label: 'Gold Bonus', color: 'text-yellow-400', isPct: true },
+        { key: 'shadow_drop_bonus', label: 'Shadow Luck', color: 'text-purple-500', isPct: true },
+        { key: 'shadow_bonus', label: 'Shadow Luck', color: 'text-purple-500', isPct: true }, // Artifact alias
+        { key: 'drop_chance_bonus', label: 'Drop Rate', color: 'text-green-300', isPct: true },
+        { key: 'gem_bonus', label: 'Gem Luck', color: 'text-pink-400', isPct: true },
+        { key: 'resource_drop_bonus', label: 'Harvester', color: 'text-emerald-400', isPct: true }
+    ];
+
     // 2. Build Stats Block
     let statsHTML = '';
-    if (fullItem.wc) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Weapon Class (WC)</span> <span class="text-red-400 font-bold">${fullItem.wc}</span></div>`;
-    if (fullItem.ac) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Armor Class (AC)</span> <span class="text-blue-400 font-bold">${fullItem.ac}</span></div>`;
-    if (fullItem.sc) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Spell Class (SC)</span> <span class="text-purple-400 font-bold">${fullItem.sc}</span></div>`;
     
-    if (fullItem.hp_regen_percent) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">HP Regen</span> <span class="text-green-400 font-bold">+${(fullItem.hp_regen_percent * 100).toFixed(0)}%</span></div>`;
-    if (fullItem.crit_bonus) statsHTML += `<div class="flex justify-between"><span class="text-gray-400">Crit Chance</span> <span class="text-yellow-400 font-bold">+${fullItem.crit_bonus}%</span></div>`;
+    statConfig.forEach(stat => {
+        // Check if item has this property (value > 0)
+        if (fullItem[stat.key] !== undefined && Number(fullItem[stat.key]) !== 0) {
+            const rawVal = Number(fullItem[stat.key]);
+            
+            // Logic: Is this a stat that gets multiplied by Quality?
+            // Usually, EVERYTHING on a Shadow item scales, but percentages (like 0.05) need care.
+            // For now, we apply QM to everything for Shadow consistency.
+            const effVal = rawVal * qm;
+            
+            let displayVal = '';
+            
+            if (stat.isPct) {
+                // If it's a small decimal (e.g. 0.05), treat as 5%. If it's > 1 (e.g. 5), treat as 5%.
+                // Your data mixes these (Jewelry uses 0.05, Gems use integers like 5).
+                // Heuristic: If value <= 1, multiply by 100.
+                let pctVal = effVal;
+                if (Math.abs(rawVal) <= 1.0) pctVal = effVal * 100;
+                
+                displayVal = `+${Number(pctVal).toFixed(2)}%`;
+            } else {
+                displayVal = effVal.toFixed(2);
+                if (effVal > 0) displayVal = `+${displayVal}`; // Add plus sign for bonuses
+            }
+            
+            // Special formatting for Primary Stats (WC/AC/SC) to match old style
+            if (['wc', 'ac', 'sc'].includes(stat.key)) {
+                displayVal = effVal.toFixed(2); // No plus sign
+            }
 
-    // 3. Dynamic Action Button (Equip vs Unequip)
-    // [THIS IS THE MISSING PART IN YOUR VERSION]
+            statsHTML += `
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400 text-xs">${stat.label}</span>
+                    <span class="${stat.color} font-bold font-mono text-sm">
+                        ${displayVal} 
+                        ${qm !== 1.0 ? `<span class="text-[9px] text-gray-600">(${rawVal})</span>` : ''}
+                    </span>
+                </div>`;
+        }
+    });
+
+    // 3. Build Enchantments Block
+    let enchantHTML = '';
+    if (fullItem.enchantments && fullItem.enchantments.length > 0) {
+        enchantHTML = `<div class="mt-3 pt-2 border-t border-gray-700">`;
+        enchantHTML += `<div class="text-[10px] text-cyan-500 uppercase tracking-widest mb-1 font-orbitron">Enchantments</div>`;
+        
+        fullItem.enchantments.forEach(ench => {
+            let color = 'text-gray-300';
+            if (ench.tier >= 7) color = 'text-yellow-400'; 
+            else if (ench.tier >= 4) color = 'text-blue-300'; 
+            
+            const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : ench.value;
+            const effectDesc = ench.effect || "Stat";
+
+            enchantHTML += `
+                <div class="flex justify-between text-xs items-center mb-1">
+                    <span class="${color}">${ench.name}</span>
+                    <span class="font-mono ${color} text-[10px] bg-black/40 px-1.5 rounded">
+                        +${val} ${effectDesc}
+                    </span>
+                </div>`;
+        });
+        enchantHTML += `</div>`;
+    }
+
+    // 4. Dynamic Action Button
     let actionBtnHTML;
+    const isGem = (fullItem.type || '').toLowerCase() === 'gem' || (fullItem.category || '').toLowerCase() === 'gem';
+    
     if (context.isEquipped) {
         actionBtnHTML = `
             <button id="inspector-action-btn" class="glass-button py-3 text-yellow-400 border-yellow-900/50 hover:bg-yellow-900/20 font-bold tracking-wider">
                 UNEQUIP
             </button>`;
-    } else {
+    } else if (!isGem) {
         actionBtnHTML = `
             <button id="inspector-action-btn" class="glass-button py-3 text-green-400 border-green-900/50 hover:bg-green-900/20 font-bold tracking-wider">
                 EQUIP
             </button>`;
+    } else {
+        // Gem State
+        actionBtnHTML = `
+            <button class="glass-button py-3 text-gray-500 border-gray-700 cursor-not-allowed font-bold tracking-wider opacity-50">
+                SOCKETABLE
+            </button>`;
     }
 
-    // 4. Render HTML
+    // 5. Render Full HTML
     const contentHTML = `
       <div class="flex flex-col gap-4">
         <div class="flex justify-center py-4 bg-black/20 rounded-lg">
             <div class="relative w-24 h-24 border border-[var(--border-color-main)] rounded-md flex items-center justify-center bg-black/60 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
                 <img src="${imageUrl}" class="w-16 h-16 object-contain drop-shadow-md" alt="${name}">
-                <div class="absolute bottom-1 right-1 px-1.5 py-0.5 bg-[var(--gold-color)] text-black text-[10px] font-bold rounded">T${fullItem.tier || 1}</div>
+                <div class="absolute bottom-1 right-1 px-1.5 py-0.5 bg-[var(--gold-color)] text-black text-[10px] font-bold rounded">T${fullItem.tier || fullItem.grade || 1}</div>
             </div>
         </div>
         
         <div class="glass-panel p-3 rounded space-y-2 text-sm">
             <div class="flex justify-between border-b border-gray-700 pb-1 mb-2">
                 <span class="text-gray-400">Type</span> 
-                <span class="text-[var(--highlight-color)] font-orbitron">${fullItem.type || fullItem.category || 'Misc'}</span>
+                <span class="text-[var(--highlight-color)] font-orbitron capitalize">${fullItem.type || fullItem.category || 'Misc'}</span>
             </div>
+            
             ${statsHTML}
-            ${fullItem.qualityMultiplier > 1 ? `<div class="flex justify-between mt-2 pt-2 border-t border-gray-700"><span class="text-yellow-500">Quality</span> <span class="text-yellow-400">+${Math.round((fullItem.qualityMultiplier - 1) * 100)}%</span></div>` : ''}
+            
+            ${qm !== 1.0 ? `<div class="flex justify-between mt-2 pt-2 border-t border-gray-700"><span class="text-yellow-500">Quality</span> <span class="text-yellow-400">${qm > 1 ? '+' : ''}${Math.round((qm - 1) * 100)}%</span></div>` : ''}
+            
+            ${enchantHTML}
         </div>
 
         <p class="text-xs text-gray-400 italic text-center px-4 leading-relaxed">"${desc}"</p>
@@ -156,16 +287,14 @@ export class ModalManager {
             const trashBtn = contentDiv.querySelector('#inspector-trash-btn');
             const gm = window.gameManager;
 
-            if (actionBtn) {
+            if (actionBtn && !actionBtn.classList.contains('cursor-not-allowed')) {
                 actionBtn.onclick = () => {
                     if (context.isEquipped) {
-                        // UNEQUIP ACTION
                         if (gm && gm.EquipmentManager) {
                             gm.EquipmentManager.unequipItem(context.slotKey);
                             this.hide();
                         }
                     } else {
-                        // EQUIP ACTION
                         if (gm && gm.EquipmentManager) {
                             gm.EquipmentManager.equipItem(fullItem); 
                             this.hide();
