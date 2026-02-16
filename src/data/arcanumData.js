@@ -154,7 +154,8 @@ export const arcanumData = {
       "FIR-T18": { id: "FIR-T18", name: "Ascended Fire", tier: 18, ac: 0, wc: 0, sc: 382.06, hit: 0, ntl_req: 385, price: 677043771, sourceType: "dropper" },
       "FIR-T19": { id: "FIR-T19", name: "Geminus Fire", tier: 19, ac: 0, wc: 0, sc: 466.11, hit: 0, ntl_req: 420, price: 1184826599, sourceType: "dropper" },
       "FIR-T20": { id: "FIR-T20", name: "Infinite Fire", tier: 20, ac: 0, wc: 0, sc: 568.65, hit: 0, ntl_req: 455, price: 2073446549, sourceType: "dropper" }
-    },
+  }},
+  Buff: {
     might: {
       "MGT-T01": { id: "MGT-T01", name: "Novice Might", tier: 1, ac: 0, wc: 3.25, sc: 0, hit: 0, str_req: 5, price: 50000, sourceType: "dropper" },
       "MGT-T02": { id: "MGT-T02", name: "Apprentice Might", tier: 2, ac: 0, wc: 3.97, sc: 0, hit: 0, str_req: 15, price: 87500, sourceType: "dropper" },

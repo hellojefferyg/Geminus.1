@@ -204,13 +204,17 @@ const flattenItems = () => {
             });
         });
     }
-    if (arcanumData.buffs) {
-        Object.entries(arcanumData.buffs).forEach(([key, val]) => {
+    // [FIX] Preserve specific types (Might, Guard, etc.) for Arcanum Buffs
+    const buffData = arcanumData.buffs || arcanumData.Buff;
+    if (buffData) {
+        Object.entries(buffData).forEach(([typeKey, val]) => {
              if (val.id) {
-                 allItems[val.id] = { ...val, type: 'Buff', category: 'Buff' };
+                 // Single item entry
+                 allItems[val.id] = { ...val, type: typeKey, category: 'Buff' };
              } else {
+                 // Nested tiered entries
                  Object.values(val).forEach(item => {
-                     allItems[item.id] = { ...item, type: 'Buff', category: 'Buff' };
+                     allItems[item.id] = { ...item, type: typeKey, category: 'Buff' };
                  });
              }
         });

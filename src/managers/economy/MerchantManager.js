@@ -12,60 +12,69 @@ export class MerchantManager {
         this.ProfileManager = managers.ProfileManager;
     }
 
-    /**
-     * RETRIEVAL: Fetches the raw data for the storefronts.
-     * PRESERVES 'TYPE' (Axe, Cold, etc.) for UI Matching.
-     * @param {string} storeType - 'armory' | 'arcanum'
-     */
     getShopData(storeType) {
         const items = [];
         
         if (storeType === 'armory') {
-            // Flatten Weapons (Preserve Type: axe, bow, etc.)
             if (armoryData && armoryData.weapons) {
-                Object.entries(armoryData.weapons).forEach(([type, categoryObj]) => {
-                    Object.values(categoryObj).forEach(item => {
-                        items.push({ ...item, category: 'Weapons', type: type });
+                Object.entries(armoryData.weapons).forEach(([type, subCategoryObj]) => {
+                    Object.values(subCategoryObj).forEach(item => {
+                        items.push({ 
+                            ...item, 
+                            category: 'Weapons', 
+                            type: type, 
+                            levelReq: item.str_req || item.int_req || item.vit_req || 1
+                        });
                     });
                 });
             }
-            // Flatten Armor
             if (armoryData && armoryData.armor) {
-                Object.entries(armoryData.armor).forEach(([type, categoryObj]) => {
-                    Object.values(categoryObj).forEach(item => {
-                        items.push({ ...item, category: 'Armor', type: type });
+                Object.entries(armoryData.armor).forEach(([type, subCategoryObj]) => {
+                    Object.values(subCategoryObj).forEach(item => {
+                        items.push({ 
+                            ...item, 
+                            category: 'Armor', 
+                            type: type, 
+                            levelReq: item.vit_req || 1 
+                        });
                     });
                 });
             }
-            // Flatten Jewelry
             if (jewelryData) {
-                 Object.entries(jewelryData).forEach(([type, categoryObj]) => {
-                    // Jewelry often has sub-types like 'necklace' or 'ring'
-                    Object.values(categoryObj).forEach(item => {
-                        items.push({ ...item, category: 'Jewelry', type: type });
-                    });
-                 });
-            }
-        } else if (storeType === 'arcanum') {
-            // Flatten Spells
-            if (arcanumData && arcanumData.spells) {
-                Object.entries(arcanumData.spells).forEach(([type, categoryObj]) => {
-                    Object.values(categoryObj).forEach(item => {
-                        items.push({ ...item, category: 'Spell', type: type });
-                    });
+                ['necklace', 'ring'].forEach(cat => {
+                    if (jewelryData[cat]) {
+                        Object.values(jewelryData[cat]).forEach(item => {
+                            items.push({ ...item, category: 'Jewelry', type: cat, levelReq: item.vit_req || 1 });
+                        });
+                    }
                 });
             }
-            // Flatten Buffs (if they exist in a separate category)
-            if (arcanumData && arcanumData.buffs) {
-                 Object.entries(arcanumData.buffs).forEach(([type, categoryObj]) => {
-                    Object.values(categoryObj).forEach(item => {
-                        items.push({ ...item, category: 'Buff', type: type });
+        } 
+
+        else if (storeType === 'arcanum') {
+            if (arcanumData) {
+                if (arcanumData.spells) {
+                    Object.entries(arcanumData.spells).forEach(([type, subCategoryObj]) => {
+                        Object.values(subCategoryObj).forEach(item => {
+                            items.push({ ...item, category: 'Spell', type: type, levelReq: item.ntl_req || 1 });
+                        });
                     });
+                }
+                // [FIX] Match 'Buff' key in arcanumData.js
+                if (arcanumData.Buff) { 
+                    Object.entries(arcanumData.Buff).forEach(([type, subCategoryObj]) => {
+                        Object.values(subCategoryObj).forEach(item => {
+                            items.push({ ...item, category: 'Buff', type: type, levelReq: item.str_req || 1 });
+                        });
+                    });
+                }
+            }
+            if (jewelryData && jewelryData.artifact) {
+                Object.values(jewelryData.artifact).forEach(item => {
+                    items.push({ ...item, category: 'Artifacts', type: 'Artifact', levelReq: item.vit_req || 1 });
                 });
             }
         }
-        
-        // Sort by Tier ascending
         return items.sort((a, b) => (a.tier || 0) - (b.tier || 0));
     }
 
@@ -107,7 +116,7 @@ export class MerchantManager {
     }
 
     /**
-     * TRANSACTION: SELL
+     * TRANSACTION: SELL (With Buyback Support)
      */
     sellItem(itemInstanceOrId) {
         const p = this.state.player;
@@ -117,23 +126,55 @@ export class MerchantManager {
         const index = p.inventory.findIndex(i => i.uuid === uuid || i.instanceId === uuid);
 
         if (index === -1) {
-            this.showToast("Item not found in inventory.", true);
+            this.showToast("Item not found.", true);
             return false;
         }
 
         const item = p.inventory[index];
-
         if (item.locked) {
             this.showToast("Item is locked.", true);
             return false;
         }
 
-        const sellPrice = item.sellValue || Math.floor((item.price || item.cost || 0) * 0.2);
+        // 1. Calculate Price (25% of original price)
+        const sellPrice = item.sellValue || Math.floor((item.price || item.cost || 0) * 0.25);
 
+        // 2. Add to Buyback Buffer before removing from inventory
+        if (!this.buybackStock) this.buybackStock = [];
+        this.buybackStock.unshift({ ...item, buybackPrice: sellPrice });
+        
+        // Keep only the last 10 sold items
+        if (this.buybackStock.length > 10) this.buybackStock.pop();
+
+        // 3. Execute Transaction
         p.inventory.splice(index, 1);
         p.gold += sellPrice;
 
         this.showToast(`Sold ${item.name} for ${sellPrice.toLocaleString()} G`, false);
+        this.sync();
+        return true;
+    }
+
+    /**
+     * TRANSACTION: BUYBACK
+     */
+    buybackItem(index) {
+        const p = this.state.player;
+        const item = this.buybackStock[index];
+        
+        if (!item || p.gold < item.buybackPrice) {
+            this.showToast("Insufficient gold for buyback.", true);
+            return false;
+        }
+
+        p.gold -= item.buybackPrice;
+        
+        // Remove the buyback helper property before returning to inventory
+        const { buybackPrice, ...cleanItem } = item;
+        p.inventory.push(cleanItem);
+        
+        this.buybackStock.splice(index, 1);
+        this.showToast(`Recovered ${cleanItem.name}`, false);
         this.sync();
         return true;
     }

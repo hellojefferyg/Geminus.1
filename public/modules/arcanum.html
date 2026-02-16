@@ -161,7 +161,65 @@
        .modal-content {
            width: 90%; max-width: 400px;
        }
- 
+       /* Magi-Tech Scanning Line Effect */
+#item-display-panel {
+    position: relative;
+    overflow: hidden;
+}
+
+#item-display-panel::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(to bottom, 
+        transparent 50%, 
+        rgba(96, 165, 250, 0.03) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes scanline {
+    0% { transform: translateY(-100%); opacity: 0; }
+    50% { opacity: 0.5; }
+    100% { transform: translateY(260px); opacity: 0; }
+}
+
+#item-display-panel::before {
+    content: "";
+    position: absolute;
+    width: 100%; height: 2px;
+    background: linear-gradient(to right, 
+        transparent, 
+        var(--accent-color), 
+        transparent);
+    top: 0;
+    left: 0;
+    animation: scanline 3s linear infinite;
+    pointer-events: none;
+    z-index: 2;
+    box-shadow: 0 0 8px var(--accent-color);
+}
+ /* Rarity Glow Definitions */
+.shadow-\[0_0_10px_rgba\(59\2c 130\2c 246\2c 0\.5\)\] {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+    border-color: rgba(59, 130, 246, 0.8) !important;
+}
+
+.shadow-\[0_0_15px_rgba\(168\2c 85\2c 247\2c 0\.5\)\] {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.7);
+    border-color: rgba(168, 85, 247, 0.8) !important;
+}
+
+.shadow-\[0_0_20px_rgba\(234\2c 179\2c 8\2c 0\.5\)\] {
+    box-shadow: 0 0 25px rgba(234, 179, 8, 0.8);
+    border-color: rgba(234, 179, 8, 0.9) !important;
+}
+
+/* Ensure the panel transitions smoothly between glows */
+#item-display-panel {
+    transition: box-shadow 0.5s ease-in-out, border-color 0.5s ease-in-out;
+}
    </style>
 </head>
 <body class="flex justify-center">
@@ -274,39 +332,7 @@
        Demon: ['Fire']
    };
  
-   const itemData = {
-       Spell: {
-           Air: { slot: 'spell1', stat: 'SC' }, Arcane: { slot: 'spell1', stat: 'SC' },
-           Cold: { slot: 'spell1', stat: 'SC' }, Death: { slot: 'spell1', stat: 'SC' },
-           Drain: { slot: 'spell1', stat: 'SC' }, Earth: { slot: 'spell1', stat: 'SC' },
-           Fire: { slot: 'spell1', stat: 'SC' },
-       },
-       Buff: {
-           Might: { slot: 'buffspell1', stat: 'Bonus', bonus: '+5% STR' },
-           Guard: { slot: 'buffspell1', stat: 'Bonus', bonus: '+5% VIT' },
-           Swiftness: { slot: 'buffspell1', stat: 'Bonus', bonus: '+5% DEX' },
-       },
-       Artifacts: {
-           "Ring of Earthen Might": { id: 'ring-earthen-might', slot: 'ring', stat: 'Bonus', bonus: '+500 STR & INTL', cost: 5000000, levelReq: 100 },
-           "Band of Astral Insight": { id: 'band-astral-insight', slot: 'ring', stat: 'Bonus', bonus: '+500 DEX & WIS', cost: 5000000, levelReq: 100 },
-           "The Inevitable Eye": { id: 'inevitable-eye', slot: 'necklace', stat: 'Bonus', bonus: '+1% Hit Chance', cost: 75000000, levelReq: 250 },
-       },
-       Summon: {}, // Placeholder for future expansion
-   };
    
-   const tierCostData = {
-       1: 50000, 2: 87500, 3: 153125, 4: 267968, 5: 468945, 6: 820654, 7: 1436145, 
-       8: 2513253, 9: 4398193, 10: 7696838, 11: 13469467, 12: 23571567, 13: 41250242, 
-       14: 72187924, 15: 126328867, 16: 221075517, 17: 386882155, 18: 677043771, 
-       19: 1184826599, 20: 2073446549
-   };
- 
-   const levelReqData = {
-       1: 1, 2: 1, 3: 100, 4: 135, 5: 184, 6: 253, 7: 386, 8: 1000, 9: 3571, 10: 6143,
-       11: 8714, 12: 17272, 13: 28180, 14: 39088, 15: 50000, 16: 83333, 17: 127777,
-       18: 172222, 19: 216666, 20: 400000
-   };
- 
    const getGemSlotsByTier = (tier) => {
        if (tier >= 1 && tier <= 20) return 2;
        return 0;
@@ -321,65 +347,34 @@
        sellSelection: { uuid: null, categoryFilter: 'All', tierFilter: 'All' },
        bulkSellMode: false,
        bulkSellSelection: new Set(),
+       // [ENGINE ALIGNED] Maps Spells & Buffs to internal EquipmentManager keys
+       slotMap: {
+           air: 'spell', arcane: 'spell', cold: 'spell', 
+           death: 'spell', drain: 'spell', earth: 'spell', fire: 'spell',
+           might: 'spell', guard: 'spell', swiftness: 'spell',
+           artifact: 'artifact'
+       },
  
        init(player) {
-           // [FIX] Prevent Double Initialization (Fixes the "Buying 2 Items" bug)
            if (this.isInitialized) {
-               this.player = { ...player }; // Just update data
+               this.player = { ...player };
                this.updateUI();
                return;
            }
            this.isInitialized = true;
-
-           // 1. Store Player
            this.player = { ...player };
            
-           // Safety Checks
            if (!this.player.equipped) this.player.equipped = {}; 
            if (!this.player.inventory) this.player.inventory = [];
 
            this.cacheUI(); 
-           this.generateShopStock();
            this.fetchData(); 
            
-           this.addEventListeners(); // Now only runs ONCE
+           this.addEventListeners();
            this.switchMode('buy');
        },
  
-       generateShopStock() {
-           this.shopStock = [];
-           for (const category in itemData) {
-               if (category === 'Artifacts') {
-                   for (const type in itemData[category]) {
-                       const baseData = itemData[category][type];
-                       this.shopStock.push({
-                           baseId: baseData.id, name: type, category, type,
-                           cost: baseData.cost, levelReq: baseData.levelReq,
-                           slot: baseData.slot, stat: { [baseData.stat]: baseData.bonus },
-                           gemSlots: 0
-                       });
-                   }
-               } else {
-                   for (const type in itemData[category]) {
-                       for (let tier = 1; tier <= 20; tier++) {
-                           const baseData = itemData[category][type];
-                           const classValue = 13 * Math.pow(1.22, tier - 1);
-                           
-                           const item = {
-                               baseId: `${type}-${tier}`, name: `${type} T${tier}`, category, type, tier,
-                               cost: tierCostData[tier], levelReq: levelReqData[tier],
-                               slot: baseData.slot, stat: {}, bonus: baseData.bonus || null,
-                               gemSlots: getGemSlotsByTier(tier)
-                           };
- 
-                           if (baseData.stat === 'SC') item.stat[baseData.stat] = Math.floor(classValue);
-                           else if (baseData.stat === 'Bonus') item.stat[baseData.stat] = baseData.bonus;
-                           this.shopStock.push(item);
-                       }
-                   }
-               }
-           }
-       },
+       
        
        addMockInventory() {
            const createInstance = (baseId, isLocked = false) => {
@@ -504,7 +499,6 @@
            this.ui.buybackContent.classList.toggle('hidden', mode !== 'buyback');
            
            if (mode === 'buy') {
-               this.refreshState(); // [FIX] Force sync here too
                this.populateBuySelectors();
                this.renderUpgradeAdvisor();
            } else if (mode === 'sell') {
@@ -526,6 +520,8 @@
        },
        handleCategoryChange() {
            const isArtifacts = this.buySelection.category === 'Artifacts';
+           
+           // Manage UI visibility for Artifacts vs Spells/Buffs
            this.ui.tieredDropdowns.classList.toggle('hidden', isArtifacts);
            this.ui.artifactDropdown.classList.toggle('hidden', !isArtifacts);
            this.ui.upgradeAdvisorPanel.classList.toggle('hidden', isArtifacts || this.activeMode !== 'buy');
@@ -533,20 +529,25 @@
            if (isArtifacts) {
                this.populateArtifactSelect();
            } else {
+               // [FIX] Reset sub-selection to prevent type overflow
+               this.buySelection.type = ''; 
                this.populateBuyTypeSelect();
                this.populateBuyTierSelect();
            }
            this.updateUI();
        },
        populateBuyCategorySelect() {
-           const categories = Object.keys(itemData);
+           // [FIX] Explicitly define the three main Arcanum categories
+           const categories = ['Spell', 'Buff', 'Artifacts'];
            if (!categories.includes(this.buySelection.category)) this.buySelection.category = categories[0];
+           
            const optionsHTML = categories.map(cat => `<div class="custom-dropdown-option" data-value="${cat}">${cat}</div>`).join('');
-           this.createCustomDropdown(this.ui.categorySelectContainer, this.buySelection.category, optionsHTML, (value) => {
-               this.buySelection.category = value;
-               this.buySelection.artifact = null;
-               this.handleCategoryChange();
-           });
+           this.createCustomDropdown(this.ui.categorySelectContainer || this.ui.buyCategorySelect, this.buySelection.category, optionsHTML, (value) => {
+    this.buySelection.category = value;
+    this.handleCategoryChange(); 
+    // Trigger display to show the first available item in the new category
+    this.renderItemDisplay(true); 
+});
        },
        populateArtifactSelect() {
            const artifacts = this.shopStock.filter(i => i.category === 'Artifacts');
@@ -556,36 +557,54 @@
            const optionsHTML = artifacts.map(art => `<div class="custom-dropdown-option" data-value="${art.baseId}">${art.name}</div>`).join('');
            const currentArtifactName = this.buySelection.artifact ? this.shopStock.find(i=>i.baseId===this.buySelection.artifact).name : 'Select Artifact';
            this.createCustomDropdown(this.ui.artifactDropdown, currentArtifactName, optionsHTML, (value) => {
-               this.buySelection.artifact = value;
-               this.updateUI();
-           });
+    this.buySelection.artifact = value;
+    this.updateUI();
+    this.renderItemDisplay(true); // Auto-examine artifact
+});
        },
        populateBuyTypeSelect() {
-           const types = Object.keys(itemData[this.buySelection.category]);
-           if (!types.includes(this.buySelection.type)) this.buySelection.type = types[0];
-           const playerSpecializations = racialSpecializations[this.player.race] || [];
-           const optionsHTML = types.map(type => {
-               const isSpecialization = playerSpecializations.includes(type);
-               const optionClass = isSpecialization ? 'custom-dropdown-option specialization-glow' : 'custom-dropdown-option';
-               return `<div class="${optionClass}" data-value="${type}">${type}</div>`;
-           }).join('');
-           this.createCustomDropdown(this.ui.typeSelectContainer, this.buySelection.type, optionsHTML, (value) => {
-               this.buySelection.type = value;
-               this.populateBuyTierSelect();
-           });
+           // [FIX] Filter types based on 'Spell' vs 'Buff' category
+           const filteredItems = this.shopStock.filter(i => i.category === this.buySelection.category);
+           const types = [...new Set(filteredItems.map(i => i.type))];
+           
+           if (!types.includes(this.buySelection.type)) {
+               this.buySelection.type = types[0] || '';
+           }
+           
+           const formatName = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+
+           const optionsHTML = types.map(type => 
+               `<div class="custom-dropdown-option" data-value="${type}">${formatName(type)}</div>`
+           ).join('');
+
+           this.createCustomDropdown(this.ui.typeSelectContainer || this.ui.buyTypeSelect, formatName(this.buySelection.type), optionsHTML, (value) => {
+    this.buySelection.type = value;
+    this.populateBuyTierSelect();
+    this.renderItemDisplay(true); // Auto-examine new type
+});
        },
        populateBuyTierSelect() {
-           const tiers = Array.from({ length: 20 }, (_, i) => i + 1);
-           if (!tiers.includes(this.buySelection.tier)) this.buySelection.tier = tiers[0];
+           // [DYNAMIC FIX] Pull only tiers that exist for the selected type
+           const availableItems = this.shopStock.filter(i => 
+               i.category === this.buySelection.category && 
+               i.type === this.buySelection.type
+           );
+           const tiers = [...new Set(availableItems.map(i => i.tier))].sort((a, b) => a - b);
+           
+           if (!tiers.includes(this.buySelection.tier)) this.buySelection.tier = tiers[0] || 1;
+
            const optionsHTML = tiers.map(tier => {
-               const canEquip = this.player.level >= levelReqData[tier];
+               const item = availableItems.find(i => i.tier === tier);
+               const canEquip = item && this.player.level >= (item.levelReq || 1);
                const optionClass = `custom-dropdown-option ${canEquip ? 'equippable' : 'unequippable'}`;
                return `<div class="${optionClass}" data-value="${tier}">T${tier}</div>`;
            }).join('');
+
            this.createCustomDropdown(this.ui.tierSelectContainer, `T${this.buySelection.tier}`, optionsHTML, (value) => {
-               this.buySelection.tier = parseInt(value, 10);
-               this.updateUI();
-           });
+    this.buySelection.tier = parseInt(value, 10);
+    this.updateUI();
+    this.renderItemDisplay(true); // Auto-examine new tier
+});
        },
  
        // --- SELL MODE ---
@@ -681,10 +700,14 @@
        getSelectedItem() {
            if (this.activeMode === 'buy') {
                if(this.buySelection.category === 'Artifacts') {
-                   return this.shopStock.find(i => i.baseId === this.buySelection.artifact);
+                   return this.shopStock.find(i => i.id === this.buySelection.artifact);
                }
-               const baseId = `${this.buySelection.type}-${this.buySelection.tier}`;
-               return this.shopStock.find(i => i.baseId === baseId);
+               // [FIX] Standardized property-based search for Spells and Buffs
+               return this.shopStock.find(i => 
+                   i.category === this.buySelection.category && 
+                   i.type === this.buySelection.type && 
+                   i.tier === this.buySelection.tier
+               );
            }
            if (this.activeMode === 'sell') {
                return this.player.inventory.find(i => i.uuid === this.sellSelection.uuid);
@@ -692,20 +715,17 @@
            return null;
        },
        
-       handleAction() {
-           if (this.activeMode !== 'buy') return;
-           const item = this.getSelectedItem();
-           if (item) this.purchaseItem(item.baseId);
-       },
- 
        purchaseItem(baseId) {
-           const itemToBuy = this.shopStock.find(i => i.baseId === baseId);
+           const itemToBuy = this.shopStock.find(i => i.id === baseId || i.baseId === baseId);
            if (itemToBuy && this.player.gold >= itemToBuy.cost) {
-               this.player.gold -= itemToBuy.cost;
-               const newItem = { ...itemToBuy, uuid: crypto.randomUUID(), sellValue: Math.floor(itemToBuy.cost * 0.25), locked: false };
-               this.player.inventory.push(newItem);
-               this.updateUI();
-               this.renderUpgradeAdvisor();
+               const gm = window.parent.gameManager || window.gameManager;
+               if (gm && gm.MerchantManager) {
+                   const success = gm.MerchantManager.buyItem(itemToBuy);
+                   if (success) {
+                       this.refreshState();
+                       this.renderUpgradeAdvisor();
+                   }
+               }
            }
        },
  
@@ -790,78 +810,103 @@
            }
        },
        renderBuybackList() {
-           if (this.buybackItems.length === 0) {
-               this.ui.buybackContent.innerHTML = `<p class="text-center text-gray-400">No items to buy back.</p>`;
+           const gm = window.parent.gameManager || window.gameManager;
+           const buybackStock = (gm && gm.MerchantManager) ? gm.MerchantManager.buybackStock : []; // 
+
+           if (buybackStock.length === 0) {
+               this.ui.buybackContent.innerHTML = `<p class="text-center text-gray-500 py-8 italic text-sm">The merchant's shelf is empty.</p>`;
                return;
            }
-           this.ui.buybackContent.innerHTML = this.buybackItems.map((item, index) => `
-               <div class="flex items-center justify-between p-2 bg-black/20 rounded-md">
-                   <div>
-                       <p class="font-bold">${item.name}</p>
-                       <p class="text-sm text-yellow-300">${(item.sellValue || 0).toLocaleString()} Gold</p>
+
+           this.ui.buybackContent.innerHTML = buybackStock.map((item, index) => `
+               <div class="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-white/5 mb-2 hover:bg-white/5 transition-colors">
+                   <div class="flex-grow">
+                       <p class="font-bold text-sm text-gray-200">${item.name} <span class="text-[10px] text-gray-500 ml-2">T${item.tier}</span></p>
+                       <p class="text-xs text-yellow-400">${item.buybackPrice.toLocaleString()} Gold</p>
                    </div>
-                   <button data-index="${index}" class="action-button buy-button buyback-btn">Buy Back</button>
+                   <button onclick="ShopManager.executeBuyback(${index})" class="action-button buy-button text-xs py-1 px-3">
+                       Buy Back
+                   </button>
                </div>
            `).join('');
-           this.ui.buybackContent.querySelectorAll('.buyback-btn').forEach(btn => {
-               btn.addEventListener('click', (e) => this.buybackItem(parseInt(e.target.dataset.index)));
-           });
+       },
+
+       // Helper to process the transaction and refresh the UI 
+       executeBuyback(index) {
+           const gm = window.parent.gameManager || window.gameManager;
+           if (gm && gm.MerchantManager) {
+               const success = gm.MerchantManager.buybackItem(index); // 
+               if (success) {
+                   this.refreshState();
+                   this.renderBuybackList();
+               }
+           }
        },
        
        renderUpgradeAdvisor() {
            this.ui.upgradeAdvisorContent.innerHTML = '';
-           
-           if (!this.player.equipped) {
-               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-sm text-gray-400 p-2">Equip items to see upgrades.</p>';
+           if (!this.player.equipped) return;
+
+           const recommendations = [];
+           const viableItems = this.shopStock.filter(item => 
+               this.player.gold >= item.cost && 
+               this.player.level >= item.levelReq
+           );
+
+           viableItems.forEach(shopItem => {
+               const mappedSlot = this.slotMap[shopItem.type];
+               if (!mappedSlot) return;
+
+               //  Engine support for dual slots: Weapons, Rings, and Spells
+               let slotsToCheck = [mappedSlot];
+               if (mappedSlot === 'weapon') slotsToCheck = ['MAIN_HAND', 'OFF_HAND'];
+               if (mappedSlot === 'ring') slotsToCheck = ['RING_1', 'RING_2'];
+               if (mappedSlot === 'spell') slotsToCheck = ['SPELL_1', 'SPELL_2'];
+
+               // Determine primary stat based on your GDD data [cite: 5, 6]
+               let primaryStat = 'WC';
+               if (shopItem.type === 'shield' || shopItem.category === 'Armor') primaryStat = 'AC';
+               if (shopItem.type === 'caster_offhand' || shopItem.category === 'Spell') primaryStat = 'SC';
+
+               slotsToCheck.forEach(slot => {
+                   const equippedItem = this.player.equipped[slot];
+                   
+                   // Compare based on the stat keys in your database [cite: 5, 6]
+                   const currentVal = (equippedItem && equippedItem.stat) ? (equippedItem.stat[primaryStat] || 0) : 0;
+                   const newVal = shopItem.stat ? (shopItem.stat[primaryStat] || 0) : 0;
+
+                   if (newVal > currentVal) {
+                       recommendations.push({ 
+                           shopItem, 
+                           slot, 
+                           diff: newVal - currentVal,
+                           statLabel: primaryStat
+                       });
+                   }
+               });
+           });
+
+           // Show only unique item recommendations, sorted by best gain
+           const topUpgrades = recommendations
+               .sort((a, b) => b.diff - a.diff)
+               .filter((v, i, a) => a.findIndex(t => t.shopItem.id === v.shopItem.id) === i)
+               .slice(0, 3);
+
+           if (topUpgrades.length === 0) {
+               this.ui.upgradeAdvisorContent.innerHTML = '<p class="text-[10px] text-gray-500 p-2 text-center">No upgrades found for current loadout.</p>';
                return;
            }
-           
-           const availableUpgrades = [];
-           const slots = [...new Set(this.shopStock.map(i => i.slot))];
 
-           for (const slot of slots) {
-               // [FIX] Read equipped item directly
-               let equippedItem = this.player.equipped[slot];
-               if (typeof equippedItem === 'string') {
-                   equippedItem = this.player.inventory.find(i => i.uuid === equippedItem);
-               }
- 
-               const itemDef = Object.values(itemData).flatMap(cat => Object.values(cat)).find(def => def.slot === slot);
-               const primaryStat = itemDef ? itemDef.stat : 'SC'; 
-               
-               let currentStatValue = 0;
-               if (equippedItem && equippedItem.stat) {
-                   currentStatValue = equippedItem.stat[primaryStat] || 0;
-               } else if (equippedItem) {
-                   if (primaryStat === 'SC') currentStatValue = equippedItem.sc || 0;
-               }
-
-               const potentialUpgrades = this.shopStock.filter(item => 
-                   item.slot === slot &&
-                   (typeof item.stat[primaryStat] === 'number' && item.stat[primaryStat] > currentStatValue) &&
-                   this.player.gold >= item.cost &&
-                   this.player.level >= item.levelReq
-               );
- 
-               if (potentialUpgrades.length > 0) {
-                   const bestUpgrade = potentialUpgrades.sort((a, b) => (b.stat[primaryStat]||0) - (a.stat[primaryStat]||0))[0];
-                   availableUpgrades.push({ slot, currentItem: equippedItem, newItem: bestUpgrade });
-               }
-           }
-
-           if(availableUpgrades.length === 0) {
-               this.ui.upgradeAdvisorContent.innerHTML = `<p class="text-sm text-gray-400 p-2">No available upgrades.</p>`;
-           } else {
-               this.ui.upgradeAdvisorContent.innerHTML = availableUpgrades.map(({ slot, currentItem, newItem }) => `
-                   <div class="bg-black/20 p-2 rounded-md border border-white/10 mb-2">
-                       <div class="flex justify-between items-center mb-1">
-                          <h4 class="text-sm font-bold text-cyan-200">${newItem.name}</h4>
-                          <p class="text-xs text-green-400">${newItem.cost.toLocaleString()} G</p>
-                       </div>
-                       <div class="text-xs mt-1">${this.generateStatComparisonHTML(currentItem, newItem, false)}</div>
+           this.ui.upgradeAdvisorContent.innerHTML = topUpgrades.map(({ shopItem, slot, diff, statLabel }) => `
+               <div class="bg-black/40 p-2 rounded border border-white/10 mb-1 cursor-pointer hover:bg-white/5" 
+                    onclick="ShopManager.autoSelectUpgrade('${shopItem.category}', '${shopItem.type}', ${shopItem.tier})">
+                   <div class="flex justify-between text-xs">
+                       <span class="font-bold text-orange-200">${shopItem.name}</span>
+                       <span class="text-green-400">+${diff.toFixed(1)} ${statLabel}</span>
                    </div>
-               `).join('');
-           }
+                   <p class="text-[9px] text-cyan-500 mt-0.5 italic">Upgrade for: ${slot.replace('_', ' ')}</p>
+               </div>
+           `).join('');
        },
        
        renderItemDisplay(forceShow = false) {
@@ -877,7 +922,17 @@
                this.ui.itemDisplay.innerHTML = `<p class="text-gray-400">Select an item to examine.</p>`;
                return;
            }
- 
+
+           // [NEW] Rarity Glow Logic based on Tier
+           const tier = item.tier || 1;
+           let rarityGlow = '';
+           if (tier >= 15) rarityGlow = 'shadow-[0_0_20px_rgba(234,179,8,0.5)] border-yellow-500/50'; 
+           else if (tier >= 10) rarityGlow = 'shadow-[0_0_15px_rgba(168,85,247,0.5)] border-purple-500/50'; 
+           else if (tier >= 5) rarityGlow = 'shadow-[0_0_10px_rgba(59,130,246,0.5)] border-blue-500/50';
+
+           // Apply classes to the display panel
+           this.ui.itemDisplayPanel.className = `panel p-4 h-[260px] overflow-y-auto mt-4 transition-all duration-500 ${rarityGlow}`;
+
            const isPlayerItem = !!item.uuid;
            const equippedItem = this.player.inventory.find(i => i.uuid === this.player.equipped[item.slot]);
            const playerSpecializations = racialSpecializations[this.player.race] || [];
@@ -922,10 +977,20 @@
            html += `</div></div>`;
            
            this.ui.itemDisplay.innerHTML = html;
- 
+
+           // [FINAL POLISH] Re-attach listeners to the new HTML elements
+           const closeBtn = document.getElementById('close-item-display');
+           if (closeBtn) {
+               closeBtn.addEventListener('click', () => {
+                   this.ui.itemDisplayPanel.style.visibility = 'hidden';
+               });
+           }
+
            if (isPlayerItem) {
                const lockButton = document.getElementById('item-lock-btn');
-               if(lockButton) lockButton.addEventListener('click', () => this.toggleItemLock(item.uuid));
+               if (lockButton) {
+                   lockButton.addEventListener('click', () => this.toggleItemLock(item.uuid));
+               }
            }
        },
  
@@ -997,69 +1062,39 @@
            const uuidsToSell = Array.from(this.bulkSellSelection);
            this.confirmSell(uuidsToSell);
        },
-       // [FIXED] Smart Bridge: Converts generic 'Buff' into your specific flavors
        fetchData() {
            const gm = window.parent.gameManager || window.gameManager;
-           
            if (gm && gm.MerchantManager) {
                const rawItems = gm.MerchantManager.getShopData('arcanum');
-               this.shopStock = []; // Clear existing
-
-               rawItems.forEach(item => {
+               this.shopStock = rawItems.map(item => {
                    const tier = item.tier || 1;
+                   // [FIXED] Specifically mapping ntl_req (Arcanum standard)
+                   const requirement = item.ntl_req || item.intl_req || item.str_req || item.vit_req || 1;
                    
-                   // [SMART FIX] If engine sends a "Buff", generate your 3 specific types
-                   if (item.type === 'buff') {
-                        // Get your specific keys: ['Might', 'Guard', 'Swiftness']
-                        Object.keys(itemData.Buff).forEach(flavor => {
-                            const flavorDef = itemData.Buff[flavor];
-                            
-                            this.shopStock.push({
-                                ...item,
-                                // Rename: "Novice Buff" -> "Might T1"
-                                name: `${flavor} T${tier}`, 
-                                // ID Match: "Might-1" (Matches your UI Dropdown)
-                                baseId: `${flavor}-${tier}`, 
-                                type: flavor, 
-                                category: 'Buff',
-                                
-                                // Stats & Cost
-                                cost: item.price || item.cost || 0,
-                                levelReq: item.levelReq || levelReqData[tier] || 1,
-                                sellValue: Math.floor((item.price || 0) * 0.25),
-                                
-                                // Apply your specific bonus (+STR, +VIT, etc)
-                                stat: { 'Bonus': flavorDef.bonus },
-                                slot: flavorDef.slot
-                            });
-                        });
-                   } 
-                   // Normal Spells (Air, Fire, etc.)
-                   else {
-                       const typeStr = item.type || 'Unknown';
-                       const uiType = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
-                       const uiBaseId = `${uiType}-${tier}`;
-                       
-                       const stats = {};
-                       if (item.sc) stats['SC'] = item.sc;
+                   const stats = {};
+                   if (item.sc !== undefined) stats['SC'] = item.sc;
+                   if (item.ac !== undefined) stats['AC'] = item.ac;
+                   if (item.wc !== undefined) stats['WC'] = item.wc;
 
-                       this.shopStock.push({
-                           ...item,
-                           baseId: uiBaseId,
-                           cost: item.price || item.cost || 0,
-                           levelReq: item.levelReq || levelReqData[tier] || 1,
-                           sellValue: Math.floor((item.price || 0) * 0.25),
-                           stat: stats
-                       });
-                   }
+                   // [NEW] Added logic for Artifact-specific bonuses
+                   if (item.exp_bonus) stats['EXP'] = `+${Math.round(item.exp_bonus * 100)}%`;
+                   if (item.gold_bonus) stats['Gold'] = `+${Math.round(item.gold_bonus * 100)}%`;
+                   if (item.shadow_bonus) stats['Shadow'] = `+${Math.round(item.shadow_bonus * 100)}%`;
+                   if (item.gem_bonus) stats['Gems'] = `+${Math.round(item.gem_bonus * 100)}%`;
+
+                   return {
+                       ...item,
+                       baseId: item.id,
+                       cost: item.price || 0,
+                       levelReq: requirement,
+                       sellValue: Math.floor((item.price || 0) * 0.25),
+                       stat: stats,
+                       gemSlots: getGemSlotsByTier(tier)
+                   };
                });
-               
                this.items = this.shopStock;
-               console.log(`🔮 Arcanum Loaded: ${this.items.length} spells.`);
+               this.populateBuySelectors(); 
                this.updateUI(); 
-           } else {
-               console.error("Merchant Link Failed.");
-               this.items = []; 
            }
        },
 
@@ -1096,7 +1131,8 @@
            if (gm) {
                this.player = gm.state.player;
                this.updateUI();
-               this.renderSellList(); // Re-draw inventory
+               if (this.activeMode === 'sell') this.renderSellList();
+               if (this.activeMode === 'buy') this.renderUpgradeAdvisor(); // Keep advisor updated
            }
        },
    };

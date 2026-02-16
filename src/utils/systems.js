@@ -31,68 +31,59 @@ const Systems = {
         return player;
     }
 
-    let totalGearAC = 0;
-    let totalGearWC = 0;
-    let totalGearSC = 0;
+    let totalGearAC = 0, totalGearWC = 0, totalGearSC = 0;
     let bonusHitChance = 0;
     let bonusWcScMultiplier = 1.0;
+    let bonusAcMultiplier = 1.0; // [NEW] Support for 'Guard' buff % bonus
     let totalHpRegenPercent = 0;
+    let gearVit = 0, gearDex = 0, gearWis = 0; // [NEW] Gear-based attribute bonuses
 
     // 1. Process Equipment Stats (ARCHITECT FIX)
-    // We check 'equipped' (New System) first, then 'equipment' (Legacy)
     const equipmentSource = player.equipped || player.equipment || {};
 
-    // Iterate through all equipped items
     Object.values(equipmentSource).forEach(entry => {
         let item = entry;
-
-        // Legacy Support: If entry is just an ID string, try to find it in inventory
-        // (Note: In the new system, items are removed from inventory, so this is just a fallback)
         if (typeof item === 'string') {
              item = player.inventory ? player.inventory.find(i => i.instanceId === item || i.uuid === item) : null;
         }
 
         if (!item || typeof item !== 'object') return;
 
-        // Resolve Base Item (Source of Truth for Stats)
         const baseItem = findItemById(item.baseItemId || item.id) || {};
-        
-        // Merge Instance + Base to get the most accurate data
-        // Priority: Item Instance > Base Item
         const statsItem = { ...baseItem, ...item };
-
-        // [CRITICAL] Apply Quality Multiplier
-        // If the item has a specific multiplier, use it. Otherwise default to 1.0.
         const qm = safeVal(item.qualityMultiplier) || 1.0; 
         
-        // Calculate Stats (Base Stat * Quality)
-        // We use baseItem stats for the multiplication to avoid double-scaling if item.wc is already scaled
-        const wc = baseItem.wc !== undefined ? baseItem.wc : (item.wc || 0);
-        const ac = baseItem.ac !== undefined ? baseItem.ac : (item.ac || 0);
-        const sc = baseItem.sc !== undefined ? baseItem.sc : (item.sc || 0);
-
-        totalGearWC += safeMult(wc, qm);
-        totalGearAC += safeMult(ac, qm);
-        totalGearSC += safeMult(sc, qm);
+        // Accumulate Base Stats * Quality
+        totalGearWC += safeMult(baseItem.wc || item.wc || 0, qm);
+        totalGearAC += safeMult(baseItem.ac || item.ac || 0, qm);
+        totalGearSC += safeMult(baseItem.sc || item.sc || 0, qm);
         
-        // Apply Bonuses
+        // [NEW] Accumulate % Bonuses from Buff Spells (Might/Guard/Swiftness)
         if (statsItem.wc_bonus) bonusWcScMultiplier += safeVal(statsItem.wc_bonus);
         if (statsItem.sc_bonus) bonusWcScMultiplier += safeVal(statsItem.sc_bonus);
+        if (statsItem.ac_bonus) bonusAcMultiplier += safeVal(statsItem.ac_bonus);
+        if (statsItem.hit_chance_bonus) bonusHitChance += safeVal(statsItem.hit_chance_bonus);
+
+        // [NEW] Accumulate Flat Attribute Bonuses from Gear
+        if (statsItem.vit) gearVit += safeVal(statsItem.vit) * qm;
+        if (statsItem.dex) gearDex += safeVal(statsItem.dex) * qm;
+        if (statsItem.ntl || statsItem.wis) gearWis += safeVal(statsItem.ntl || statsItem.wis) * qm;
+        
         if (statsItem.hp_regen_percent) totalHpRegenPercent += safeVal(statsItem.hp_regen_percent);
     });
 
-    // 2. Archetype Scaling Logic
-    let finalWC = 0, finalSC = 0;
+    // 2. Combined Scaling Logic (Base Stats + Gear Attributes)
+    const VIT = safeVal(player.baseStats?.VIT) + gearVit;
+    const DEX = safeVal(player.baseStats?.DEX) + gearDex;
+    const WIS = safeVal(player.baseStats?.WIS) + gearWis;
+    
+    // Map current primary scaling value
     const primaryStat = racialData.primaryStat;
-    const scalingStatValue = safeVal(player.baseStats?.[primaryStat]);
+    let scalingStatValue = (primaryStat === 'VIT') ? VIT : (primaryStat === 'DEX') ? DEX : WIS;
 
+    let finalWC = 0, finalSC = 0;
     const isTroll = player.race === 'Troll';
     const isVampire = player.race === 'Vampire';
-    const VIT = safeVal(player.baseStats?.VIT);
-    const DEX = safeVal(player.baseStats?.DEX);
-    const WIS = safeVal(player.baseStats?.WIS);
-
-    // Base Spell Power
     const basePower = 5 + (player.level * 2);
 
     switch (racialData.archetype) {
@@ -103,9 +94,6 @@ const Systems = {
         break;
 
       case 'True Caster':
-        if (totalGearSC === 0 && totalGearWC > 0) {
-            totalGearSC = totalGearWC * 0.8;
-        }
         const casterStat = isVampire ? VIT : scalingStatValue;
         finalSC = (totalGearSC + basePower) * (1 + (casterStat * 0.0055));
         finalWC = totalGearWC + (basePower * 0.5);
@@ -369,7 +357,7 @@ const Systems = {
           'mainHand': 'MAIN_HAND', 'offHand': 'OFF_HAND', 'head': 'HEAD',
           'body': 'BODY', 'legs': 'LEGS', 'feet': 'FEET', 'hands': 'HANDS',
           'spell1': 'SPELL_1', 'spell2': 'SPELL_2',
-          'neck': 'NECK', 'ring': 'RING'
+          'neck': 'NECK', 'ring': 'RING_1' // Updated to match EquipmentManager
       };
       
       const legacySlots = Object.keys(slotKeyMap);
@@ -377,6 +365,8 @@ const Systems = {
       const actualSlotKey = slotKeyMap[selectedLegacySlot];
       
       let mother = player.equipped ? player.equipped[actualSlotKey] : null;
+      // [FIX] Normalize type to handle spaces/underscores for Arrows, Shields, and Buffs
+      const mType = mother ? (mother.type || mother.subType || '').replace(/ /g, '_').toLowerCase() : '';
       // Legacy support for string IDs
       if (typeof mother === 'string') {
           mother = player.inventory.find(i => i.instanceId === mother || i.uuid === mother);
@@ -478,7 +468,7 @@ const Systems = {
           const mType = mother.type || mother.subType || '';
           
           for (const [key, dt] of Object.entries(dropTables)) {
-              if (dt.pool.some(t => t.toLowerCase() === mType.toLowerCase())) {
+              if (dt.pool.some(t => t.replace(/ /g, '_').toLowerCase() === mType)) {
                   dtKey = key;
                   break;
               }
@@ -489,7 +479,8 @@ const Systems = {
           const weightedPool = [];
           
           pool.forEach(type => {
-              if (type.toLowerCase() === mType.toLowerCase()) {
+              const normalizedPoolType = type.replace(/ /g, '_').toLowerCase();
+              if (normalizedPoolType === mType) {
                   weightedPool.push(type, type, type); // 3 Tickets for Mother
               } else {
                   weightedPool.push(type); // 1 Ticket for others
@@ -640,7 +631,9 @@ const Systems = {
     } else {
          player.xpToNextLevel = xpReq;
     }
-
+    if (window.gameManager && window.gameManager.InventoryManager) {
+        window.gameManager.InventoryManager.refresh();
+    }
     return lootMessages;
   }
 };

@@ -1826,7 +1826,9 @@ export const armoryData = {
         price: 2073446549,
         sourceType: "dropper"
       }
-    },
+    }
+  },
+  armor: {
     helmet: {
     "HLM-HLM-T01": {
       id: "HLM-HLM-T01",

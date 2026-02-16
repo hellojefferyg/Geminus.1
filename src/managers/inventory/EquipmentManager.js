@@ -83,14 +83,21 @@ export class EquipmentManager {
           if (p.equipped.RING_1 && !p.equipped.RING_2) targetSlotKey = 'RING_2';
       }
       
-      // C. Weapons (Includes Bow/Staff)
-      else if (['Axe', 'Sword', 'Mace', 'Dagger', 'Claw', 'Weapon', 'Weapons', 'Bow', 'Staff'].includes(itemType)) {
-          targetSlotKey = 'MAIN_HAND';
+     // C. Weapons (Includes Bow/Staff/Offhand Synergies) 
+      else if (['Axe', 'Sword', 'Mace', 'Dagger', 'Claw', 'Weapon', 'Weapons', 'Bow', 'Staff', 'Arrow', 'Caster_offhand', 'Shield'].includes(itemType)) {
+          targetSlotKey = 'MAIN_HAND'; // 
           
-          // Dual Wield Logic (Skip for 2H weapons)
-          const isTwoHanded = ['Bow', 'Staff'].includes(itemType);
-          if (!isTwoHanded && p.equipped.MAIN_HAND && !p.equipped.OFF_HAND) {
-              targetSlotKey = 'OFF_HAND';
+          // Dual Wield / Off-Hand Logic 
+          // 1. Bows/Staffs are 2H (No offhand) 
+          const isTwoHanded = ['Bow', 'Staff'].includes(itemType); // 
+          
+          // 2. Arrows, Shields, and Caster Offhands ALWAYS go to OFF_HAND 
+          const isDedicatedOffhand = ['Arrow', 'Shield', 'Caster_offhand'].includes(itemType); // 
+
+          if (isDedicatedOffhand) { // 
+              targetSlotKey = 'OFF_HAND'; // 
+          } else if (!isTwoHanded && p.equipped.MAIN_HAND && !p.equipped.OFF_HAND) { // 
+              targetSlotKey = 'OFF_HAND'; // 
           }
       }
       

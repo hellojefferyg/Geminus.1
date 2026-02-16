@@ -388,7 +388,8 @@ export const jewelryData = {
       price: 2073446549,
       sourceType: "dropper"
     }
-  },
+},
+
   artifact: {
     "SAGE-MNC": {
       id: "SAGE-MNC",
@@ -425,6 +426,5 @@ export const jewelryData = {
       vit_req: 190,
       price: 750000000,
       sourceType: "dropper"
-    }
-  }
-};
+    }}
+  };

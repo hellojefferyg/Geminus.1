@@ -1,6 +1,6 @@
 /**
  * @file src/managers/inventory/InventoryManager.js
- * @description Manages player item storage, filtering, and GDD-driven interaction logic.
+ * @description Manages player item storage, filtering, search, and GDD-driven interaction logic.
  */
 import { items, races, equipmentSlotConfig, formulas } from '../../config/gdd.js';
 
@@ -12,7 +12,14 @@ export class InventoryManager {
         this.Systems = deps.Systems;
         
         this.isInitialized = false;
-        this.currentFilter = 'all';
+        
+        // [ARCHITECT PRESERVED] Filter State
+        this.currentFilter = 'all'; 
+        this.subFilter = 'all';     
+        this.searchQuery = '';      
+
+        // [ARCHITECT FIX] Global Tooltip Reference (Fixes clipping issues)
+        this.tooltipEl = null;
     }
 
     /**
@@ -22,230 +29,417 @@ export class InventoryManager {
         if (this.isInitialized) return;
         this.isInitialized = true;
         
+        this.createGlobalTooltip(); // [FIX] Initialize floating tooltip layer
         this.setupListeners();
         this.render();
-        console.log("🎒 Inventory: Aetherial Bags resonated via Master GDD.");
+        console.log("🎒 Inventory: Visuals, Filters & Tooltips Resonated.");
+    }
+
+    /**
+     * [ARCHITECT NEW] Public Refresh Method
+     */
+    refresh() {
+        // Only render if the inventory tab is actually visible to save performance
+        if (this.ui.tabContentInventory && this.ui.tabContentInventory.offsetParent !== null) {
+            this.render();
+        }
     }
 
     setupListeners() {
         if (!this.ui.tabContentInventory) return;
 
+        // Delegated listener for optimized performance
         this.ui.tabContentInventory.addEventListener('click', (e) => {
             const itemCard = e.target.closest('.item-card');
-            const filterBtn = e.target.closest('.inventory-filter-btn');
-
+            
+            // Handle Item Clicks (Inspector)
             if (itemCard) {
                 this.showItemDetails(itemCard.dataset.instanceId); 
-// (This line is actually fine as long as step 1 fills the data attribute correctly, but double check it matches the variable name)
-            }
-
-            if (filterBtn) {
-                this.currentFilter = filterBtn.dataset.filter;
-                this.render();
             }
         });
     }
 
-/**
-   * [ARCHITECT FIX] Renders Inventory with Smart Shadow Sorting.
-   * - Deduce category from Item Name if Type is 'Shadow'.
-   * - Strict tab separation (Armor stays in Armor, Weapons in Weapons).
-   */
-  render() {
-      // 1. Locate Container
-      let tabContent = this.ui.tabContentInventory || document.getElementById('tab-content-inventory');
-      if (!tabContent) return;
+    /**
+     * [ARCHITECT FIX] Creates a single tooltip attached to the body.
+     * This prevents the tooltip from being hidden by the inventory scroll bar or search box.
+     */
+    createGlobalTooltip() {
+        if (document.getElementById('global-item-tooltip')) return;
 
-      // 2. Cleanup Old Bars
-      const oldBars = tabContent.querySelectorAll('.inventory-filters, .inventory-filters-container');
-      oldBars.forEach(el => el.remove());
+        const el = document.createElement('div');
+        el.id = 'global-item-tooltip';
+        // High Z-Index ensures it floats over EVERYTHING
+        el.className = 'fixed hidden pointer-events-none z-[9999] bg-black/95 border border-cyan-500/50 p-2 rounded shadow-[0_0_15px_rgba(0,0,0,0.8)] flex-col min-w-[120px] max-w-[200px]';
+        document.body.appendChild(el);
+        this.tooltipEl = el;
+    }
 
-      // 3. Init State
-      if (!this.currentFilter) this.currentFilter = 'all';
+    /**
+     * [ARCHITECT FIX] Renders Inventory with Search (w/ Clear Button), Sub-Filters & Smart Sorting.
+     */
+    render() {
+        let tabContent = this.ui.tabContentInventory || document.getElementById('tab-content-inventory');
+        if (!tabContent) return;
 
-      // 4. Render Filter Bar
-      let filterContainer = tabContent.querySelector('.inventory-filters-container');
-      if (!filterContainer) {
-          filterContainer = document.createElement('div');
-          filterContainer.className = 'inventory-filters-container mb-4 p-2 bg-black/20 rounded-lg flex gap-2 overflow-x-auto custom-scrollbar';
-          tabContent.insertBefore(filterContainer, tabContent.firstChild);
-          
-          filterContainer.addEventListener('click', (e) => {
-              const btn = e.target.closest('.filter-btn');
-              if (btn) {
-                  this.currentFilter = btn.dataset.filter;
-                  this.render(); 
-              }
-          });
-      }
+        // 1. Define Sub-Filter Maps
+        const SUB_FILTERS = {
+            weapon: ['Axe', 'Bow', 'Claw', 'Dagger', 'Mace', 'Staff', 'Sword', 'Shield', 'Orb'],
+            armor: ['Helmet', 'Chest', 'Leggings', 'Boots', 'Gloves'],
+            spell: ['Air', 'Arcane', 'Cold', 'Death', 'Drain', 'Earth', 'Fire', 'Might', 'Guard', 'Swiftness'],
+            jewelry: ['Ring', 'Necklace'],
+            gem: [], 
+            misc: [],
+            all: []
+        };
 
-      const filters = [
-          { id: 'all', label: 'All' },
-          { id: 'weapon', label: 'Weapons' },
-          { id: 'armor', label: 'Armor' },
-          { id: 'jewelry', label: 'Jewelry' },
-          { id: 'spell', label: 'Spells' },
-          { id: 'gem', label: 'Gems' },
-          { id: 'misc', label: 'Others' }
-      ];
+        // 2. Create/Clear Control Bar Container
+        let controlBar = tabContent.querySelector('.inventory-controls');
+        if (!controlBar) {
+            const oldBars = tabContent.querySelectorAll('.inventory-filters, .inventory-filters-container');
+            oldBars.forEach(el => el.remove());
 
-      filterContainer.innerHTML = filters.map(f => {
-          const isActive = this.currentFilter === f.id;
-          const activeClass = 'bg-cyan-700 text-white border-cyan-500';
-          const inactiveClass = 'text-cyan-400 border-cyan-700/50 hover:bg-cyan-900/50';
-          return `<button class="filter-btn px-3 py-1 rounded text-xs font-bold border transition-colors whitespace-nowrap ${isActive ? activeClass : inactiveClass}" data-filter="${f.id}">${f.label}</button>`;
-      }).join('');
+            controlBar = document.createElement('div');
+            controlBar.className = 'inventory-controls flex flex-col gap-2 mb-4 p-2 bg-black/40 rounded-lg border border-gray-700';
+            tabContent.insertBefore(controlBar, tabContent.firstChild);
+        }
+        controlBar.innerHTML = ''; 
 
-      // 5. Grid Container
-      let grid = tabContent.querySelector('#inventory-grid');
-      if (!grid) {
-          grid = document.createElement('div');
-          grid.id = 'inventory-grid';
-          grid.className = 'grid grid-cols-5 gap-2 overflow-y-auto max-h-[400px] p-1 custom-scrollbar';
-          tabContent.appendChild(grid);
-      }
-      grid.innerHTML = '';
+        // --- A. SEARCH BAR (With "X" Button) ---
+        const searchRow = document.createElement('div');
+        searchRow.className = 'flex w-full relative items-center';
+        
+        // Search Input
+        searchRow.innerHTML = `
+            <input type="text" id="inv-search" 
+                   class="w-full bg-gray-900 text-cyan-100 text-xs p-2 pr-8 rounded border border-gray-600 focus:border-cyan-500 outline-none font-mono" 
+                   placeholder="Search Name, Stats, or Type..." value="${this.searchQuery}">
+            
+            ${this.searchQuery ? 
+                `<button id="inv-clear-search" class="absolute right-2 text-gray-500 hover:text-cyan-400 font-bold transition-colors">✕</button>` 
+                : ''}
+        `;
+        controlBar.appendChild(searchRow);
 
-      // 6. [FIX] Smart Filter Logic
-      const rawInventory = this.state.player.inventory || [];
-      const filteredItems = rawInventory.filter(item => {
-          const base = items[item.id] || items[item.baseItemId] || {};
-          const full = { ...base, ...item };
-          
-          let cat = (full.category || '').toLowerCase();
-          const type = (full.type || '').toLowerCase();
-          const name = (full.name || '').toLowerCase();
+        // --- B. FILTER TABS ---
+        const tabsRow = document.createElement('div');
+        tabsRow.className = 'flex gap-2 overflow-x-auto custom-scrollbar pb-1';
+        
+        const filters = [
+            { id: 'all', label: 'All' },
+            { id: 'weapon', label: 'Weapons' },
+            { id: 'armor', label: 'Armor' },
+            { id: 'jewelry', label: 'Jewelry' },
+            { id: 'spell', label: 'Spells' },
+            { id: 'gem', label: 'Gems' },
+            { id: 'misc', label: 'Misc' }
+        ];
 
-          // [CRITICAL FIX] Shadow Categorization
-          // If item is a Shadow, we MUST infer category from the name because 'type' is just 'Shadow'
-          if (type === 'shadow' || name.includes('shadow')) {
-              if (['helmet','chest','leggings','gloves','boots','shield'].some(k => name.includes(k))) {
-                  cat = 'armor';
-              } else if (['axe','sword','bow','staff','dagger','mace','claw'].some(k => name.includes(k))) {
-                  cat = 'weapons';
-              } else if (['ring','necklace','amulet'].some(k => name.includes(k))) {
-                  cat = 'jewelry';
-              }
-          }
+        tabsRow.innerHTML = filters.map(f => {
+            const isActive = this.currentFilter === f.id;
+            const activeClass = 'bg-cyan-700 text-white border-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.3)]';
+            const inactiveClass = 'bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700';
+            return `<button class="inv-tab-btn px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all whitespace-nowrap ${isActive ? activeClass : inactiveClass}" data-filter="${f.id}">${f.label}</button>`;
+        }).join('');
+        controlBar.appendChild(tabsRow);
 
-          // --- LOGIC GATES ---
-          if (this.currentFilter === 'all') return true;
-          
-          if (this.currentFilter === 'weapon') {
-              return cat.includes('weapon');
-          }
-          
-          if (this.currentFilter === 'armor') {
-              return cat.includes('armor');
-          }
-          
-          if (this.currentFilter === 'jewelry') {
-              return cat.includes('jewelry');
-          }
-          
-          if (this.currentFilter === 'spell') {
-              return cat.includes('spell') || cat.includes('buff');
-          }
+        // --- C. SUB-FILTER DROPDOWN ---
+        const activeSubOptions = SUB_FILTERS[this.currentFilter] || [];
+        if (activeSubOptions.length > 0) {
+            const subFilterRow = document.createElement('div');
+            subFilterRow.className = 'flex items-center gap-2';
+            
+            const optionsHTML = [`<option value="all">All ${this.currentFilter}s</option>`]
+                .concat(activeSubOptions.map(opt => `<option value="${opt}" ${this.subFilter === opt ? 'selected' : ''}>${opt}</option>`))
+                .join('');
 
-          if (this.currentFilter === 'gem') {
-              return cat.includes('gem') || type.includes('gem') || name.includes('stone') || name.includes('rite') || name.includes('core');
-          }
+            subFilterRow.innerHTML = `
+                <select id="inv-subfilter" class="w-full bg-gray-900 text-cyan-200 text-[10px] p-1.5 rounded border border-gray-600 outline-none uppercase font-mono">
+                    ${optionsHTML}
+                </select>
+            `;
+            controlBar.appendChild(subFilterRow);
+        }
 
-          if (this.currentFilter === 'misc') {
-              const isWeapon = cat.includes('weapon');
-              const isArmor = cat.includes('armor');
-              const isJewelry = cat.includes('jewelry');
-              const isSpell = cat.includes('spell') || cat.includes('buff');
-              const isGem = cat.includes('gem') || type.includes('gem') || name.includes('stone');
-              return !isWeapon && !isArmor && !isJewelry && !isSpell && !isGem;
-          }
-          
-          return false;
-      });
+        // --- D. ATTACH LISTENERS ---
+        
+        // 1. Search Input
+        const searchInput = controlBar.querySelector('#inv-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value.toLowerCase();
+                this.render(); // Re-render to toggle X button
+                // Restore Focus Hack
+                setTimeout(() => {
+                    const el = document.getElementById('inv-search');
+                    if(el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+                }, 0);
+            });
+        }
 
-      // 7. Render
-      if (filteredItems.length === 0) {
-          grid.innerHTML = `<div class="col-span-full text-gray-500 text-center p-4 italic">No items found.</div>`;
-          return;
-      }
+        // 2. Clear Button
+        const clearBtn = controlBar.querySelector('#inv-clear-search');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                this.searchQuery = '';
+                this.render();
+            });
+        }
 
-      grid.innerHTML = filteredItems.map(item => {
-          const baseItem = items[item.id] || items[item.baseItemId] || {};
-          const displayItem = { ...baseItem, ...item };
-          
-          const name = displayItem.name || "Item";
-          const tier = displayItem.tier || 1;
-          const targetId = item.uuid || item.instanceId;
-          const isShadow = (displayItem.type === 'Shadow' || name.includes('Shadow'));
-          
-          let statString = "";
-          if (displayItem.wc) statString = `WC: ${displayItem.wc}`;
-          else if (displayItem.ac) statString = `AC: ${displayItem.ac}`;
-          else if (displayItem.sc) statString = `SC: ${displayItem.sc}`;
-          else if (displayItem.hp_regen_percent) statString = "Regen";
-          else if (displayItem.category === 'Gem') statString = "Gem"; 
-          else statString = displayItem.category || "Misc";
+        // 3. Tabs
+        controlBar.querySelectorAll('.inv-tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.currentFilter = e.target.dataset.filter;
+                this.subFilter = 'all'; 
+                this.render(); 
+            });
+        });
 
-          const nameColor = isShadow ? 'text-purple-400' : 'text-cyan-200';
-          const borderColor = isShadow ? 'border-purple-500/50' : 'border-gray-600';
-          const tierColor = isShadow ? 'text-purple-300' : 'text-yellow-500';
+        // 4. Dropdown
+        const subSelect = controlBar.querySelector('#inv-subfilter');
+        if (subSelect) {
+            subSelect.addEventListener('change', (e) => {
+                this.subFilter = e.target.value;
+                this.renderGrid();
+            });
+        }
 
-          return `
-              <div class="item-card relative border ${borderColor} bg-gray-900/80 p-1 rounded cursor-pointer hover:bg-gray-800 group h-14 flex items-center justify-center transition-all"
-                   data-instance-id="${targetId}" 
-                   onclick="window.gameManager.InventoryManager.showItemDetails('${targetId}')">
-                  <div class="flex flex-col items-center justify-center text-center w-full overflow-hidden">
-                      <span class="text-[10px] font-bold ${nameColor} leading-none px-1 truncate w-full">${name}</span>
-                      <span class="text-[9px] font-mono ${tierColor} mt-0.5">T${tier}</span>
-                  </div>
-                  ${displayItem.qty > 1 ? `<span class="absolute bottom-0 right-0 bg-blue-900 text-[9px] px-1 rounded-tl">${displayItem.qty}</span>` : ''}
-                  <div class="hidden group-hover:flex flex-col absolute inset-0 bg-black/95 z-20 items-center justify-center text-center p-1 border border-cyan-500/50">
-                      <span class="text-[9px] text-cyan-100 font-bold leading-tight mb-1">${name}</span>
-                      <span class="text-[9px] text-yellow-400 font-mono">${statString}</span>
-                  </div>
-              </div>
-          `;
-      }).join('');
-  }
+        this.renderGrid();
+    }
+
+    /**
+     * [ARCHITECT FIX] Render Grid with Forced Categorization
+     * Fixes: Store items (Droppers) appearing in the wrong tabs.
+     */
+    renderGrid() {
+        let tabContent = this.ui.tabContentInventory;
+        let grid = tabContent.querySelector('#inventory-grid');
+        
+        if (!grid) {
+            grid = document.createElement('div');
+            grid.id = 'inventory-grid';
+            grid.className = 'grid grid-cols-5 gap-2 overflow-y-auto max-h-[400px] p-1 custom-scrollbar';
+            tabContent.appendChild(grid);
+        }
+        grid.innerHTML = '';
+
+        const rawInventory = this.state.player.inventory || [];
+        
+        // --- 1. FILTER LOGIC ---
+        const filteredItems = rawInventory.filter(item => {
+            const base = items[item.id] || items[item.baseItemId] || {};
+            const full = { ...base, ...item };
+            
+            // Normalize Data
+            let cat = (full.category || '').toLowerCase();
+            const type = (full.type || '').toLowerCase();
+            const name = (full.name || '').toLowerCase();
+            const searchStr = `${name} ${type} ${cat} WC:${full.wc||0} AC:${full.ac||0} SC:${full.sc||0}`.toLowerCase();
+
+            // [FIX] Priority Categorization (Enforces Tab Rules based on Name/Type)
+            
+            // A. Armor (Check first to catch Shields/Helms)
+            if (['helmet', 'chest', 'leggings', 'boots', 'gloves', 'shield', 'armor'].some(t => type.includes(t) || name.includes(t))) {
+                cat = 'armor';
+            }
+            // B. Weapons
+            else if (['axe', 'sword', 'bow', 'staff', 'dagger', 'mace', 'claw', 'orb', 'weapon'].some(t => type.includes(t) || name.includes(t))) {
+                cat = 'weapon';
+            }
+            // C. Spells (Catch Elements)
+            else if (['spell', 'scroll', 'book', 'air', 'fire', 'earth', 'water', 'arcane', 'death', 'drain', 'might', 'guard', 'swiftness'].some(t => type.includes(t) || name.includes(t))) {
+                cat = 'spell';
+            }
+            // D. Jewelry
+            else if (['ring', 'necklace', 'amulet', 'jewelry'].some(t => type.includes(t) || name.includes(t))) {
+                cat = 'jewelry';
+            }
+            // E. Gems
+            else if (['gem', 'stone', 'shard', 'essence', 'core', 'rite'].some(t => type.includes(t) || name.includes(t))) {
+                cat = 'gem';
+            }
+
+            // Main Filter
+            if (this.currentFilter !== 'all') {
+                if (this.currentFilter === 'weapon' && !cat.includes('weapon')) return false;
+                if (this.currentFilter === 'armor' && !cat.includes('armor')) return false;
+                if (this.currentFilter === 'jewelry' && !cat.includes('jewelry')) return false;
+                if (this.currentFilter === 'spell' && !(cat.includes('spell') || cat.includes('buff'))) return false;
+                if (this.currentFilter === 'gem' && !cat.includes('gem')) return false;
+                if (this.currentFilter === 'misc') {
+                    const isKnown = cat.includes('weapon') || cat.includes('armor') || cat.includes('jewelry') || cat.includes('spell') || cat.includes('gem');
+                    if (isKnown) return false;
+                }
+            }
+
+            // Sub-Filter
+            if (this.subFilter !== 'all') {
+                const subTarget = this.subFilter.toLowerCase();
+                const matchesSub = name.includes(subTarget) || type.includes(subTarget);
+                if (!matchesSub) return false;
+            }
+
+            // Search
+            if (this.searchQuery) {
+                if (!searchStr.includes(this.searchQuery)) return false;
+            }
+
+            return true;
+        });
+
+        // --- 2. RENDER EMPTY STATE ---
+        if (filteredItems.length === 0 && this.searchQuery) {
+            grid.innerHTML = `<div class="col-span-full text-gray-500 text-center p-4 italic text-xs border border-dashed border-gray-700 rounded mt-4">No matching items found.</div>`;
+            return;
+        }
+
+        // --- 3. RENDER ITEMS ---
+        const playerRace = this.state.player.race || "Human";
+        const raceData = races[playerRace] || {};
+        const playerFocus = raceData.weaponFocus || ""; 
+
+        const itemsHTML = filteredItems.map(item => {
+            const baseItem = items[item.id] || items[item.baseItemId] || {};
+            const fullItem = { ...baseItem, ...item };
+            return this.generateItemCardHTML(fullItem, playerRace, playerFocus);
+        }).join('');
+
+        grid.innerHTML = itemsHTML;
+
+        // --- 4. RENDER EMPTY SLOTS (Bag Feel) ---
+        if (this.currentFilter === 'all' && !this.searchQuery) {
+            const INVENTORY_CAPACITY = 25; 
+            const remainingSlots = Math.max(0, INVENTORY_CAPACITY - filteredItems.length);
+            if (remainingSlots > 0) {
+                grid.innerHTML += this.generateEmptySlotsHTML(remainingSlots);
+            }
+        }
+    }
 
     /**
      * @param {Object} item - The item instance
      * @param {string} race - Player race
-     * @param {string} focus - Racial weapon focus from Appendix A1
+     * @param {string} focus - Racial weapon focus
+     * [ARCHITECT UPDATED] Preserves all visuals, uses Global Tooltip
      */
     generateItemCardHTML(item, race, focus) {
-        // GDD Rule: Red marking for items above player level (Section 4.3.1.3)
-        const levelError = item.level > this.state.player.level ? 'border-red-900/50 bg-red-900/10' : '';
+        const p = this.state.player;
         
-        // GDD Rule: Special glow for racial specialization (Section 4.3.1.3)
-        const isSpecialized = item.subType?.toLowerCase() === focus.toLowerCase();
+        // Merge
+        const registryData = items[item.id] || items[item.baseItemId] || {};
+        const fullItem = { ...registryData, ...item };
+
+        // [PRESERVED] Visual Logic
+        const itemLevel = fullItem.level || 1; 
+        const levelError = itemLevel > p.level ? 'border-red-900/50 bg-red-900/10' : '';
+        
+        const subType = fullItem.subType || fullItem.type || "";
+        const isSpecialized = focus && subType.toLowerCase() === focus.toLowerCase();
         const specializationGlow = isSpecialized ? 'shadow-[0_0_10px_rgba(34,211,238,0.4)] border-cyan-400/50' : 'border-gray-800';
 
-        // GDD Rule: Visual distinction for Shadow vs Standard (Section 6.2)
-        // Check both baseItemId and instanceId for shadow items
-        const itemId = item.baseItemId || item.instanceId || item.id || '';
-        const isShadow = item.type === 'Shadow' || itemId.includes('-shadow-') || itemId.includes('_S_');
+        const itemId = fullItem.baseItemId || fullItem.instanceId || fullItem.id || '';
+        const isShadow = fullItem.type === 'Shadow' || (fullItem.name && fullItem.name.includes('Shadow'));
         const shadowOverlay = isShadow ? '<div class="absolute inset-0 bg-purple-500/10 pointer-events-none"></div>' : '';
 
+        const tier = fullItem.tier || 1;
+        const imageUrl = fullItem.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${(fullItem.name || 'Item').substring(0,2)}`;
+
+        // Prepare Tooltip Data (Passed as string attribute)
+        const tooltipData = JSON.stringify({
+            name: fullItem.name,
+            tier: tier,
+            type: fullItem.type || fullItem.category || 'Misc',
+            wc: fullItem.wc,
+            ac: fullItem.ac,
+            sc: fullItem.sc,
+            regen: fullItem.hp_regen_percent,
+            qm: fullItem.qualityMultiplier,
+            isShadow: isShadow
+        }).replace(/"/g, '&quot;');
+
+        // [UPDATED] Replaced nested Tooltip HTML with mouse events for Global Tooltip
         return `
             <div class="item-card relative aspect-square glass-panel cursor-pointer transition-all hover:scale-105 group ${specializationGlow} ${levelError}" 
-                 data-instance-id="${item.uuid || item.instanceId}">
+                 data-instance-id="${fullItem.uuid || fullItem.instanceId}"
+                 onmouseenter="window.gameManager.InventoryManager.showTooltip(this, '${tooltipData}')"
+                 onmouseleave="window.gameManager.InventoryManager.hideTooltip()">
+                 
                 ${shadowOverlay}
-                <img src="${item.imageUrl}" class="w-full h-full object-contain p-1" alt="${item.name}">
+                ${this.generateGemOverlaysHTML(fullItem)}
                 
-                <div class="absolute top-1 right-1 flex gap-0.5">
-                    ${(item.sockets || []).map(gem => `
-                        <div class="w-1.5 h-1.5 rounded-full" style="background: ${gem.color || '#fff'}"></div>
-                    `).join('')}
-                </div>
-
+                <img src="${imageUrl}" class="w-full h-full object-contain p-1" alt="${fullItem.name}">
+                
                 <div class="absolute bottom-0 right-0 px-1 bg-black/80 text-[8px] text-gray-400 font-orbitron">
-                    T${item.tier || 1}
+                    T${tier}
                 </div>
+                
+                ${fullItem.qty > 1 ? `<span class="absolute top-0 left-0 bg-blue-900 text-[9px] px-1 rounded-br text-white">${fullItem.qty}</span>` : ''}
             </div>
         `;
     }
 
+    /**
+     * [ARCHITECT FIX] Global Tooltip Display Logic
+     * Dynamically positions the tooltip near the hovered element.
+     */
+    showTooltip(element, dataStr) {
+        if (!this.tooltipEl) this.createGlobalTooltip();
+        
+        try {
+            const data = JSON.parse(dataStr.replace(/&quot;/g, '"'));
+            const el = this.tooltipEl;
+
+            // Build Content
+            let statString = "";
+            let statColor = "text-gray-400";
+            const qm = data.qm || 1.0;
+            const fmtStat = (val) => (Number(val) * qm).toFixed(1);
+
+            if (data.wc) { statString = `WC ${fmtStat(data.wc)}`; statColor = "text-red-400"; }
+            else if (data.ac) { statString = `AC ${fmtStat(data.ac)}`; statColor = "text-blue-400"; }
+            else if (data.sc) { statString = `SC ${fmtStat(data.sc)}`; statColor = "text-purple-400"; }
+            else if (data.regen) { statString = `Regen +${(data.regen*100).toFixed(0)}%`; statColor = "text-green-400"; }
+            else if (data.type && data.type.toLowerCase().includes('gem')) { statString = "Gem"; statColor = "text-pink-400"; }
+            
+            if (qm > 1.0) statString += ` (+${Math.round((qm-1)*100)}%)`;
+
+            // [UPDATED] Added Tier Display
+            el.innerHTML = `
+                <span class="text-[10px] text-cyan-100 font-bold text-center leading-tight mb-1">${data.name}</span>
+                <span class="text-[8px] text-yellow-500 font-mono mb-0.5">Tier ${data.tier || 1}</span>
+                <span class="text-[9px] ${statColor} font-mono text-center">${statString}</span>
+                ${data.isShadow ? `<span class="text-[8px] text-purple-400 text-center mt-1 uppercase tracking-widest">Shadow</span>` : ''}
+            `;
+
+            // Position Logic
+            const rect = element.getBoundingClientRect();
+            
+            // Calculate Top (Above item)
+            let top = rect.top - el.offsetHeight - 8;
+            // Calculate Left (Centered)
+            let left = rect.left + (rect.width / 2) - (el.offsetWidth / 2);
+
+            // Flip if too close to top of screen
+            if (top < 10) top = rect.bottom + 8;
+
+            el.style.top = `${top}px`;
+            el.style.left = `${left}px`;
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+        } catch (err) {
+            console.warn("Tooltip Parse Error", err);
+        }
+    }
+
+    hideTooltip() {
+        if (this.tooltipEl) {
+            this.tooltipEl.classList.add('hidden');
+            this.tooltipEl.classList.remove('flex');
+        }
+    }
+
+    /**
+     * [PRESERVED] Helper for empty slot generation
+     */
     generateEmptySlotsHTML(count) {
         if (count <= 0) return '';
         return Array(count).fill(0).map(() => `
@@ -255,14 +449,12 @@ export class InventoryManager {
 
     /**
      * [ARCHITECT FIX] Shows item details using the Master Registry.
-     * Fixes "No Stats" by correctly looking up base data.
      */
     showItemDetails(instanceId) {
         const item = this.state.player.inventory.find(i => i.uuid === instanceId || i.instanceId === instanceId);
         if (!item) return;
 
-        // [ARCHITECT FIX] Merge Registry Data with Instance Data
-        // This ensures we get the Stats from the Registry AND the UUID from the Instance
+        // Merge Registry Data with Instance Data
         const registryData = items[item.id] || items[item.baseItemId] || {};
         const fullItemData = { ...registryData, ...item };
 
@@ -278,14 +470,13 @@ export class InventoryManager {
             this.showToast(`${name} ${stats.join(' ')}`, false);
         }
     }
+
     /**
-     * [FIX] Missing Helper for EquipmentManager
-     * Generates the little gem dots overlay on item icons.
+     * [PRESERVED] Helper for Gem Overlays
      */
     generateGemOverlaysHTML(item) {
         if (!item || !item.sockets || item.sockets.length === 0) return '';
         
-        // Returns a container with small colored dots for each socketed gem
         return `
             <div class="absolute top-0.5 right-0.5 flex flex-col gap-0.5 pointer-events-none z-10">
                 ${item.sockets.map(gem => `
