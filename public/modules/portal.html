@@ -216,453 +216,159 @@
     </div>
     
 <script type="module">
-    const ALL_ZONES = {
-      "Z01": { "zoneId": "Z01", "zoneName": "Crystal Caves", "minLevel": 1, "zoneType": "Standard", "monsters": [ { "hp": 25, "atk": 10, "def": 13, "isBoss": false } ] },
-      "Z02": { "zoneId": "Z02", "zoneName": "Glimmerwood", "minLevel": 1, "zoneType": "Standard", "monsters": [ { "hp": 25, "atk": 10, "def": 13, "isBoss": false } ] },
-      "Z03": { "zoneId": "Z03", "zoneName": "The Shifting Maze", "minLevel": 1, "zoneType": "Gold", "monsters": [ { "hp": 25, "atk": 10, "def": 13, "isBoss": false } ] },
-      "Z25": { "zoneId": "Z25", "zoneName": "The Sundering Deep", "minLevel": 100, "zoneType": "Standard", "monsters": [ { "hp": 185, "atk": 93, "def": 123, "isBoss": false } ] },
-      "Z34": { "zoneId": "Z34", "zoneName": "Bone Deserts", "minLevel": 253, "zoneType": "Shadow", "monsters": [ { "hp": 185, "atk": 93, "def": 123, "isBoss": false } ] },
-      "Z51": { "zoneId": "Z51", "zoneName": "Giant Mushroom Forests", "minLevel": 1000, "zoneType": "Gem", "monsters": [ { "hp": 185, "atk": 93, "def": 123, "isBoss": false } ] },
-      "Z101": { "zoneId": "Z101", "zoneName": "The Echoing Gorge of Lost Souls", "minLevel": 400000, "zoneType": "Endgame", "monsters": [ { "hp": 1.85e38, "atk": 9.25e36, "def": 1.23e37, "isBoss": true } ] }
-    };
-    
-    const game = {
-        player: {
-            name: "Hero",
-            level: 12500,
-            gold: 150000000,
-            aetheriumShards: 500,
-            currentZoneId: 'Z01',
-            unlockedTeleporters: ['Z01', 'Z25', 'Z34', 'Z51', 'Z101', 'Z02', 'Z03'],
-            favoriteZones: ['Z51', 'Z101'],
-            stats: { wc: 12861, sc: 0, ac: 30823, hp: 100100 },
-            teleportNetwork: { costReduction: 2 }
-        },
-        worldEvents: [
-            { id: 'evt1', zoneId: 'Z25', type: 'HORDE', title: "Horde: The Sundering Deep", description: "Increased monster density and loot drops.", expires: Date.now() + 1000 * 60 * 30 },
-            { id: 'evt2', zoneId: 'Z51', type: 'SURGE', title: "Surge: Giant Mushroom Forests", description: "Aetherium Shard drops are significantly increased.", expires: Date.now() + 1000 * 60 * 60 },
-        ],
-        save: async () => { console.log("Saving game state...", game.player); },
-    };
+import { zonesData } from '../src/data/zonesData.js';
+import { bestiaryData } from '../src/data/bestiaryData.js';
 
-    const ui = {
-        teleport: {
-            modal: document.getElementById('teleport-modal'),
-            closeBtn: document.getElementById('teleport-close-btn'),
-            tabDestinations: document.getElementById('tab-destinations'),
-            tabNetwork: document.getElementById('tab-network'),
-            contentDestinations: document.getElementById('content-destinations'),
-            contentNetwork: document.getElementById('content-network'),
-            listContainer: document.getElementById('teleport-list-container'),
-            selectedZoneName: document.getElementById('selected-zone-name'),
-            teleportCostDisplay: document.getElementById('teleport-cost-display'),
-            teleportButton: document.getElementById('teleport-button'),
-            intelligencePanel: document.getElementById('zone-intelligence-panel'),
-            playerShards: document.getElementById('player-shards'),
-            networkPerksContainer: document.getElementById('network-perks-container'),
-            eventTicker: document.getElementById('event-ticker-content'),
-            searchInput: document.getElementById('search-input'),
-            sortSelect: document.getElementById('sort-select'),
-            toggleFavoritesBtn: document.getElementById('toggle-favorites-btn'),
-        }
-    };
-    
-    const TeleportHub = {
-        selectedZoneId: null,
-        playerPowerScore: 0,
-        eventUpdateInterval: null,
-        filters: { search: '', sort: 'level-asc', showFavorites: false },
-        costConfig: { baseCost: 10000, levelMilestone: 5000, costPerMilestone: 10000 },
-        aetheriumPerks: {
-            costReduction: {
-                id: 'costReduction', name: 'Aetheric Efficiency',
-                description: "Permanently reduces the Gold cost of all teleportations.",
-                maxRank: 10, costPerRank: (rank) => 100 * Math.pow(2, rank), bonusPerRank: 0.05
-            }
-        },
-        eventIcons: {
-            HORDE: `<svg class="w-4 h-4 text-red-400 event-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`,
-            SURGE: `<svg class="w-4 h-4 text-purple-400 event-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M4 17v4M2 19h4M17 4v4M16 6h4M20 17v4M19 19h4M12 9a3 3 0 100-6 3 3 0 000 6zm0 12a3 3 0 100-6 3 3 0 000 6zm0-3a3 3 0 100-6 3 3 0 000 6z"></path></svg>`,
-            BOSS: `<svg class="w-4 h-4 text-yellow-400 event-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`
-        },
+    const PortalManager = {
+        gm: null,
+        player: null,
 
-        setFilter(newFilters) {
-            Object.assign(this.filters, newFilters);
-            ui.teleport.toggleFavoritesBtn.classList.toggle('active', this.filters.showFavorites);
+        init(player) {
+            this.player = player;
+            this.gm = window.parent.gameManager;
             this.renderZoneList();
         },
 
-        init() {
-            this.playerPowerScore = this.calculatePlayerPowerScore();
-            
-            ui.teleport.modal.addEventListener('click', (e) => {
-                const closeBtn = e.target.closest('#teleport-close-btn');
-                const teleportBtn = e.target.closest('#teleport-button');
-                const tabDest = e.target.closest('#tab-destinations');
-                const tabNet = e.target.closest('#tab-network');
-                const upgradeBtn = e.target.closest('.upgrade-perk-btn');
-                
-                if (closeBtn) this.hide();
-                else if (teleportBtn) this.teleportPlayer();
-                else if (tabDest) this.setActiveTab('destinations');
-                else if (tabNet) this.setActiveTab('network');
-                else if (upgradeBtn) this.upgradePerk(upgradeBtn.dataset.perkId);
-            });
+        async renderZoneList() {
+            const container = document.getElementById('teleport-list-container');
+            if (!container) return;
 
-            ui.teleport.listContainer.addEventListener('click', (e) => {
-                const listItem = e.target.closest('.teleport-list-item');
-                const favBtn = e.target.closest('.favorite-btn');
-                
-                if (favBtn) {
-                    e.stopPropagation();
-                    this.toggleFavorite(favBtn.dataset.zoneId);
-                } else if (listItem) {
-                    this.selectZone(listItem.dataset.zoneId);
-                }
-            });
+            try {
+                const res = await fetch('../data/zones/manifest.json');
+                const zoneIds = await res.json();
+                container.innerHTML = '';
 
-            ui.teleport.searchInput.addEventListener('input', (e) => this.setFilter({ search: e.target.value }));
-            ui.teleport.sortSelect.addEventListener('change', (e) => this.setFilter({ sort: e.target.value }));
-            ui.teleport.toggleFavoritesBtn.addEventListener('click', () => this.setFilter({ showFavorites: !this.filters.showFavorites }));
-            
-            this.startEventUpdates();
-            this.show();
-        },
-        
-        setActiveTab(tabName) {
-            const isDestinations = tabName === 'destinations';
-            ui.teleport.tabDestinations.classList.toggle('active', isDestinations);
-            ui.teleport.tabNetwork.classList.toggle('active', !isDestinations);
-            ui.teleport.contentDestinations.classList.toggle('hidden', !isDestinations);
-            ui.teleport.contentDestinations.classList.toggle('flex', isDestinations);
-            ui.teleport.contentNetwork.classList.toggle('hidden', isDestinations);
-            ui.teleport.contentNetwork.classList.toggle('flex', !isDestinations);
-            
-            if (!isDestinations) {
-                this.renderNetworkTab();
-            }
-        },
-        
-        show() {
-            this.renderZoneList();
-            this.updateEventTicker();
-            this.updateUI();
-            ui.teleport.modal.classList.remove('hidden');
-        },
+                for (const zid of zoneIds) {
+                    if (zid === 'ZMW00') continue;
 
-        hide() {
-            ui.teleport.modal.classList.add('hidden');
-            this.selectedZoneId = null;
-        },
+                    const zoneRes = await fetch(`../data/zones/${zid}.json`);
+                    if (!zoneRes.ok) continue;
+                    const zoneData = await zoneRes.json();
+                    
+                    const minLevel = zoneData.suggestedLevel || 1;
+                    const isLocked = this.player.level < minLevel;
 
-        startEventUpdates() {
-            this.updateEventTicker();
-            if (this.eventUpdateInterval) clearInterval(this.eventUpdateInterval);
-            this.eventUpdateInterval = setInterval(() => {
-                this.updateEventTicker();
-                if (this.selectedZoneId) {
-                    this.updateUI();
-                }
-            }, 1000);
-        },
+                    const card = document.createElement('div');
+                    card.className = `teleport-list-item p-3 mb-2 rounded border transition-all cursor-pointer ${
+                        isLocked ? 'opacity-40 bg-red-900/10 border-red-900/30' : 'bg-blue-900/20 border-blue-500/50 hover:bg-blue-900/40'
+                    }`;
 
-        getActiveEvents() {
-            if (!game || !Array.isArray(game.worldEvents)) {
-                return []; 
-            }
-            return game.worldEvents.filter(event => event && typeof event.expires === 'number' && event.expires > Date.now());
-        },
-
-        formatTimeRemaining(ms) {
-            if (ms <= 0) return "Expired";
-            const totalSeconds = Math.floor(ms / 1000);
-            const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-            const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            const s = (totalSeconds % 60).toString().padStart(2, '0');
-            return `${h}:${m}:${s}`;
-        },
-
-        updateEventTicker() {
-            const activeEvents = this.getActiveEvents();
-            if (activeEvents.length > 0) {
-                ui.teleport.eventTicker.innerHTML = activeEvents.map(event => `
-                    <span class="mx-4 font-semibold">${event.title}</span>
-                `).join('<span class="text-gray-500 mx-2">|</span>');
-                ui.teleport.eventTicker.parentElement.style.display = 'block';
-            } else {
-                ui.teleport.eventTicker.parentElement.style.display = 'none';
-            }
-        },
-        
-        toggleFavorite(zoneId) {
-            if (!zoneId) return;
-            const favIndex = game.player.favoriteZones.indexOf(zoneId);
-            if (favIndex > -1) {
-                game.player.favoriteZones.splice(favIndex, 1);
-            } else {
-                game.player.favoriteZones.push(zoneId);
-            }
-            this.renderZoneList();
-            game.save();
-        },
-
-        renderZoneList() {
-            let unlockedZones = Object.values(ALL_ZONES)
-                .filter(zone => game.player.unlockedTeleporters?.includes(zone.zoneId));
-
-            if (this.filters.showFavorites) {
-                unlockedZones = unlockedZones.filter(zone => game.player.favoriteZones?.includes(zone.zoneId));
-            }
-            if (this.filters.search) {
-                unlockedZones = unlockedZones.filter(zone => zone.zoneName.toLowerCase().includes(this.filters.search.toLowerCase()));
-            }
-
-            unlockedZones.sort((a, b) => {
-                const isAFav = game.player.favoriteZones?.includes(a.zoneId);
-                const isBFav = game.player.favoriteZones?.includes(b.zoneId);
-                if (isAFav && !isBFav) return -1;
-                if (!isAFav && isBFav) return 1;
-
-                switch (this.filters.sort) {
-                    case 'level-desc': return b.minLevel - a.minLevel;
-                    case 'name-asc': return a.zoneName.localeCompare(b.zoneName);
-                    case 'gem': return (b.zoneType === 'Gem' ? 1 : 0) - (a.zoneType === 'Gem' ? 1 : 0) || a.minLevel - b.minLevel;
-                    case 'gold': return (b.zoneType === 'Gold' ? 1 : 0) - (a.zoneType === 'Gold' ? 1 : 0) || a.minLevel - b.minLevel;
-                    case 'shadow': return (b.zoneType === 'Shadow' ? 1 : 0) - (a.zoneType === 'Shadow' ? 1 : 0) || a.minLevel - b.minLevel;
-                    case 'level-asc': default: return a.minLevel - b.minLevel;
-                }
-            });
-
-            if (unlockedZones.length === 0) {
-                 ui.teleport.listContainer.innerHTML = `<p class="text-center text-gray-400 text-on-glass">No destinations match your filters.</p>`;
-                 return;
-            }
-
-            const activeEvents = this.getActiveEvents();
-            const zonesToRender = unlockedZones.map(zone => ({
-                ...zone,
-                difficulty: this.getDifficultyRating(this.playerPowerScore, this.calculateZoneThreatLevel(zone.zoneId)),
-                event: activeEvents.find(e => e.zoneId === zone.zoneId),
-                isFavorite: game.player.favoriteZones?.includes(zone.zoneId),
-            }));
-
-            ui.teleport.listContainer.innerHTML = zonesToRender.map(zone => {
-                const difficultyColor = zone.difficulty.colorClass || 'bg-gray-400';
-                const eventIconHtml = zone.event && this.eventIcons[zone.event.type] ? this.eventIcons[zone.event.type] : '';
-                return `
-                <div class="teleport-list-item p-3 text-on-glass" data-zone-id="${zone.zoneId}">
-                    <div class="flex justify-between items-center">
-                        <button class="favorite-btn ${zone.isFavorite ? 'is-favorite' : ''}" data-zone-id="${zone.zoneId}">
-                            <svg class="w-5 h-5" fill="${zone.isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-                        </button>
-                        <div class="flex-grow mx-3">
-                            <p class="font-bold text-lg flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full ${difficultyColor.replace('text-', 'bg-')}"></span>
-                                ${zone.zoneName}
-                                ${eventIconHtml}
-                            </p>
-                            <p class="text-xs text-gray-400 ml-4">Min. Level: ${zone.minLevel.toLocaleString()}</p>
-                        </div>
-                        <div class="text-right">
-                           ${game.player.currentZoneId === zone.zoneId 
-                                ? `<span class="text-xs font-bold text-accent-color">CURRENT</span>` 
-                                : `<span class="text-xs font-semibold text-yellow-400">${zone.zoneType}</span>`
-                           }
-                        </div>
-                    </div>
-                </div>
-            `}).join('');
-        },
-        
-        renderNetworkTab() {
-            if (!ui.teleport.playerShards || !ui.teleport.networkPerksContainer) return;
-            ui.teleport.playerShards.textContent = game.player.aetheriumShards.toLocaleString();
-            ui.teleport.networkPerksContainer.innerHTML = Object.values(this.aetheriumPerks).map(perk => {
-                const currentRank = game.player.teleportNetwork[perk.id] || 0;
-                const isMaxed = currentRank >= perk.maxRank;
-                const nextRank = currentRank + 1;
-                const cost = isMaxed ? 0 : perk.costPerRank(currentRank);
-                const canAfford = game.player.aetheriumShards >= cost;
-                const currentBonus = (currentRank * perk.bonusPerRank * 100).toFixed(0);
-                const nextBonus = (nextRank * perk.bonusPerRank * 100).toFixed(0);
-                return `
-                    <div class="bg-black/20 p-4 rounded-lg text-on-glass">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h4 class="font-bold text-lg text-accent-color">${perk.name}</h4>
-                                <p class="text-xs text-gray-300 mt-1">${perk.description}</p>
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-orbitron text-cyan-400 uppercase">${zoneData.zoneName || zid}</span>
+                                <span class="text-[9px] text-gray-500">REQ LVL: ${minLevel}</span>
                             </div>
-                            <span class="text-sm font-semibold bg-white/10 px-2 py-1 rounded">Rank ${currentRank}/${perk.maxRank}</span>
-                        </div>
-                        <div class="mt-3 pt-3 border-t border-white/10">
-                            <p class="text-sm">Current Bonus: <span class="font-bold text-green-400">${currentBonus}%</span></p>
-                            ${!isMaxed ? `
-                            <p class="text-sm mt-1">Next Rank: <span class="font-bold text-green-400">${nextBonus}%</span></p>
-                            <div class="flex justify-between items-center mt-3">
-                                <p class="text-sm">Cost: <span class="font-bold ${canAfford ? 'text-accent-color' : 'text-red-400'}">${cost.toLocaleString()} Shards</span></p>
-                                <button class="glass-button px-4 py-1 text-sm upgrade-perk-btn" data-perk-id="${perk.id}" ${!canAfford ? 'disabled' : ''}>
-                                    Upgrade
-                                </button>
-                            </div>
-                            ` : '<p class="text-center font-bold text-yellow-400 mt-4">MAX RANK</p>'}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        },
-
-        calculatePlayerPowerScore() {
-            const { wc, sc, ac, hp } = game.player.stats;
-            const offense = Math.max(wc || 0, sc || 0);
-            const defense = (ac || 0) + ((hp || 0) / 10);
-            return (offense * 2) + defense;
-        },
-
-        calculateZoneThreatLevel(zoneId) {
-            const zone = ALL_ZONES[zoneId];
-            if (!zone || !zone.monsters || !Array.isArray(zone.monsters) || zone.monsters.length === 0) return 1;
-            let monstersToAverage = zone.monsters.filter(m => m && !m.isBoss);
-            if (monstersToAverage.length === 0) {
-                monstersToAverage = zone.monsters.filter(m => m); 
-            }
-            if (monstersToAverage.length === 0) return 1;
-
-            const avg = monstersToAverage.reduce((acc, m) => {
-                acc.hp += m.hp; acc.atk += m.atk; acc.def += m.def;
-                return acc;
-            }, { hp: 0, atk: 0, def: 0 });
-
-            const count = monstersToAverage.length;
-            const avgAtk = avg.atk / count;
-            const avgDef = avg.def / count;
-            const avgHp = avg.hp / count;
-
-            if (!isFinite(avgAtk) || !isFinite(avgDef) || !isFinite(avgHp)) return 1;
-            return (avgAtk * 2) + (avgDef + (avgHp / 10));
-        },
-
-        getDifficultyRating(playerPower, zoneThreat) {
-            if (!isFinite(playerPower) || !isFinite(zoneThreat) || zoneThreat <= 0) {
-                return { text: "Unknown", colorClass: 'text-gray-400' };
-            }
-            const ratio = playerPower / zoneThreat;
-            if (ratio > 3.0) return { text: "Trivial", colorClass: 'text-green-400' };
-            if (ratio > 1.5) return { text: "Manageable", colorClass: 'text-sky-300' };
-            if (ratio >= 0.9) return { text: "Challenging", colorClass: 'text-yellow-400' };
-            return { text: "Lethal", colorClass: 'text-red-500' };
-        },
-        
-        calculateTeleportCost() {
-            const baseCost = this.costConfig.baseCost + (Math.floor(game.player.level / this.costConfig.levelMilestone) * this.costConfig.costPerMilestone);
-            const costReductionPerk = this.aetheriumPerks.costReduction;
-            const rank = game.player.teleportNetwork.costReduction || 0;
-            const discount = rank * costReductionPerk.bonusPerRank;
-            return Math.floor(baseCost * (1 - discount));
-        },
-
-        selectZone(zoneId) {
-            if (!zoneId) return;
-            this.selectedZoneId = zoneId;
-            ui.teleport.listContainer.querySelectorAll('.teleport-list-item').forEach(item => {
-                item.classList.toggle('selected', item.dataset.zoneId === zoneId);
-            });
-            this.updateUI();
-        },
-        
-        updateUI() {
-            const cost = this.calculateTeleportCost();
-            if (this.selectedZoneId) {
-                const zone = ALL_ZONES[this.selectedZoneId];
-                ui.teleport.selectedZoneName.textContent = zone.zoneName;
-                const isCurrentZone = this.selectedZoneId === game.player.currentZoneId;
-                const canAfford = game.player.gold >= cost;
-                const meetsLevelReq = game.player.level >= zone.minLevel;
-                const threat = this.calculateZoneThreatLevel(zone.zoneId);
-                const difficulty = this.getDifficultyRating(this.playerPowerScore, threat);
-                const event = this.getActiveEvents().find(e => e.zoneId === this.selectedZoneId);
-
-                let eventHtml = '';
-                if(event) {
-                    const timeRemaining = this.formatTimeRemaining(event.expires - Date.now());
-                    eventHtml = `
-                        <div class="col-span-2 mt-2 pt-2 border-t border-white/10">
-                            <p class="font-semibold text-yellow-300 flex items-center gap-2">
-                                ${this.eventIcons[event.type] || ''}
-                                ${event.title}
-                            </p>
-                            <p class="text-gray-400">${event.description}</p>
-                            <p class="text-center font-mono text-xs mt-1">Time Remaining: ${timeRemaining}</p>
+                            ${isLocked ? '<span>🔒</span>' : '<span class="text-cyan-500 text-[10px]">PREVIEW</span>'}
                         </div>
                     `;
-                }
 
-                ui.teleport.intelligencePanel.innerHTML = `
-                    <span>Min. Level:</span> <span class="font-semibold text-white">${zone.minLevel.toLocaleString()}</span>
-                    <span>Zone Type:</span> <span class="font-semibold text-white">${zone.zoneType}</span>
-                    <span>Difficulty:</span> <span class="font-semibold ${difficulty.colorClass}">${difficulty.text}</span>
-                    <span>Attuned:</span> <span class="font-semibold text-green-400">Yes</span>
-                    ${eventHtml}
-                `;
-                
-                ui.teleport.teleportButton.disabled = isCurrentZone || !canAfford || !meetsLevelReq;
-                if (isCurrentZone) {
-                    ui.teleport.teleportCostDisplay.textContent = 'You are already in this zone';
-                } else if (!meetsLevelReq) {
-                    ui.teleport.teleportCostDisplay.textContent = `Requires Level ${zone.minLevel.toLocaleString()}`;
-                } else {
-                    ui.teleport.teleportCostDisplay.textContent = `Cost: ${cost.toLocaleString()} Gold`;
+                    card.onclick = () => this.selectZone(zid, zoneData, isLocked);
+                    container.appendChild(card);
                 }
-                ui.teleport.teleportCostDisplay.classList.toggle('text-red-400', !isCurrentZone && (!canAfford || !meetsLevelReq));
-                ui.teleport.teleportCostDisplay.classList.toggle('text-yellow-400', isCurrentZone || (canAfford && meetsLevelReq));
-            } else {
-                ui.teleport.selectedZoneName.textContent = '-';
-                ui.teleport.intelligencePanel.innerHTML = '';
-                ui.teleport.teleportButton.disabled = true;
-                ui.teleport.teleportCostDisplay.innerHTML = '&nbsp;';
+            } catch (e) {
+                console.error("Portal Failure:", e);
             }
         },
 
-        async teleportPlayer() {
-            const cost = this.calculateTeleportCost();
-            const zone = ALL_ZONES[this.selectedZoneId];
-            if (!zone || zone.zoneId === game.player.currentZoneId || game.player.gold < cost || game.player.level < zone.minLevel) return;
-            
-            game.player.gold -= cost;
-            game.player.currentZoneId = this.selectedZoneId;
-            
-            await game.save();
+        selectZone(zid, zoneData, isLocked) {
+            // Re-capture DOM elements to ensure focus
+            const intelPanel = document.getElementById('zone-intelligence-panel');
+            const zoneTitle = document.getElementById('selected-zone-name');
+            const costDisplay = document.getElementById('teleport-cost-display');
+            const warpBtn = document.getElementById('teleport-button');
 
-            ui.teleport.teleportButton.textContent = "TELEPORTING...";
-            ui.teleport.modal.style.animation = 'flash-teleport 1.5s ease-in-out';
+            // 1. Calculate Cost based on level requirement
+            const cost = 10000 + ( (zoneData.suggestedLevel || 1) * 50 );
             
-            setTimeout(() => {
-                ui.teleport.modal.style.animation = '';
-                ui.teleport.teleportButton.textContent = "Teleport";
-                this.hide();
-                console.log(`Player has arrived in ${zone.zoneName}.`);
-            }, 1500);
+            // 2. Scan Bestiary for Zone Threats
+            const zoneMeta = zonesData[zid] || {};
+            const monsterPool = zoneMeta.monsters || [];
+            
+            // Identify the Apex Threat (highest level monster)
+            let apexThreat = null;
+            monsterPool.forEach(mId => {
+                const mData = bestiaryData[mId];
+                if (mData && (!apexThreat || mData.level > apexThreat.level)) {
+                    apexThreat = mData;
+                }
+            });
+
+            // 3. Update Title
+            zoneTitle.innerText = zoneData.zoneName || zid;
+            
+            // 4. Generate Bestiary Preview
+            let threatHtml = `<p class="text-[9px] text-gray-500 italic">No life signs detected.</p>`;
+            if (apexThreat) {
+                threatHtml = `
+                    <div class="mt-2 pt-2 border-t border-white/5">
+                        <span class="text-[8px] text-red-500 font-bold uppercase tracking-widest">Apex Threat Detected</span>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-white text-[10px] font-bold">${apexThreat.name}</span>
+                            <span class="text-red-400 text-[9px]">Lvl ${apexThreat.level}</span>
+                        </div>
+                        <div class="flex gap-2 mt-1 text-[8px] text-gray-400">
+                            <span>HP: ${apexThreat.hp.toLocaleString()}</span>
+                            <span>ATK: ${apexThreat.atk.toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 5. Update Intelligence Panel Content
+            intelPanel.innerHTML = `
+                <div class="flex flex-col gap-1 text-[10px]">
+                    <div class="flex justify-between border-b border-white/10 pb-1">
+                        <span class="text-gray-400 uppercase">Atmosphere:</span>
+                        <span class="text-cyan-300 font-bold">${zoneData.zoneType || 'Standard'}</span>
+                    </div>
+                    <p class="text-[9px] text-gray-300 italic mt-2 leading-tight">
+                        ${zoneData.description || 'Detecting high-frequency aetheric resonance.'}
+                    </p>
+                    ${threatHtml}
+                </div>
+            `;
+
+            // 6. Update Button and Cost States
+            costDisplay.innerText = isLocked ? `LEVEL TOO LOW` : `Cost: ${cost.toLocaleString()} Gold`;
+            warpBtn.disabled = isLocked;
+            
+            // Assign the confirmation and execution logic to the Warp button
+            warpBtn.onclick = () => {
+                if (confirm(`⚡ INITIATE WARP SEQUENCE?\nDestination: ${zoneData.zoneName}\nCost: ${cost.toLocaleString()}G`)) {
+                    this.executeTeleport(zid, zoneData, cost);
+                }
+            };
         },
-        
-        upgradePerk(perkId) {
-            const perk = this.aetheriumPerks[perkId];
-            if (!perk || !game.player.teleportNetwork) return;
 
-            const currentRank = game.player.teleportNetwork[perkId] || 0;
-            if (currentRank >= perk.maxRank) return;
+        executeTeleport(zid, zoneData, cost) {
+            // Find the specific entrance hex for this zone
+            const entrance = zoneData.hexes?.find(h => h.trigger === "blueEntrance");
+            const targetX = entrance ? entrance.q : 12;
+            const targetY = entrance ? entrance.r : 14;
 
-            const cost = perk.costPerRank(currentRank);
-            if (game.player.aetheriumShards < cost) return;
-
-            game.player.aetheriumShards -= cost;
-            game.player.teleportNetwork[perkId] = currentRank + 1;
-            
-            game.save();
-            this.renderNetworkTab();
-            this.updateUI();
+            if (this.gm) {
+                // Gold deduction logic
+                if (!window.parent.DEV_FREE_WARP) this.player.gold -= cost;
+                
+                // Call the high-energy glitch effect from GameManager
+                if (this.gm.triggerTeleportEffect) {
+                    this.gm.triggerTeleportEffect();
+                }
+                
+                // Perform the zone swap
+                if (this.gm.ZoneManager) {
+                    this.gm.ZoneManager.handleZoneTransition(zid, targetX, targetY);
+                }
+                
+                // Hide the portal overlay
+                const overlay = window.parent.document.getElementById('module-overlay');
+                if (overlay) overlay.classList.add('hidden');
+            }
         }
     };
-    
-    window.TeleportHub = TeleportHub;
+
+    window.ShopManager = { init: (player) => PortalManager.init(player) };
 </script>
 </body>
 </html>

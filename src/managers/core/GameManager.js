@@ -209,6 +209,7 @@ export class GameManager {
             }
         });
     }
+    
 
     if (this.ui.mapCloseBtn) {
         this.ui.mapCloseBtn.addEventListener('click', () => {
@@ -364,5 +365,29 @@ export class GameManager {
             if (this.ui.zoneCanvas) this.ui.zoneCanvas.focus();
         };
     }
+/**
+     * Triggers a Magi-Tech interference effect during teleportation.
+     */
+    triggerTeleportEffect() {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[5000] pointer-events-none bg-white/10';
+        overlay.style.animation = 'teleport-glitch 0.4s steps(5) infinite';
+        
+        const style = document.createElement('style');
+        style.id = 'teleport-glitch-style';
+        style.innerHTML = `
+            @keyframes teleport-glitch {
+                0% { clip-path: inset(10% 0 30% 0); transform: skew(5deg); filter: hue-rotate(90deg); }
+                50% { clip-path: inset(50% 0 5% 0); transform: skew(-5deg); filter: invert(1); }
+                100% { clip-path: inset(20% 0 60% 0); }
+            }
+        `;
+        
+        if (!document.getElementById('teleport-glitch-style')) {
+            document.head.appendChild(style);
+        }
+        document.body.appendChild(overlay);
 
+        setTimeout(() => overlay.remove(), 800); 
+    }
 }
