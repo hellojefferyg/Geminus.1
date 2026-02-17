@@ -85,7 +85,8 @@ export class InventoryManager {
         const SUB_FILTERS = {
             weapon: ['Axe', 'Bow', 'Claw', 'Dagger', 'Mace', 'Staff', 'Sword', 'Shield', 'Orb'],
             armor: ['Helmet', 'Chest', 'Leggings', 'Boots', 'Gloves'],
-            spell: ['Air', 'Arcane', 'Cold', 'Death', 'Drain', 'Earth', 'Fire', 'Might', 'Guard', 'Swiftness'],
+            // Added the missing elements from your DNA database
+            spell: ['Air', 'Arcane', 'Cold', 'Ice', 'Death', 'Drain', 'Earth', 'Fire', 'Might', 'Guard', 'Swiftness'],
             jewelry: ['Ring', 'Necklace'],
             gem: [], 
             misc: [],
@@ -237,16 +238,16 @@ export class InventoryManager {
 
             // [FIX] Priority Categorization (Enforces Tab Rules based on Name/Type)
             
-            // A. Armor (Check first to catch Shields/Helms)
-            if (['helmet', 'chest', 'leggings', 'boots', 'gloves', 'shield', 'armor'].some(t => type.includes(t) || name.includes(t))) {
+            // A. Armor (Remove Shields/Off-hands from here)
+            if (['helmet', 'chest', 'leggings', 'boots', 'gloves', 'armor'].some(t => type.includes(t) || name.includes(t))) {
                 cat = 'armor';
             }
-            // B. Weapons
-            else if (['axe', 'sword', 'bow', 'staff', 'dagger', 'mace', 'claw', 'orb', 'weapon'].some(t => type.includes(t) || name.includes(t))) {
+            // B. Weapons (Now includes Shields, Arrows, and Off-hands)
+            else if (['axe', 'sword', 'bow', 'staff', 'dagger', 'mace', 'claw', 'orb', 'weapon', 'shield', 'arrow', 'offhand', 'caster'].some(t => type.includes(t) || name.includes(t))) {
                 cat = 'weapon';
             }
-            // C. Spells (Catch Elements)
-            else if (['spell', 'scroll', 'book', 'air', 'fire', 'earth', 'water', 'arcane', 'death', 'drain', 'might', 'guard', 'swiftness'].some(t => type.includes(t) || name.includes(t))) {
+            // C. Spells & Buffs (Ensures all elements and buffs land in the Spell tab)
+            else if (['spell', 'scroll', 'book', 'air', 'fire', 'earth', 'water', 'cold', 'ice', 'arcane', 'death', 'drain', 'might', 'guard', 'swiftness', 'buff'].some(t => type.includes(t) || name.includes(t))) {
                 cat = 'spell';
             }
             // D. Jewelry

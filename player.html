@@ -35,12 +35,39 @@
     <div id="game-container" class="h-full">
         <div id="game-hud-screen" class="relative z-10 h-full">
             <div id="dev-tools-panel" class="absolute top-2 left-2 z-[100] flex flex-col gap-1 items-start pointer-events-auto">
-                <button id="dev-zone-btn" class="glass-button px-2 py-1 text-[10px] font-orbitron text-cyan-400 border border-cyan-500/30 rounded bg-black/80 hover:bg-cyan-900/50 transition-colors shadow-[0_0_10px_rgba(0,255,255,0.2)]">
-                    ⚡ DEV WARP
+                <button id="dev-toggle-btn" class="glass-button px-2 py-1 text-[10px] font-orbitron text-red-400 border border-red-500/30 rounded bg-black/80 hover:bg-red-900/50 transition-colors shadow-[0_0_10px_rgba(255,0,0,0.2)]">
+                    ⚡ DEV TOOLS
                 </button>
-                <select id="dev-zone-select" class="hidden glass-panel bg-black/90 text-cyan-400 text-[10px] p-1 border border-cyan-500/50 outline-none rounded w-32 custom-scrollbar">
-                    <option value="">Loading...</option>
-                </select>
+                <div id="dev-menu" class="hidden flex flex-col gap-2 bg-black/95 border border-red-900 p-2 rounded shadow-2xl w-48 mt-1">
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Stats & Gold</p>
+                    <div class="flex flex-col gap-1">
+                        <input type="number" id="dev-set-level" placeholder="Set Level" oninput="DevManager.updatePreview()" class="bg-gray-900 text-[10px] p-1 border border-gray-700 rounded outline-none text-cyan-400">
+                        <input type="number" id="dev-set-gold" placeholder="Set Gold" class="bg-gray-900 text-[10px] p-1 border border-gray-700 rounded outline-none text-yellow-400">
+                        <button onclick="DevManager.setPlayerStats(document.getElementById('dev-set-level').value, document.getElementById('dev-set-gold').value)" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-1 rounded">Apply Stats</button>
+                    </div>
+
+                    <div id="dev-preview-box" class="bg-black/50 border border-red-500/20 p-1 rounded text-[8px] font-mono flex flex-col gap-0.5">
+                        <div class="flex justify-between"><span>Est. HP:</span> <span id="prev-hp" class="text-green-400">--</span></div>
+                        <div class="flex justify-between"><span>Est. WC:</span> <span id="prev-wc" class="text-red-400">--</span></div>
+                        <div class="flex justify-between"><span>Est. SC:</span> <span id="prev-sc" class="text-blue-400">--</span></div>
+                    </div>
+
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Test Gear</p>
+                    <div class="flex gap-1">
+                        <input type="number" id="dev-set-tier" value="1" min="1" max="20" class="w-12 bg-gray-900 text-[10px] p-1 border border-gray-700 rounded outline-none text-white">
+                        <button onclick="DevManager.injectTierSet(document.getElementById('dev-set-tier').value)" class="flex-1 text-[9px] bg-gray-800 hover:bg-gray-700 p-1 rounded">Inject Tier Set</button>
+                    </div>
+
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Drops</p>
+                    <button id="drop-toggle-btn" onclick="updateDropBtn()" class="text-[9px] text-left text-gray-300 bg-gray-900 hover:bg-gray-800 p-1.5 rounded border border-white/5">Force Drops: OFF</button>
+                    
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Warp</p>
+                    <select id="dev-zone-select" class="glass-panel bg-black/90 text-cyan-400 text-[10px] p-1 border border-cyan-500/50 outline-none rounded w-full custom-scrollbar">
+                        <option value="">Select Zone...</option>
+                    </select>
+
+                    <button onclick="location.reload()" class="text-[9px] text-center text-white bg-red-800 hover:bg-red-700 p-1.5 rounded mt-1">Hard Reload</button>
+                </div>
             </div>
             <div id="layout-container" class="max-w-md mx-auto h-full flex flex-col p-2 gap-2">
                 
@@ -135,5 +162,28 @@
             <iframe id="module-iframe" class="w-full h-full border-none bg-transparent"></iframe>
         </div>
     </div>
+
+    <script>
+        // Toggle Menu Visibility
+        const devBtn = document.getElementById('dev-toggle-btn');
+        const devMenu = document.getElementById('dev-menu');
+        
+        if (devBtn) {
+            devBtn.onclick = () => devMenu.classList.toggle('hidden');
+        }
+
+        // Bridges the HTML toggle button to the DevManager logic
+        window.updateDropBtn = function() {
+            if (!window.DevManager) {
+                console.error("DevManager not initialized. Check GameManager.js");
+                return;
+            }
+            const state = window.DevManager.toggleForceDrops(); //
+            const btn = document.getElementById('drop-toggle-btn');
+            btn.innerText = `Force Drops: ${state ? 'ON' : 'OFF'}`;
+            btn.classList.toggle('text-green-400', state);
+            btn.classList.toggle('text-gray-300', !state);
+        };
+    </script>
 </body>
 </html>

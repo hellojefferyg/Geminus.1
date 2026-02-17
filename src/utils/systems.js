@@ -506,6 +506,7 @@ const Systems = {
           child.category = baseItem.category || 'Misc';
           child.type = baseItem.type || 'Misc';
       }
+      child.uuid = crypto.randomUUID(); // Ensures compatibility with Equipment & Inventory Managers
 
       child.instanceId = `${child.baseItemId || 'GEN'}_${child.isEcho ? 'ECHO' : 'SHADOW'}_${Date.now()}_${Math.floor(Math.random()*1000)}`;
       

@@ -1,5 +1,6 @@
 // src/managers/core/GameManager.js
 import { MODULE_FILE_MAP } from '../../config/ModuleMap.js';
+import { DevManager } from '../../utils/DevManager.js';
 export class GameManager {
   constructor(deps) {
     this.state = deps.state;
@@ -37,6 +38,9 @@ export class GameManager {
     const wasInitialized = this.isInitialized;
     if (!this.isInitialized) {
       this.isInitialized = true;
+      // Initialize Dev Tools
+      this.DevManager = DevManager;
+      this.DevManager.init(this);
     }
 
     // 1. Reveal the HUD screen now that the engine is ready
@@ -213,48 +217,40 @@ export class GameManager {
             }
         });
     }
-  // --- DEV TOOLS: ZONE SWITCHER ---
-    const devBtn = document.getElementById('dev-zone-btn');
+  // --- DEV TOOLS: ZONE SWITCHER (Restored) ---
     const devSelect = document.getElementById('dev-zone-select');
 
-    if (devBtn && devSelect) {
-        // Toggle Dropdown
-        devBtn.addEventListener('click', async () => {
-            const isHidden = devSelect.classList.contains('hidden');
-            if (isHidden) {
-                devSelect.classList.remove('hidden');
-                // Load manifest if empty
-                if (devSelect.options.length <= 1) {
-                    try {
-                        const res = await fetch('./data/zones/manifest.json');
-                        const zones = await res.json();
-                        devSelect.innerHTML = '<option value="">Select Zone...</option>';
-                        zones.forEach(id => {
-                            const opt = document.createElement('option');
-                            opt.value = id;
-                            opt.textContent = id;
-                            devSelect.appendChild(opt);
-                        });
-                    } catch (e) {
-                        console.error("Dev Tools: Manifest load failed", e);
-                        devSelect.innerHTML = '<option>Error loading manifest</option>';
-                    }
-                }
-            } else {
-                devSelect.classList.add('hidden');
+    if (devSelect) {
+        // 1. Immediately populate the manifest list
+        const populateZones = async () => {
+            try {
+                const res = await fetch('./data/zones/manifest.json');
+                if (!res.ok) throw new Error("Manifest not found");
+                const zones = await res.json();
+                
+                devSelect.innerHTML = '<option value="">Select Zone...</option>';
+                zones.forEach(id => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = id;
+                    devSelect.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("🛠️ Dev Tools: Manifest load failed", e);
+                devSelect.innerHTML = '<option>Error loading manifest</option>';
             }
-        });
+        };
 
-        // Handle Warp
+        populateZones();
+
+        // 2. Handle Warp Logic
         devSelect.addEventListener('change', (e) => {
             const targetId = e.target.value;
             if (targetId && this.ZoneManager) {
-                if (window.confirm(`⚡ DEV WARP: Travel to ${targetId}?`)) {
-                    // Warp to center (safe default)
-                    this.ZoneManager.handleZoneTransition(targetId, 10, 10);
-                    devSelect.classList.add('hidden');
-                    devSelect.value = "";
-                }
+                // Warp to center coordinates (10, 10) as a safe default
+                this.ZoneManager.handleZoneTransition(targetId, 10, 10);
+                // Optional: Clear selection after warp
+                devSelect.value = "";
             }
         });
     }
