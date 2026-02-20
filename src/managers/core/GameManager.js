@@ -365,29 +365,76 @@ export class GameManager {
             if (this.ui.zoneCanvas) this.ui.zoneCanvas.focus();
         };
     }
-/**
-     * Triggers a Magi-Tech interference effect during teleportation.
-     */
-    triggerTeleportEffect() {
-        const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 z-[5000] pointer-events-none bg-white/10';
-        overlay.style.animation = 'teleport-glitch 0.4s steps(5) infinite';
-        
-        const style = document.createElement('style');
-        style.id = 'teleport-glitch-style';
-        style.innerHTML = `
-            @keyframes teleport-glitch {
-                0% { clip-path: inset(10% 0 30% 0); transform: skew(5deg); filter: hue-rotate(90deg); }
-                50% { clip-path: inset(50% 0 5% 0); transform: skew(-5deg); filter: invert(1); }
-                100% { clip-path: inset(20% 0 60% 0); }
-            }
-        `;
-        
-        if (!document.getElementById('teleport-glitch-style')) {
-            document.head.appendChild(style);
-        }
-        document.body.appendChild(overlay);
 
-        setTimeout(() => overlay.remove(), 800); 
-    }
+    /**
+   * Triggers a cinematic video transition for teleportation.
+   * @param {string} zoneName - The destination name to display.
+   * @param {function} onPeak - Callback to swap the map data.
+   */
+  triggerTeleportEffect(zoneName = "Initializing...", onPeak) {
+    // --- 1. VIDEO CONFIGURATION ---
+    const video = document.createElement('video');
+    
+    // CHANGE THIS: The path to your video file
+    video.src = './Visual-Effects/Animations/Teleport_Animation.mp4'; 
+    
+    // Inside triggerTeleportEffect in GameManager.js
+video.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; object-fit:cover; pointer-events:none; transform: translateZ(0); will-change: transform, opacity;';
+    video.autoplay = true;
+    video.muted = true;
+    video.loop = false; 
+    document.body.appendChild(video);
+
+    // --- 2. UI OVERLAY ---
+    const textOverlay = document.createElement('div');
+    textOverlay.className = 'fixed inset-0 z-[100000] flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300';
+    textOverlay.innerHTML = `
+        <h1 class="teleport-announcement text-3xl mb-6">${zoneName}</h1>
+        <div class="warp-progress-container">
+            <div id="warp-progress-bar" class="warp-progress-fill"></div>
+        </div>
+    `;
+    document.body.appendChild(textOverlay);
+
+    video.onplay = () => {
+        textOverlay.classList.remove('opacity-0');
+        const bar = document.getElementById('warp-progress-bar');
+        if (bar) bar.style.width = '100%';
+
+        // --- 3. THE "PEAK" TIMING (The Handshake) ---
+        // CHANGE THIS: Adjust 3000 (3 seconds) to match the flash/peak of your video.
+        // This is the exact moment the player moves to the new zone.
+        // Inside the video.onplay block in GameManager.js
+        setTimeout(() => {
+            if (typeof onPeak === 'function') onPeak(); 
+            
+            // THE OPTIMIZATION: Start the fade immediately after the swap
+            video.style.transition = 'opacity 0.4s ease-in-out';
+            video.style.opacity = '0';
+            
+            setTimeout(() => {
+                video.pause(); // Stop processing the video frames
+                video.src = ""; // Clear memory
+                video.remove();
+                textOverlay.remove();
+            }, 400); 
+        }, 3000); // 3-second peak
+    };
+
+    // Error Failsafe: Remove video if it fails to load
+    video.onerror = () => {
+        console.error("❌ Teleport Video failed to load.");
+        if (typeof onPeak === 'function') onPeak();
+        video.remove();
+        textOverlay.remove();
+    };
+  }
+
+  /**
+   * Helper for UI Sounds
+   */
+  playMagiTechSound(type) {
+    // Placeholder for your Audio system
+    console.log(`🔊 Playing sound: ${type}`);
+  }
 }
