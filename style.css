@@ -471,5 +471,5 @@ body.theme-molten-core #chat-modal .tab.active { animation-name: pulse-main-tab-
     box-shadow: 0 0 15px #22d3ee;
     width: 0%;
     /* SYNC: Matches the 3-second warp-growth and video peak */
-    transition: width 3000ms linear; 
+    transition: width 6000ms linear; 
 }

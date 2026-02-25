@@ -372,62 +372,62 @@ export class GameManager {
    * @param {function} onPeak - Callback to swap the map data.
    */
   triggerTeleportEffect(zoneName = "Initializing...", onPeak) {
-    // --- 1. VIDEO CONFIGURATION ---
     const video = document.createElement('video');
-    
-    // CHANGE THIS: The path to your video file
     video.src = './Visual-Effects/Animations/Teleport_Animation.mp4'; 
+    video.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; object-fit:cover; pointer-events:none;';
     
-    // Inside triggerTeleportEffect in GameManager.js
-video.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; object-fit:cover; pointer-events:none; transform: translateZ(0); will-change: transform, opacity;';
-    video.autoplay = true;
+    // START TIME: Setting to 0.5s mark
+    video.currentTime = 0.5; // Start delay slightly in to skip any black frames
     video.muted = true;
-    video.loop = false; 
     document.body.appendChild(video);
 
-    // --- 2. UI OVERLAY ---
     const textOverlay = document.createElement('div');
     textOverlay.className = 'fixed inset-0 z-[100000] flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300';
+    // ADDED: Skip Button UI
     textOverlay.innerHTML = `
         <h1 class="teleport-announcement text-3xl mb-6">${zoneName}</h1>
         <div class="warp-progress-container">
             <div id="warp-progress-bar" class="warp-progress-fill"></div>
         </div>
+        <button id="skip-warp-btn" class="mt-8 px-6 py-2 bg-cyan-900/60 border border-cyan-400 text-cyan-400 font-cinzel text-xs tracking-widest hover:bg-cyan-400 hover:text-black pointer-events-auto transition-all">
+            SKIP TRANSITION
+        </button>
     `;
     document.body.appendChild(textOverlay);
 
-    video.onplay = () => {
-        textOverlay.classList.remove('opacity-0');
-        const bar = document.getElementById('warp-progress-bar');
-        if (bar) bar.style.width = '100%';
-
-        // --- 3. THE "PEAK" TIMING (The Handshake) ---
-        // CHANGE THIS: Adjust 3000 (3 seconds) to match the flash/peak of your video.
-        // This is the exact moment the player moves to the new zone.
-        // Inside the video.onplay block in GameManager.js
-        setTimeout(() => {
-            if (typeof onPeak === 'function') onPeak(); 
-            
-            // THE OPTIMIZATION: Start the fade immediately after the swap
-            video.style.transition = 'opacity 0.4s ease-in-out';
-            video.style.opacity = '0';
-            
-            setTimeout(() => {
-                video.pause(); // Stop processing the video frames
-                video.src = ""; // Clear memory
-                video.remove();
-                textOverlay.remove();
-            }, 400); 
-        }, 3000); // 3-second peak
-    };
-
-    // Error Failsafe: Remove video if it fails to load
-    video.onerror = () => {
-        console.error("❌ Teleport Video failed to load.");
-        if (typeof onPeak === 'function') onPeak();
+    // Logical trigger for cleaning up everything
+    const finalizeWarp = () => {
+        if (typeof onPeak === 'function') {
+            onPeak(); 
+            onPeak = null; // Prevent double-triggering
+        }
+        video.pause();
         video.remove();
         textOverlay.remove();
     };
+
+    document.getElementById('skip-warp-btn').onclick = () => finalizeWarp();
+
+    video.onplay = () => {
+        textOverlay.classList.remove('opacity-0');
+        if (this.playMagiTechSound) this.playMagiTechSound('warp_sequence_start');
+        const bar = document.getElementById('warp-progress-bar');
+        if (bar) bar.style.width = '100%';
+
+        // PEAK TIMING: 3.5 seconds after the 1s start = the 4.5s white-out
+        setTimeout(() => {
+            if (typeof onPeak === 'function') onPeak(); 
+            
+            // Auto-hide after the video naturally hits the end (7s total)
+            setTimeout(() => {
+                video.style.transition = 'opacity 0.5s';
+                video.style.opacity = '0';
+                setTimeout(() => finalizeWarp(), 500);
+            }, 2000); // 2s more to reach the 7s mark (Full video length)
+        }, 4500); // Time between start to hit the peak. Ie. when the screen is fully white and we want to swap the map.
+    };
+
+    video.play();
   }
 
   /**

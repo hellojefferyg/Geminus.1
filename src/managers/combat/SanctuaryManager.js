@@ -29,12 +29,7 @@ export class SanctuaryManager {
       this.CombatManager.logToGame(`<span class='log-system'>Your soul drifts to the Sanctuary...</span>`);
     }
 
-    // [NEW] Open the Sanctuary Module (sanctuary.html)
-    if (this.GameManager && this.GameManager.openModule) {
-        setTimeout(() => {
-            this.GameManager.openModule('sanctuary'); 
-        }, 1500); // Cinematic delay
-    } else {
+     else {
         console.error("❌ SanctuaryManager: Cannot open Sanctuary module. GameManager missing.");
     }
   }
