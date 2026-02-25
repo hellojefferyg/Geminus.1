@@ -318,7 +318,15 @@ body.theme-molten-core #chat-modal .tab.active { animation-name: pulse-main-tab-
 /* RESIZE FIX: Ensure sections can grow and shrink properly */
 #layout-container > .tappable-section {
     transition: flex 0.3s ease-in-out;
-    
+    min-height: 0; /* Prevents flex children from expanding beyond pinch bounds */
+}
+
+#footer-chat-container {
+    min-height: 0; /* Forces internal flex column to respect boundaries */
+}
+
+#footer-chat-content-wrapper {
+    min-height: 0; /* Critical: Triggers overflow-y-auto custom scrollbar inside resized flex item */
 }
 /* --- Genesis Loading Protocol --- */
 #loading-screen {
@@ -472,4 +480,57 @@ body.theme-molten-core #chat-modal .tab.active { animation-name: pulse-main-tab-
     width: 0%;
     /* SYNC: Matches the 3-second warp-growth and video peak */
     transition: width 6000ms linear; 
+}
+/* --- CHAT MODULE INTRICACIES --- */
+
+/* Custom Scrollbar for Chat & Sidebars */
+.custom-scrollbar::-webkit-scrollbar { 
+    width: 4px; 
+    height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track { 
+    background: rgba(0, 0, 0, 0.2); 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(34, 211, 238, 0.3); /* Cyan-400 */
+    border-radius: 4px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(34, 211, 238, 0.6);
+}
+
+/* Chat Bubble Geometries */
+.chat-bubble-user { 
+    background: rgba(34, 211, 238, 0.1); 
+    border: 1px solid rgba(34, 211, 238, 0.3); 
+    border-bottom-right-radius: 0; 
+}
+.chat-bubble-other { 
+    background: rgba(255, 255, 255, 0.05); 
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-bottom-left-radius: 0; 
+}
+
+/* Sidebar Animation States */
+.sidebar-closed { 
+    transform: translateX(-100%); 
+}
+.sidebar-open { 
+    transform: translateX(0); 
+}
+
+@media (min-width: 768px) {
+    .sidebar-closed { transform: none; }
+}
+
+/* Reply Quote Styling */
+.reply-quote {
+    position: relative;
+    padding-left: 8px;
+    margin-bottom: 4px;
+    border-left: 2px solid var(--highlight-color);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }

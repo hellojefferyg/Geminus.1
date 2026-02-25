@@ -115,18 +115,159 @@
                     </div>
                     </main>
                 </div>
-
-                <div id="footer-container">
-                    <footer class="glass-panel p-4 rounded-lg flex justify-center items-center">
-                        <div class="relative w-32 h-32 d-pad-container">
-                            <button class="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-up" data-key="up">▲</button>
-                            <button class="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-left" data-key="left">◀</button>
-                            <button class="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-right" data-key="right">▶</button>
-                            <button class="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-10 glass-button rounded flex items-center justify-center move-key" id="key-down" data-key="down">▼</button>
-                            <button class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-[10px] text-cyan-400" id="key-center" data-key="center">OK</button>
+                
+                <div id="footer-container" class="tappable-section shrink-0" style="flex-basis: 175px;"> 
+                    <footer id="footer-chat-container" class="glass-panel p-2 rounded-lg flex flex-col h-full w-full">
+                        <div class="flex gap-3 border-b border-cyan-500/30 pb-1 mb-1 px-1 overflow-x-auto custom-scrollbar">
+                            <button class="footer-tab-button active text-[10px] uppercase font-orbitron shrink-0" data-channel="main">Global</button>
+                            <button class="footer-tab-button text-[10px] uppercase font-orbitron text-gray-500 hover:text-gray-300 shrink-0" data-channel="clan">Clan</button>
+                            <button class="footer-tab-button text-[10px] uppercase font-orbitron text-gray-500 hover:text-gray-300 shrink-0" data-channel="sales">Sales</button>
+                            <button class="footer-tab-button text-[10px] uppercase font-orbitron text-gray-500 hover:text-gray-300 shrink-0" data-channel="pms">PMs</button>
                         </div>
+                        <div id="footer-chat-content-wrapper" class="flex-grow overflow-y-auto custom-scrollbar text-[10px] space-y-2 p-1">
+                            </div>
+                        <form id="footer-message-form" class="flex gap-1 mt-1">
+                            <button type="button" id="open-chat-modal-btn" class="glass-button px-2 rounded font-bold text-cyan-400" title="Expand Chat">⛶</button>
+                            <input type="text" id="footer-message-input" class="footer-chat-input flex-grow text-xs p-1.5 rounded outline-none" placeholder="Message..." autocomplete="off">
+                            <button type="submit" class="glass-button px-3 rounded text-[10px]">➤</button>
+                        </form>
                     </footer>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2000] p-2 md:p-6">
+        <div class="relative w-full h-full max-w-7xl md:h-[95vh] md:max-h-[900px] flex glass-panel overflow-hidden bg-[#050f14]/95 rounded-xl">
+            <button id="close-chat-modal-btn" class="absolute top-2 right-4 text-gray-400 hover:text-cyan-400 text-3xl font-bold z-[60] transition-colors">&times;</button>
+            
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
+
+            <div id="sidebar" class="absolute md:relative z-40 h-full w-4/5 max-w-xs md:w-1/4 md:min-w-[300px] flex flex-col p-4 transition-transform duration-300 ease-in-out sidebar-closed md:sidebar-open bg-black/40 md:bg-transparent border-r border-cyan-500/30">
+                <button id="close-sidebar-btn" class="md:hidden absolute top-4 right-4 text-gray-300 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                
+                <div id="user-profile-button" class="mt-8 md:mt-0 p-3 glass-panel rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <img id="sidebar-avatar" src="https://placehold.co/64x64/0a282d/00f6ff?text=U" class="avatar w-12 h-12 rounded-full border-2 border-cyan-400">
+                        <div class="text-left overflow-hidden">
+                            <p id="sidebar-username" class="font-bold text-lg truncate text-cyan-400 font-orbitron">Loading...</p>
+                            <p id="sidebar-role" class="text-xs capitalize text-cyan-500 opacity-80">Member</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-300 font-mono">
+                        <div><span class="font-bold text-white">Level:</span> <span id="sidebar-level">1</span></div>
+                        <div><span class="font-bold text-yellow-400">Gold:</span> <span id="sidebar-gold" class="text-yellow-400">0</span></div>
+                        <div><span class="font-bold text-white">KP:</span> <span id="sidebar-kp">0</span></div>
+                        <div><span class="font-bold text-white">Tokens:</span> <span id="sidebar-tokens">0</span></div>
+                    </div>
+                </div>
+
+                <div class="flex-grow flex flex-col min-h-0 pt-4">
+                    <h2 id="online-users-header" class="text-sm font-orbitron text-cyan-500 mb-2 pl-2 uppercase tracking-widest border-b border-cyan-500/30 pb-1">Online</h2>
+                    <div id="online-users-list" class="flex-grow overflow-y-auto custom-scrollbar pr-2 text-sm text-gray-300"></div>
+                </div>
+
+                <div class="flex-shrink-0 pt-4 border-t border-cyan-500/30">
+                    <h2 class="text-sm font-orbitron text-cyan-500 mb-2 pl-2 uppercase tracking-widest border-b border-cyan-500/30 pb-1">Simulation</h2>
+                    <div class="space-y-2 mt-2">
+                        <button id="simulate-kills-btn" class="w-full text-[10px] uppercase font-bold py-2 px-4 rounded transition-colors glass-button">Simulate 100 Kills</button>
+                        <button id="simulate-level-btn" class="w-full text-[10px] uppercase font-bold py-2 px-4 rounded transition-colors glass-button">Gain 10 Levels</button>
+                        <button id="buy-token-btn" class="w-full text-[10px] uppercase font-bold py-2 px-4 rounded glass-button border-cyan-400 text-cyan-400 hover:bg-cyan-900/40">Buy Token (5000 KP)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col w-full md:w-auto">
+                <div class="p-4 border-b border-cyan-500/30 flex items-center justify-between relative bg-black/40 pt-8 md:pt-4">
+                    <button id="open-sidebar-btn" class="md:hidden text-cyan-400"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+                    <div id="tabs-container" class="flex-grow flex justify-center gap-4 md:gap-8 text-sm md:text-base font-orbitron font-bold text-gray-500">
+                        <div class="tab active cursor-pointer hover:text-cyan-400 transition-colors" data-channel="main">Global</div>
+                        <div class="tab cursor-pointer hover:text-cyan-400 transition-colors" data-channel="clan">Clan</div>
+                        <div class="tab cursor-pointer hover:text-cyan-400 transition-colors" data-channel="sales">Sales</div>
+                        <div class="tab cursor-pointer hover:text-cyan-400 transition-colors" data-channel="pms">PMs</div>
+                    </div>
+                    <div class="w-7"></div>
+                </div>
+                <div id="sub-tabs-container" class="px-4 pt-2 pb-2 border-b border-cyan-500/20 hidden bg-black/20"></div>
+                
+                <div id="content-container" class="flex-grow flex flex-col min-h-0 bg-black/20 relative">
+                    <div id="chat-messages" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4"></div>
+                    <div id="sales-view" class="flex-grow p-4 overflow-y-auto custom-scrollbar hidden"></div>
+                    <div id="pm-list" class="flex-grow p-4 overflow-y-auto custom-scrollbar hidden"></div>
+                </div>
+                
+                <div id="typing-indicator" class="px-4 pb-2 text-xs font-mono text-gray-500 h-6"></div>
+                
+                <div id="reply-indicator" class="px-4 pt-2 hidden">
+                    <div class="bg-black/60 border border-cyan-500/30 rounded-t-lg p-2 text-sm">
+                        <div class="flex justify-between items-center">
+                            <div><p class="font-semibold text-cyan-400">Replying to <span id="reply-username"></span></p><p id="reply-text" class="text-gray-300 text-xs truncate"></p></div>
+                            <button id="cancel-reply-btn" class="text-gray-400 hover:text-red-400 text-2xl transition-colors">&times;</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="message-form" class="p-3 md:p-4 flex items-center gap-2 md:gap-3 border-t border-cyan-500/30 bg-black/40">
+                    <label for="image-upload" class="p-2 md:p-3 rounded glass-button cursor-pointer text-cyan-400">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                    </label>
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+                    <input type="text" id="message-input" placeholder="Enter transmission..." autocomplete="off" class="footer-chat-input flex-grow p-2 md:p-3 rounded text-xs md:text-sm outline-none bg-black/40 border border-cyan-500/30 text-white font-mono placeholder-cyan-900">
+                    <button type="submit" id="send-button" class="glass-button px-4 md:px-6 py-2 md:py-3 rounded font-bold text-xs md:text-sm tracking-widest uppercase text-cyan-400">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="modal-backdrop hidden z-[2100]">
+        <div class="glass-panel p-6 w-11/12 max-w-sm text-center bg-black/95">
+            <h2 class="text-2xl font-orbitron mb-4 text-cyan-400">Edit Profile</h2>
+            <img id="modal-avatar-preview" src="https://placehold.co/128x128/0a282d/00f6ff?text=U" class="avatar w-32 h-32 mx-auto mb-4 border-2 border-cyan-400 rounded-full">
+            <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+            <label for="avatar-upload" class="block w-full glass-button font-bold py-2 px-4 mb-4 cursor-pointer text-xs uppercase">Change Avatar</label>
+            <input type="text" id="username-input" placeholder="Enter display name" class="w-full mb-4 footer-chat-input p-2 rounded text-sm outline-none">
+            <div class="flex justify-end gap-4">
+                <button id="cancel-profile-btn" class="glass-button text-gray-400 hover:text-white py-2 px-4 rounded text-xs uppercase">Cancel</button>
+                <button id="save-profile-btn" class="glass-button py-2 px-4 rounded font-bold text-cyan-400 text-xs uppercase">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="auction-modal" class="modal-backdrop hidden z-[2100]">
+        <div class="glass-panel p-6 w-11/12 max-w-md bg-black/95">
+            <h2 class="text-xl font-orbitron mb-4 text-center text-cyan-400">Start an Auction</h2>
+            <div class="space-y-4">
+                <select id="auction-item-select" class="w-full footer-chat-input p-2 rounded text-sm outline-none bg-black"></select>
+                <div>
+                    <label class="block mb-1 text-xs font-bold text-cyan-500 uppercase tracking-wider">Starting Bid</label>
+                    <input type="number" id="auction-start-bid" placeholder="e.g., 1000" class="w-full footer-chat-input p-2 rounded text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block mb-1 text-xs font-bold text-cyan-500 uppercase tracking-wider">Buy Now Price (Optional)</label>
+                    <input type="number" id="auction-buy-now" placeholder="e.g., 10000" class="w-full footer-chat-input p-2 rounded text-sm outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="cancel-auction-btn" class="glass-button py-2 px-4 rounded text-xs uppercase text-gray-400">Cancel</button>
+                <button id="confirm-auction-btn" class="glass-button py-2 px-6 rounded font-bold text-cyan-400 text-xs uppercase border-cyan-400">Confirm (1 Token)</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="bid-modal" class="modal-backdrop hidden z-[2100]">
+        <div class="glass-panel p-6 w-11/12 max-w-sm bg-black/95">
+            <h2 class="text-xl font-orbitron mb-4 text-center text-cyan-400">Place Your Bid</h2>
+            <div id="bid-info" class="text-center mb-4 text-sm font-mono text-gray-300"></div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block mb-1 text-xs font-bold text-cyan-500 uppercase tracking-wider">Your Bid</label>
+                    <input type="number" id="bid-amount-input" class="w-full footer-chat-input p-2 rounded text-sm outline-none">
+                </div>
+                <button id="place-bid-btn" class="w-full py-3 rounded font-bold glass-button text-cyan-400 text-sm uppercase tracking-widest">Place Bid</button>
+                <button id="buy-now-btn" class="w-full py-3 rounded font-bold glass-button text-yellow-400 border-yellow-400 text-sm uppercase tracking-widest">Buy Now</button>
+            </div>
+            <div class="text-center mt-4">
+                <button id="cancel-bid-btn" class="text-gray-500 hover:text-white text-xs uppercase">Cancel</button>
             </div>
         </div>
     </div>

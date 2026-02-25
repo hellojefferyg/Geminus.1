@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Chat Pro - Geminus Theme</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Base & Variables --- */
+        :root {
+            --geminus-glow: #00f6ff;
+            --geminus-accent: #ff00ff;
+            --geminus-positive: #ffd700;
+            --geminus-panel-bg: rgba(10, 40, 45, 0.6);
+            --geminus-border-color: rgba(0, 246, 255, 0.25);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #000000;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        #smoke-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* --- Typography --- */
+        h2, .font-orbitron { /* Simplified selector to only used elements */
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 5px var(--geminus-glow);
+        }
+
+        /* --- Core Components --- */
+        .geminus-panel {
+            background: var(--geminus-panel-bg);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--geminus-border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 10px rgba(0, 246, 255, 0.2);
+            border-radius: 1rem;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(0, 246, 255, 0.4); border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 246, 255, 0.7); }
+
+        .sidebar-closed { transform: translateX(-100%); }
+        .sidebar-open { transform: translateX(0); }
+
+        /* --- Chat & Messages --- */
+        .chat-bubble {
+            background: rgba(5, 20, 25, 0.7); /* Removed unnecessary !important */
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid;
+            position: relative;
+        }
+        .chat-bubble-user { border-color: var(--geminus-glow); }
+        .chat-bubble-other { border-color: rgba(107, 114, 128, 0.4); }
+        
+        .reply-icon, .delete-icon { cursor: pointer; opacity: 0.4; transition: opacity 0.2s; }
+        .message-wrapper:hover .reply-icon, .message-wrapper:hover .delete-icon { opacity: 1; }
+        .reply-quote { background: rgba(0,0,0,0.3); border-left: 2px solid var(--geminus-glow); padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; font-size: 0.8rem; }
+        
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--geminus-border-color); }
+        
+        /* --- Tabs & Navigation --- */
+        .tab, .sub-tab { /* Grouped common styles */
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab {
+            border-bottom: 3px solid transparent;
+            padding-bottom: 8px;
+        }
+        .tab.active { border-bottom-color: var(--geminus-glow); color: var(--geminus-glow); text-shadow: 0 0 8px var(--geminus-glow); }
+        .sub-tab {
+            border-radius: 0.5rem;
+        }
+        .sub-tab.active { background-color: rgba(0, 246, 255, 0.15); color: var(--geminus-glow); }
+
+        /* --- Buttons & Inputs --- */
+        .btn-primary { background-color: transparent; border: 2px solid var(--geminus-glow); color: var(--geminus-glow); transition: all 0.3s ease; }
+        .btn-primary:hover { background-color: var(--geminus-glow); color: #000; box-shadow: 0 0 15px var(--geminus-glow); }
+        .btn-secondary { background-color: rgba(255,255,255,0.1); }
+        .btn-secondary:hover { background-color: rgba(255,255,255,0.2); }
+        .btn-disabled { background-color: #4a5568 !important; border-color: #4a5568 !important; color: #9ca3af !important; cursor: not-allowed; }
+        
+        input, select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--geminus-border-color);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--geminus-glow);
+            box-shadow: 0 0 10px rgba(0, 246, 255, 0.5);
+        }
+
+        /* --- Notifications & Modals --- */
+        .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        
+        /* Note: #toast-notification base styles were removed as they were being overridden by Tailwind classes in JS. */
+        .toast-error { background-color: rgba(255, 0, 255, 0.2); border: 1px solid var(--geminus-accent); color: var(--geminus-accent); }
+        .toast-success { background-color: rgba(0, 246, 255, 0.2); border: 1px solid var(--geminus-glow); color: var(--geminus-glow); }
+
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+    <canvas id="smoke-canvas"></canvas>
+
+    <div class="relative w-full h-full max-w-7xl md:h-[95vh] md:max-h-[900px] rounded-none md:rounded-3xl flex geminus-panel overflow-hidden">
+
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
+
+        <div id="sidebar" class="absolute md:relative z-40 h-full w-4/5 max-w-xs md:w-1/4 md:min-w-[300px] flex flex-col p-4 transition-transform duration-300 ease-in-out sidebar-closed md:sidebar-open geminus-panel md:bg-transparent md:border-r md:border-l-0 md:border-t-0 md:border-b-0 md:shadow-none border-white/10">
+            <button id="close-sidebar-btn" class="md:hidden absolute top-4 right-4 text-gray-300 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            
+            <div id="user-profile-button" class="mt-8 md:mt-0 p-3 geminus-panel rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                <div class="flex items-center gap-3">
+                    <img id="sidebar-avatar" src="https://placehold.co/64x64/0a282d/00f6ff?text=U" class="avatar w-12 h-12">
+                    <div class="text-left overflow-hidden">
+                        <p id="sidebar-username" class="font-bold text-lg truncate" style="color: var(--geminus-glow);">Loading...</p>
+                        <p id="sidebar-role" class="text-xs capitalize" style="color: var(--geminus-glow); opacity: 0.8;">Member</p>
+                    </div>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div><span class="font-bold">Level:</span> <span id="sidebar-level">1</span></div>
+                    <div><span class="font-bold" style="color: var(--geminus-positive);">Gold:</span> <span id="sidebar-gold" style="color: var(--geminus-positive);">0</span></div>
+                    <div><span class="font-bold">KP:</span> <span id="sidebar-kp">0</span></div>
+                    <div><span class="font-bold">Tokens:</span> <span id="sidebar-tokens">0</span></div>
+                </div>
+            </div>
+
+            <div class="flex-grow flex flex-col min-h-0 pt-4">
+                <h2 id="online-users-header" class="text-lg font-orbitron text-gray-200 mb-2 pl-2">Online</h2>
+                <div id="online-users-list" class="flex-grow overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+
+            <div class="flex-shrink-0 pt-4 border-t border-white/10">
+                <h2 class="text-lg font-orbitron text-gray-200 mb-2 pl-2">Game Simulation</h2>
+                <div class="space-y-2">
+                    <button id="simulate-kills-btn" class="w-full text-sm font-bold py-2 px-4 rounded-lg transition-colors btn-secondary">Simulate 100 Kills</button>
+                    <button id="simulate-level-btn" class="w-full text-sm font-bold py-2 px-4 rounded-lg transition-colors btn-secondary">Gain 10 Levels</button>
+                    <button id="buy-token-btn" class="w-full text-sm font-bold py-2 px-4 rounded-lg btn-primary">Buy Token (5000 KP)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col w-full md:w-auto">
+            <div class="p-4 border-b border-white/10 flex items-center justify-between relative bg-black/20">
+                <button id="open-sidebar-btn" class="md:hidden"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+                <div id="tabs-container" class="flex-grow flex justify-center gap-4 md:gap-8 text-md font-orbitron font-bold text-gray-400"></div>
+                <div class="w-7"></div>
+            </div>
+            <div id="sub-tabs-container" class="px-4 pt-2 pb-2 border-b border-white/10 hidden bg-black/10"></div>
+            <div id="content-container" class="flex-grow flex flex-col min-h-0 bg-black/20">
+                <div id="chat-messages" class="flex-grow p-4 overflow-y-auto custom-scrollbar"></div>
+                <div id="sales-view" class="flex-grow p-4 overflow-y-auto custom-scrollbar hidden"></div>
+                <div id="pm-list" class="flex-grow p-4 overflow-y-auto custom-scrollbar hidden"></div>
+            </div>
+            <div id="typing-indicator" class="px-4 pb-2 text-sm text-gray-400 h-6"></div>
+            <div id="reply-indicator" class="px-4 pt-2 hidden"><div class="geminus-panel bg-opacity-80 rounded-t-lg p-2 text-sm"><div class="flex justify-between items-center"><div><p class="font-semibold" style="color: var(--geminus-glow);">Replying to <span id="reply-username"></span></p><p id="reply-text" class="text-gray-300 truncate"></p></div><button id="cancel-reply-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button></div></div></div>
+            <form id="message-form" class="p-4 flex items-center gap-3 border-t border-white/10 bg-black/20"><label for="image-upload" class="p-3 rounded-lg bg-black/20 hover:bg-white/10 transition-colors cursor-pointer"><svg class="w-6 h-6" style="color: var(--geminus-glow);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg></label><input type="file" id="image-upload" accept="image/*" class="hidden"><input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" class="flex-grow" disabled><button type="submit" id="send-button" class="font-bold py-3 px-5 rounded-lg btn-primary" disabled>Send</button></form>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="profile-modal" class="modal-backdrop hidden"><div class="geminus-panel p-6 w-11/12 max-w-sm text-center"><h2 class="text-2xl font-orbitron mb-4" style="color: var(--geminus-glow);">Edit Profile</h2><img id="modal-avatar-preview" src="https://placehold.co/128x128/0a282d/00f6ff?text=U" class="avatar w-32 h-32 mx-auto mb-4 border-2" style="border-color: var(--geminus-glow);"><input type="file" id="avatar-upload" accept="image/*" class="hidden"><label for="avatar-upload" class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mb-4 cursor-pointer">Change Avatar</label><input type="text" id="username-input" placeholder="Enter display name" class="w-full mb-4"><div class="flex justify-end gap-4"><button id="cancel-profile-btn" class="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg">Cancel</button><button id="save-profile-btn" class="py-2 px-4 rounded-lg btn-primary">Save</button></div></div></div>
+    <div id="auction-modal" class="modal-backdrop hidden"><div class="geminus-panel p-6 w-11/12 max-w-md"><h2 class="text-2xl font-orbitron mb-4 text-center" style="color: var(--geminus-glow);">Start an Auction</h2><div class="space-y-4"><select id="auction-item-select" class="w-full"></select><div><label class="block mb-1 text-sm font-bold">Starting Bid</label><input type="number" id="auction-start-bid" placeholder="e.g., 1000" class="w-full"></div><div><label class="block mb-1 text-sm font-bold">Buy Now Price (Optional)</label><input type="number" id="auction-buy-now" placeholder="e.g., 10000" class="w-full"></div></div><div class="flex justify-end gap-4 mt-6"><button id="cancel-auction-btn" class="py-2 px-4 rounded-lg btn-secondary">Cancel</button><button id="confirm-auction-btn" class="py-2 px-6 rounded-lg btn-primary">Confirm (1 Token)</button></div></div></div>
+    <div id="bid-modal" class="modal-backdrop hidden"><div class="geminus-panel p-6 w-11/12 max-w-sm"><h2 class="text-2xl font-orbitron mb-4 text-center" style="color: var(--geminus-glow);">Place Your Bid</h2><div id="bid-info" class="text-center mb-4"></div><div class="space-y-4"><div><label class="block mb-1 text-sm font-bold">Your Bid</label><input type="number" id="bid-amount-input" class="w-full"></div><button id="place-bid-btn" class="w-full py-3 rounded-lg font-bold btn-primary">Place Bid</button><button id="buy-now-btn" class="w-full py-3 rounded-lg font-bold btn-secondary">Buy Now</button></div><div class="text-center mt-4"><button id="cancel-bid-btn" class="text-gray-400 hover:text-white">Cancel</button></div></div></div>
+    
+    <div id="toast-notification"></div>
+
+    <script type="module">
+        // The JavaScript logic remains unchanged as requested.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, updateDoc, deleteDoc, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // --- Smoke Canvas Animation ---
+        const canvas = document.getElementById('smoke-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        const particleCount = 75;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 150 + 50;
+                this.speedX = Math.random() * 0.4 - 0.2;
+                this.speedY = Math.random() * 0.4 - 0.2;
+                this.color = `rgba(0, 150, 150, ${Math.random() * 0.1})`;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < -this.size) this.x = canvas.width + this.size;
+                if (this.x > canvas.width + this.size) this.x = -this.size;
+                if (this.y < -this.size) this.y = canvas.height + this.size;
+                if (this.y > canvas.height + this.size) this.y = -this.size;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.filter = 'blur(60px)';
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateSmoke() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animateSmoke);
+        }
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        initParticles();
+        animateSmoke();
+
+        // --- Firebase and App Logic ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-game-chat-pro';
+        let app, auth, db, storage;
+        let currentUserId = null, currentUserProfile = {};
+        let currentView = { type: null, id: null, subType: null };
+        let replyingToMessage = null, activeAuctionData = null;
+        let listeners = {}, auctionInterval;
+        let initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let auctionTimerInterval = null;
+
+        const MOCK_INVENTORY = [ { id: 'sword1', name: 'Sword of Haste', img: 'https://placehold.co/64x64/3c2a21/e5e5cb?text=S' }, { id: 'elixir1', name: 'Elixir of Power', img: 'https://placehold.co/64x64/4f1b2d/ffc0cb?text=E' }, { id: 'shield1', name: 'Mystic Shield', img: 'https://placehold.co/64x64/1e3a8a/93c5fd?text=S' }];
+
+        const ui = {
+            sidebar: document.getElementById('sidebar'), sidebarOverlay: document.getElementById('sidebar-overlay'), openSidebarBtn: document.getElementById('open-sidebar-btn'), closeSidebarBtn: document.getElementById('close-sidebar-btn'),
+            sidebarAvatar: document.getElementById('sidebar-avatar'), sidebarUsername: document.getElementById('sidebar-username'), sidebarRole: document.getElementById('sidebar-role'), onlineUsersList: document.getElementById('online-users-list'),
+            sidebarLevel: document.getElementById('sidebar-level'), sidebarGold: document.getElementById('sidebar-gold'), sidebarKp: document.getElementById('sidebar-kp'), sidebarTokens: document.getElementById('sidebar-tokens'),
+            tabsContainer: document.getElementById('tabs-container'), subTabsContainer: document.getElementById('sub-tabs-container'), chatMessages: document.getElementById('chat-messages'), pmList: document.getElementById('pm-list'), salesView: document.getElementById('sales-view'),
+            messageForm: document.getElementById('message-form'), messageInput: document.getElementById('message-input'), sendButton: document.getElementById('send-button'),
+            replyIndicator: document.getElementById('reply-indicator'), replyUsername: document.getElementById('reply-username'), replyText: document.getElementById('reply-text'), cancelReplyBtn: document.getElementById('cancel-reply-btn'),
+            profileModal: document.getElementById('profile-modal'), userProfileButton: document.getElementById('user-profile-button'), modalAvatarPreview: document.getElementById('modal-avatar-preview'), avatarUpload: document.getElementById('avatar-upload'), usernameInput: document.getElementById('username-input'), cancelProfileBtn: document.getElementById('cancel-profile-btn'), saveProfileBtn: document.getElementById('save-profile-btn'),
+            simulateKillsBtn: document.getElementById('simulate-kills-btn'), simulateLevelBtn: document.getElementById('simulate-level-btn'), buyTokenBtn: document.getElementById('buy-token-btn'),
+            auctionModal: document.getElementById('auction-modal'), cancelAuctionBtn: document.getElementById('cancel-auction-btn'), confirmAuctionBtn: document.getElementById('confirm-auction-btn'), auctionItemSelect: document.getElementById('auction-item-select'), auctionStartBid: document.getElementById('auction-start-bid'), auctionBuyNow: document.getElementById('auction-buy-now'),
+            bidModal: document.getElementById('bid-modal'), bidInfo: document.getElementById('bid-info'), bidAmountInput: document.getElementById('bid-amount-input'), placeBidBtn: document.getElementById('place-bid-btn'), buyNowBtn: document.getElementById('buy-now-btn'), cancelBidBtn: document.getElementById('cancel-bid-btn'),
+            toast: document.getElementById('toast-notification'),
+        };
+
+        const paths = {
+            rooms: () => `/artifacts/${appId}/public/data/rooms`,
+            messages: (roomId) => `/artifacts/${appId}/public/data/rooms/${roomId}/messages`,
+            onlineUsers: (roomId) => `/artifacts/${appId}/public/data/rooms/${roomId}/onlineUsers`,
+            userProfile: (userId) => `/artifacts/${appId}/public/data/profiles/${userId}`,
+            pmConversations: (userId) => `/artifacts/${appId}/users/${userId}/pm_conversations`,
+            pmMessages: (convoId) => `/artifacts/${appId}/public/data/pms/${convoId}/messages`,
+            clanMessages: () => `/artifacts/${appId}/public/data/clan_messages`,
+            clanLeadershipChat: () => `/artifacts/${appId}/public/data/clan_leadership_chat`,
+            auctions: () => `/artifacts/${appId}/public/data/auctions`,
+            auctionDoc: (auctionId) => `/artifacts/${appId}/public/data/auctions/${auctionId}`,
+        };
+
+        function showToast(message, isError = false) {
+            ui.toast.textContent = message;
+            ui.toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 py-3 px-6 rounded-lg shadow-lg transition-all duration-300 ${isError ? 'toast-error' : 'toast-success'}`;
+            ui.toast.style.bottom = '20px';
+            setTimeout(() => { ui.toast.style.bottom = '-100px'; }, 3000);
+        }
+
+        function createTab(name, type, id) {
+            const t = document.createElement('div');
+            t.className = 'tab px-2 py-2 font-orbitron';
+            t.textContent = name;
+            t.dataset.type = type;
+            t.dataset.id = id;
+            return t;
+        }
+
+        function toggleSidebar(show) {
+            if (show) {
+                ui.sidebar.classList.remove('sidebar-closed');
+                ui.sidebar.classList.add('sidebar-open');
+                ui.sidebarOverlay.classList.remove('hidden');
+            } else {
+                ui.sidebar.classList.add('sidebar-closed');
+                ui.sidebar.classList.remove('sidebar-open');
+                ui.sidebarOverlay.classList.add('hidden');
+            }
+        }
+
+        function setReplyingTo(message) {
+            replyingToMessage = message;
+            ui.replyUsername.textContent = message.userName;
+            ui.replyText.textContent = message.text || 'Image';
+            ui.replyIndicator.classList.remove('hidden');
+            ui.messageInput.focus();
+        }
+
+        function cancelReply() {
+            replyingToMessage = null;
+            ui.replyIndicator.classList.add('hidden');
+        }
+
+        function getMessageCollectionPath() {
+            if (currentView.type === 'room') {
+                if (currentView.subType === 'clan_messages') return paths.clanMessages();
+                if (currentView.subType === 'clan_leadership') return paths.clanLeadershipChat();
+                if (currentView.subType === 'general_sales') return paths.messages(currentView.id);
+                return paths.messages(currentView.id);
+            }
+            if (currentView.type === 'pm_chat') return paths.pmMessages(currentView.id);
+            return null;
+        }
+
+        async function handleDeleteMessage(messageId) {
+            const path = getMessageCollectionPath();
+            if (!path) return;
+            await deleteDoc(doc(db, path, messageId));
+        }
+
+        function displayMessage(message) {
+            const isCurrentUser = message.userId === currentUserId;
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `message-wrapper flex items-start gap-3 mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`;
+            const time = message.timestamp ? message.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            let replyHtml = '';
+            if (message.replyTo) {
+                replyHtml = `<div class="reply-quote"><p class="font-bold" style="color: var(--geminus-glow);">${message.replyTo.userName}</p><p class="text-gray-300">${message.replyTo.text || 'Image'}</p></div>`;
+            }
+            const messageContent = `<div class="flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}"><div class="chat-bubble ${isCurrentUser ? 'chat-bubble-user' : 'chat-bubble-other'} rounded-lg px-4 py-2 max-w-xs lg:max-w-md"><p class="text-xs font-bold" style="color: ${isCurrentUser ? 'var(--geminus-glow)' : '#aaa'}">${message.userName}</p>${replyHtml}${message.text ? `<p class="text-sm break-words mt-1">${message.text}</p>` : ''}</div></div>`;
+            const avatarImg = `<img src="${message.avatarUrl}" class="avatar self-start" title="${time}" onerror="this.src='https://placehold.co/40x40/0a282d/00f6ff?text=${message.userName ? message.userName[0] : '?'}'">`;
+            const replyIconHtml = `<div class="reply-icon p-1" data-message-id="${message.id}" data-user-name="${message.userName}" data-text="${message.text || 'Image'}"><svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6-6m-6 6l6 6"></path></svg></div>`;
+            let deleteIconHtml = '';
+            const isLeadership = ['leader', 'coleader'].includes(currentUserProfile.role);
+            if (currentView.subType === 'clan_messages' && isLeadership) {
+                deleteIconHtml = `<div class="delete-icon p-1" data-message-id="${message.id}"><svg class="w-4 h-4" style="color: var(--geminus-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></div>`;
+            }
+            
+            const controls = `<div class="flex flex-col justify-center items-center">${replyIconHtml}${deleteIconHtml}</div>`;
+
+            messageWrapper.innerHTML = isCurrentUser 
+                ? `${controls}${messageContent}${avatarImg}`
+                : `${avatarImg}${messageContent}${controls}`;
+            
+            ui.chatMessages.appendChild(messageWrapper);
+        }
+        
+        async function listenForMessages() {
+            if (listeners.messages) listeners.messages();
+            const path = getMessageCollectionPath();
+            if (!path) { ui.chatMessages.innerHTML = ''; return; }
+            const q = query(collection(db, path));
+            listeners.messages = onSnapshot(q, snapshot => {
+                const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                messages.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+                ui.chatMessages.innerHTML = '';
+                messages.forEach(msg => displayMessage(msg));
+                ui.chatMessages.scrollTop = ui.chatMessages.scrollHeight;
+            });
+        }
+        
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            const text = ui.messageInput.value.trim();
+            if (!text) return;
+            const path = getMessageCollectionPath();
+            if(!path) return;
+            const messageData = { userId: currentUserId, userName: currentUserProfile.name, avatarUrl: currentUserProfile.avatarUrl, text, timestamp: serverTimestamp() };
+            if (replyingToMessage) {
+                messageData.replyTo = { messageId: replyingToMessage.id, userName: replyingToMessage.userName, text: replyingToMessage.text };
+            }
+            ui.messageInput.value = '';
+            cancelReply();
+            await addDoc(collection(db, path), messageData);
+        }
+
+        async function startOrOpenPM(otherUserId, otherUserName) {
+            if (otherUserId === currentUserId) return;
+            const conversationId = [currentUserId, otherUserId].sort().join('_');
+            const convoRef = doc(db, paths.pmConversations(currentUserId), conversationId);
+            await setDoc(convoRef, { withUserId: otherUserId, withUserName: otherUserName, lastActivity: serverTimestamp() }, { merge: true });
+            const otherConvoRef = doc(db, paths.pmConversations(otherUserId), conversationId);
+            await setDoc(otherConvoRef, { withUserId: currentUserId, withUserName: currentUserProfile.name, lastActivity: serverTimestamp() }, { merge: true });
+            switchView({ type: 'pm_chat', id: conversationId, name: otherUserName });
+        }
+
+        function listenForPMConversations() {
+            if (listeners.pms) listeners.pms();
+            const q = query(collection(db, paths.pmConversations(currentUserId)));
+            listeners.pms = onSnapshot(q, (snapshot) => {
+                ui.pmList.innerHTML = '<h2 class="text-xl font-orbitron text-center text-gray-400 mb-4">Private Messages</h2>';
+                if(snapshot.empty) {
+                    ui.pmList.innerHTML += '<p class="text-center text-gray-500">No conversations yet. Click an online user to start a chat.</p>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const convo = doc.data();
+                    const el = document.createElement('div');
+                    el.className = 'p-4 mb-2 rounded-lg geminus-panel hover:bg-white/10 cursor-pointer';
+                    el.innerHTML = `<p class="font-bold" style="color: var(--geminus-glow);">${convo.withUserName}</p>`;
+                    el.addEventListener('click', () => startOrOpenPM(convo.withUserId, convo.withUserName));
+                    ui.pmList.appendChild(el);
+                });
+            });
+        }
+
+        function listenForOnlineUsers() {
+            if (listeners.online) listeners.online();
+            if (currentView.type !== 'room' || !currentView.id) {
+                ui.onlineUsersList.innerHTML = '';
+                return;
+            }
+            const q = query(collection(db, paths.onlineUsers(currentView.id)));
+            listeners.online = onSnapshot(q, (snapshot) => {
+                ui.onlineUsersList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const el = document.createElement('div');
+                    el.className = 'flex items-center gap-2 p-2 rounded-md hover:bg-white/10 cursor-pointer';
+                    el.innerHTML = `<img src="${user.avatarUrl}" class="avatar w-6 h-6" onerror="this.src='https://placehold.co/24x24/0a282d/00f6ff?text=?'"><span class="text-sm text-gray-300 truncate">${user.name}</span>`;
+                    el.addEventListener('click', () => startOrOpenPM(doc.id, user.name));
+                    ui.onlineUsersList.appendChild(el);
+                });
+            });
+        }
+
+        async function updatePresence(roomId, isOnline) {
+            if (!currentUserId || !roomId) return;
+            const statusRef = doc(db, `/artifacts/${appId}/public/data/rooms/${roomId}/onlineUsers/${currentUserId}`);
+            const profileData = { name: currentUserProfile.name, avatarUrl: currentUserProfile.avatarUrl, role: currentUserProfile.role };
+            if (isOnline) {
+                await setDoc(statusRef, { ...profileData, lastSeen: serverTimestamp() });
+            } else {
+                await deleteDoc(statusRef);
+            }
+        }
+
+        async function saveProfile() {
+            const newName = ui.usernameInput.value.trim();
+            const file = ui.avatarUpload.files[0];
+            if (!newName && !file) return;
+            ui.saveProfileBtn.disabled = true;
+            ui.saveProfileBtn.textContent = 'Saving...';
+            let newAvatarUrl = currentUserProfile.avatarUrl;
+            if (file) {
+                const storageRef = ref(storage, `artifacts/${appId}/public/data/avatars/${currentUserId}/${file.name}`);
+                await uploadBytes(storageRef, file);
+                newAvatarUrl = await getDownloadURL(storageRef);
+            }
+            await setDoc(doc(db, paths.userProfile(currentUserId)), { name: newName || currentUserProfile.name, avatarUrl: newAvatarUrl }, { merge: true });
+            ui.saveProfileBtn.disabled = false;
+            ui.saveProfileBtn.textContent = 'Save';
+            ui.profileModal.classList.add('hidden');
+        }
+        
+        async function setupUserProfile() {
+            const profileRef = doc(db, paths.userProfile(currentUserId));
+            const docSnap = await getDoc(profileRef);
+            if (docSnap.exists()) {
+                currentUserProfile = docSnap.data();
+            } else {
+                const usersQuery = query(collection(db, `/artifacts/${appId}/public/data/profiles`));
+                const usersSnapshot = await getDocs(usersQuery);
+                currentUserProfile = {
+                    name: `User-${currentUserId.substring(0, 6)}`,
+                    avatarUrl: `https://placehold.co/128x128/0a282d/00f6ff?text=${currentUserId[0].toUpperCase()}`,
+                    role: usersSnapshot.empty ? 'leader' : 'member',
+                    level: 1, gold: 10000, kp: 0, auctionTokens: 0, lastDailyTokenClaim: null
+                };
+                await setDoc(profileRef, currentUserProfile);
+            }
+            
+            const now = new Date();
+            const lastClaim = currentUserProfile.lastDailyTokenClaim?.toDate();
+            if (currentUserProfile.level >= 100 && (!lastClaim || now.getDate() !== lastClaim.getDate())) {
+                await updateDoc(profileRef, {
+                    auctionTokens: (currentUserProfile.auctionTokens || 0) + 1,
+                    lastDailyTokenClaim: serverTimestamp()
+                });
+            }
+
+            if(listeners.profile) listeners.profile();
+            listeners.profile = onSnapshot(profileRef, (snap) => {
+                 currentUserProfile = snap.data();
+                 ui.sidebarUsername.textContent = currentUserProfile.name;
+                 ui.sidebarAvatar.src = currentUserProfile.avatarUrl;
+                 ui.sidebarRole.textContent = currentUserProfile.role;
+                 ui.sidebarLevel.textContent = currentUserProfile.level || 1;
+                 ui.sidebarGold.textContent = currentUserProfile.gold || 0;
+                 ui.sidebarKp.textContent = currentUserProfile.kp || 0;
+                 ui.sidebarTokens.textContent = currentUserProfile.auctionTokens || 0;
+            });
+        }
+
+        function setupSubTabs(parentTabName) {
+            ui.subTabsContainer.innerHTML = '';
+            let subTabs = [];
+
+            if (parentTabName === 'Clan') {
+                const isLeadership = ['leader', 'coleader'].includes(currentUserProfile.role);
+                subTabs.push({ name: 'Clan Chat', type: 'clan_chat' });
+                subTabs.push({ name: 'Clan Messages', type: 'clan_messages' });
+                if (isLeadership) {
+                    subTabs.push({ name: 'Leadership', type: 'clan_leadership' });
+                }
+            } else if (parentTabName === 'Sales') {
+                subTabs.push({ name: 'General Sales', type: 'general_sales' });
+                subTabs.push({ name: 'Auction', type: 'auction_house' });
+                subTabs.push({ name: 'Upcoming Auctions', type: 'upcoming_auctions' });
+            }
+
+            if (subTabs.length > 0) {
+                const container = document.createElement('div');
+                container.className = 'flex items-center justify-center gap-4';
+                subTabs.forEach(tabInfo => {
+                    const tabEl = document.createElement('div');
+                    tabEl.className = 'sub-tab px-3 py-1 text-sm font-medium';
+                    tabEl.textContent = tabInfo.name;
+                    tabEl.dataset.type = tabInfo.type;
+                    tabEl.addEventListener('click', () => switchView({ ...currentView, subType: tabInfo.type }));
+                    container.appendChild(tabEl);
+                });
+                ui.subTabsContainer.appendChild(container);
+                ui.subTabsContainer.classList.remove('hidden');
+            } else {
+                 ui.subTabsContainer.classList.add('hidden');
+            }
+        }
+
+        async function auctionManager() {
+            const q = query(collection(db, paths.auctions()), where("status", "==", "active"));
+            const activeSnapshot = await getDocs(q);
+            if (activeSnapshot.empty) {
+                const queuedQuery = query(collection(db, paths.auctions()), where("status", "==", "queued"));
+                const queuedSnapshot = await getDocs(queuedQuery);
+                if (!queuedSnapshot.empty) {
+                    const nextAuction = queuedSnapshot.docs[0];
+                    await updateDoc(doc(db, paths.auctionDoc(nextAuction.id)), {
+                        status: 'active',
+                        startTime: serverTimestamp(),
+                        endTime: new Date(Date.now() + 60000)
+                    });
+                }
+            }
+        }
+
+        function renderSalesView(activeAuction, queuedAuctions) {
+            ui.salesView.innerHTML = '';
+            const canStartAuction = currentUserProfile.level >= 100 && currentUserProfile.auctionTokens > 0;
+            ui.salesView.innerHTML += `<div class="text-right mb-4"><button id="start-auction-btn" class="font-bold py-2 px-5 rounded-lg transition-colors ${canStartAuction ? 'btn-primary' : 'btn-disabled'}" ${!canStartAuction ? 'disabled' : ''}>Start Auction</button></div>`;
+            
+            if (activeAuction) {
+                const timerId = `timer-${activeAuction.id}`;
+                if (auctionTimerInterval) clearInterval(auctionTimerInterval);
+
+                const highestBidderName = activeAuction.highestBidderName || 'None';
+                ui.salesView.innerHTML += `
+                    <div class="geminus-panel p-4 rounded-lg">
+                        <h3 class="text-2xl font-orbitron text-center mb-2" style="color: var(--geminus-glow);">Live Auction!</h3>
+                        <div class="flex gap-4 items-center">
+                            <img src="${activeAuction.item.img}" class="w-16 h-16 rounded-lg bg-black/20">
+                            <div class="flex-grow">
+                                <p class="text-xl font-bold" style="color: var(--geminus-positive);">${activeAuction.item.name}</p>
+                                <p class="text-sm text-gray-300">Seller: ${activeAuction.sellerName}</p>
+                            </div>
+                            <div id="${timerId}" class="text-3xl font-bold" style="color: var(--geminus-glow);">--s</div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-2 gap-4 text-center">
+                            <div><p class="text-sm text-gray-400">Current Bid</p><p class="text-lg font-bold" style="color: var(--geminus-positive);">${activeAuction.currentBid} G</p></div>
+                            <div><p class="text-sm text-gray-400">Highest Bidder</p><p class="text-lg font-bold truncate">${highestBidderName}</p></div>
+                        </div>
+                        <button id="open-bid-modal-btn" class="w-full mt-4 py-3 rounded-lg font-bold btn-primary">Bid / Buy Now</button>
+                    </div>
+                `;
+                
+                const timerElement = document.getElementById(timerId);
+                auctionTimerInterval = setInterval(() => {
+                    const timeLeft = activeAuction.endTime.toDate() > new Date() ? Math.round((activeAuction.endTime.toDate() - new Date()) / 1000) : 0;
+                    if(timerElement) timerElement.textContent = `${timeLeft}s`;
+                    if (timeLeft <= 0) {
+                        clearInterval(auctionTimerInterval);
+                        if (activeAuction.status === 'active') resolveAuction(activeAuction);
+                    }
+                }, 1000);
+
+            } else {
+                ui.salesView.innerHTML += '<p class="text-center text-gray-400 py-8">No active auction. Be the first to start one!</p>';
+            }
+        }
+
+        function renderUpcomingAuctionsView(activeAuction, queuedAuctions) {
+            ui.salesView.innerHTML = '';
+            if (queuedAuctions.length === 0) {
+                ui.salesView.innerHTML = '<p class="text-center text-gray-400 py-8">No upcoming auctions.</p>';
+                return;
+            }
+
+            let baseWaitTime = 0;
+            if (activeAuction) {
+                baseWaitTime = activeAuction.endTime.toDate() > new Date() ? Math.round((activeAuction.endTime.toDate() - new Date()) / 1000) : 0;
+            }
+
+            queuedAuctions.forEach((auction, index) => {
+                const estimatedWait = baseWaitTime + (index * 60);
+                const minutes = Math.floor(estimatedWait / 60);
+                const seconds = estimatedWait % 60;
+
+                ui.salesView.innerHTML += `
+                    <div class="geminus-panel p-4 rounded-lg mb-4">
+                        <div class="flex gap-4 items-center">
+                            <img src="${auction.item.img}" class="w-12 h-12 rounded-lg bg-black/20">
+                            <div class="flex-grow">
+                                <p class="text-lg font-bold" style="color: var(--geminus-positive);">${auction.item.name}</p>
+                                <p class="text-sm text-gray-300">Seller: ${auction.sellerName}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-400">Starts In Approx.</p>
+                                <p class="text-lg font-bold" style="color: var(--geminus-glow);">${minutes}m ${seconds}s</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        async function resolveAuction(auction) {
+            await runTransaction(db, async (transaction) => {
+                const auctionRef = doc(db, paths.auctionDoc(auction.id));
+                const sellerRef = doc(db, paths.userProfile(auction.sellerId));
+                
+                if (auction.highestBidderId) {
+                    const winnerRef = doc(db, paths.userProfile(auction.highestBidderId));
+                    const sellerProfile = await transaction.get(sellerRef);
+                    if (!sellerProfile.exists()) throw "Seller not found";
+                    
+                    const newGold = (sellerProfile.data().gold || 0) + auction.currentBid;
+                    transaction.update(sellerRef, { gold: newGold });
+                    transaction.update(winnerRef, { [`inventory.${auction.item.id}`]: true });
+                } else {
+                    transaction.update(sellerRef, { [`inventory.${auction.item.id}`]: true });
+                }
+                
+                transaction.update(auctionRef, { status: 'finished' });
+            });
+        }
+        
+        function handleStartAuctionClick() {
+            if (currentUserProfile.level < 100) { showToast("You must be level 100 to start an auction.", true); return; }
+            if (currentUserProfile.auctionTokens < 1) { showToast("You need an Auction Token to start an auction.", true); return; }
+            ui.auctionItemSelect.innerHTML = MOCK_INVENTORY.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+            ui.auctionModal.classList.remove('hidden');
+        }
+
+        async function handleConfirmAuction() {
+            const itemId = ui.auctionItemSelect.value;
+            const item = MOCK_INVENTORY.find(i => i.id === itemId);
+            const startBid = parseInt(ui.auctionStartBid.value);
+            const buyNow = ui.auctionBuyNow.value ? parseInt(ui.auctionBuyNow.value) : null;
+
+            if (!item || isNaN(startBid) || startBid <= 0) { showToast("Invalid auction details.", true); return; }
+
+            ui.confirmAuctionBtn.disabled = true;
+            await runTransaction(db, async (transaction) => {
+                const profileRef = doc(db, paths.userProfile(currentUserId));
+                const userProfile = await transaction.get(profileRef);
+                if (!userProfile.exists() || userProfile.data().auctionTokens < 1) throw "Not enough tokens.";
+
+                transaction.update(profileRef, { auctionTokens: userProfile.data().auctionTokens - 1 });
+                
+                const newAuctionRef = doc(collection(db, paths.auctions()));
+                transaction.set(newAuctionRef, {
+                    sellerId: currentUserId, sellerName: currentUserProfile.name,
+                    item: item, startingBid: startBid, buyNowPrice: buyNow,
+                    currentBid: startBid, highestBidderId: null, highestBidderName: null,
+                    status: 'queued', createdAt: serverTimestamp(), escrow: {}
+                });
+            });
+            
+            ui.auctionModal.classList.add('hidden');
+            ui.confirmAuctionBtn.disabled = false;
+        }
+
+        async function handlePlaceBid(isBuyNow = false) {
+            const bidAmount = isBuyNow ? activeAuctionData.buyNowPrice : parseInt(ui.bidAmountInput.value);
+            if (isNaN(bidAmount)) return;
+
+            await runTransaction(db, async (transaction) => {
+                const auctionRef = doc(db, paths.auctionDoc(activeAuctionData.id));
+                const bidderRef = doc(db, paths.userProfile(currentUserId));
+                
+                const auctionDoc = await transaction.get(auctionRef);
+                const bidderDoc = await transaction.get(bidderRef);
+                if (!auctionDoc.exists() || auctionDoc.data().status !== 'active') throw "Auction is not active.";
+                if (!bidderDoc.exists() || (bidderDoc.data().gold || 0) < bidAmount) throw "Not enough gold.";
+
+                const currentAuction = auctionDoc.data();
+                const minBid = Math.ceil(currentAuction.currentBid * 1.05);
+                if (!isBuyNow && bidAmount < minBid) throw "Bid is too low.";
+
+                if (currentAuction.highestBidderId) {
+                    const prevBidderRef = doc(db, paths.userProfile(currentAuction.highestBidderId));
+                    const prevBidderDoc = await transaction.get(prevBidderRef);
+                    if(prevBidderDoc.exists()) {
+                        transaction.update(prevBidderRef, { gold: (prevBidderDoc.data().gold || 0) + currentAuction.currentBid });
+                    }
+                }
+                
+                transaction.update(bidderRef, { gold: bidderDoc.data().gold - bidAmount });
+
+                if (isBuyNow) {
+                    transaction.update(auctionRef, {
+                        status: 'finished', currentBid: bidAmount,
+                        highestBidderId: currentUserId, highestBidderName: currentUserProfile.name
+                    });
+                    resolveAuction({ ...currentAuction, status: 'finished', currentBid: bidAmount, highestBidderId: currentUserId });
+                } else {
+                    transaction.update(auctionRef, {
+                        currentBid: bidAmount, highestBidderId: currentUserId,
+                        highestBidderName: currentUserProfile.name,
+                        endTime: new Date(Date.now() + 60000)
+                    });
+                }
+            }).catch(error => showToast(error.message, true));
+            
+            ui.bidModal.classList.add('hidden');
+        }
+
+        function setupEventListeners() {
+            ui.messageForm.addEventListener('submit', handleSendMessage);
+            ui.userProfileButton.addEventListener('click', () => ui.profileModal.classList.remove('hidden'));
+            ui.cancelProfileBtn.addEventListener('click', () => ui.profileModal.classList.add('hidden'));
+            ui.saveProfileBtn.addEventListener('click', saveProfile);
+            ui.avatarUpload.addEventListener('change', () => { if (ui.avatarUpload.files[0]) { ui.modalAvatarPreview.src = URL.createObjectURL(ui.avatarUpload.files[0]); } });
+            ui.openSidebarBtn.addEventListener('click', () => toggleSidebar(true));
+            ui.closeSidebarBtn.addEventListener('click', () => toggleSidebar(false));
+            ui.sidebarOverlay.addEventListener('click', () => toggleSidebar(false));
+            ui.cancelReplyBtn.addEventListener('click', cancelReply);
+            ui.chatMessages.addEventListener('click', (e) => { const r = e.target.closest('.reply-icon'); if (r) setReplyingTo({ id: r.dataset.messageId, userName: r.dataset.userName, text: r.dataset.text }); const d = e.target.closest('.delete-icon'); if (d) handleDeleteMessage(d.dataset.messageId); });
+            ui.tabsContainer.addEventListener('click', (e) => { const t = e.target.closest('.tab'); if (t) switchView({ type: t.dataset.type, id: t.dataset.id }); });
+            ui.simulateKillsBtn.addEventListener('click', async () => await updateDoc(doc(db, paths.userProfile(currentUserId)), { kp: (currentUserProfile.kp || 0) + 100 }));
+            ui.simulateLevelBtn.addEventListener('click', async () => await updateDoc(doc(db, paths.userProfile(currentUserId)), { level: (currentUserProfile.level || 0) + 10 }));
+            ui.buyTokenBtn.addEventListener('click', async () => { if((currentUserProfile.kp || 0) >= 5000) await updateDoc(doc(db, paths.userProfile(currentUserId)), { kp: currentUserProfile.kp - 5000, auctionTokens: (currentUserProfile.auctionTokens || 0) + 1 }); else showToast("Not enough KP!", true); });
+            ui.cancelAuctionBtn.addEventListener('click', () => ui.auctionModal.classList.add('hidden'));
+            ui.confirmAuctionBtn.addEventListener('click', handleConfirmAuction);
+            ui.cancelBidBtn.addEventListener('click', () => ui.bidModal.classList.add('hidden'));
+            ui.placeBidBtn.addEventListener('click', () => handlePlaceBid(false));
+            ui.buyNowBtn.addEventListener('click', () => handlePlaceBid(true));
+            ui.salesView.addEventListener('click', (e) => {
+                const startButton = e.target.closest('#start-auction-btn');
+                const bidButton = e.target.closest('#open-bid-modal-btn');
+                if (startButton) {
+                    handleStartAuctionClick();
+                } else if (bidButton) {
+                     if (activeAuctionData.sellerId === currentUserId) { showToast("You cannot bid on your own auction.", true); return; }
+                    ui.bidInfo.innerHTML = `<p>Min Bid: ${Math.ceil(activeAuctionData.currentBid * 1.05)} G</p><p>Buy Now: ${activeAuctionData.buyNowPrice} G</p>`;
+                    ui.bidAmountInput.value = Math.ceil(activeAuctionData.currentBid * 1.05);
+                    ui.buyNowBtn.style.display = activeAuctionData.buyNowPrice ? 'block' : 'none';
+                    ui.bidModal.classList.remove('hidden');
+                }
+            });
+        }
+
+        async function authenticateUser() {
+            await setPersistence(auth, inMemoryPersistence);
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    await setupUserProfile();
+                    await setupTabs();
+                } else {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Authentication failed, falling back to anonymous:", error);
+                        await signInAnonymously(auth);
+                    }
+                }
+            });
+        }
+        
+        async function setupTabs() {
+            const roomsCollectionRef = collection(db, paths.rooms());
+            const defaultRooms = ["Chat", "Clan", "Sales"];
+            
+            const existingRoomsSnapshot = await getDocs(roomsCollectionRef);
+            const existingRoomNames = existingRoomsSnapshot.docs.map(doc => doc.data().name);
+            for (const roomName of defaultRooms) { if (!existingRoomNames.includes(roomName)) await addDoc(roomsCollectionRef, { name: roomName, createdAt: serverTimestamp() }); }
+
+            if (listeners.rooms) listeners.rooms();
+            const q = query(roomsCollectionRef);
+            listeners.rooms = onSnapshot(q, (snapshot) => {
+                const rooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                ui.tabsContainer.innerHTML = '';
+                defaultRooms.forEach(tabName => {
+                    const room = rooms.find(r => r.name === tabName);
+                    if (room) {
+                        ui.tabsContainer.appendChild(createTab(tabName, 'room', room.id));
+                    }
+                });
+                ui.tabsContainer.appendChild(createTab('PMs', 'pm_list', 'pms'));
+
+                if (!currentView.type && rooms.length > 0) {
+                    const chatRoom = rooms.find(r => r.name === "Chat");
+                    if (chatRoom) switchView({ type: 'room', id: chatRoom.id });
+                } else if (currentView.type) {
+                    document.querySelectorAll('#tabs-container .tab').forEach(t => t.classList.toggle('active', t.dataset.id === currentView.id));
+                }
+            });
+        }
+        
+        async function switchView(newView) {
+            if (currentView.type === 'room' && currentView.id) await updatePresence(currentView.id, false);
+            
+            currentView = newView;
+            cancelReply();
+            ['chatMessages', 'pmList', 'salesView'].forEach(v => ui[v].classList.add('hidden'));
+            ui.messageForm.style.display = 'flex';
+            ui.messageInput.disabled = false; ui.sendButton.disabled = false;
+            
+            document.querySelectorAll('#tabs-container .tab').forEach(t => t.classList.toggle('active', t.dataset.id === newView.id));
+
+            const roomData = document.querySelector(`.tab[data-id='${newView.id}']`);
+            
+            if (newView.type === 'room' && roomData) {
+                const tabName = roomData.textContent;
+                setupSubTabs(tabName); 
+                
+                if (tabName === 'Clan') {
+                    if (!newView.subType) newView.subType = 'clan_chat';
+                    currentView.subType = newView.subType;
+                    document.querySelectorAll('#sub-tabs-container .sub-tab').forEach(t => t.classList.toggle('active', t.dataset.type === newView.subType));
+                    ui.chatMessages.classList.remove('hidden');
+                    listenForMessages();
+                } else if (tabName === 'Sales') {
+                    if (!newView.subType) newView.subType = 'general_sales';
+                    currentView.subType = newView.subType;
+                    document.querySelectorAll('#sub-tabs-container .sub-tab').forEach(t => t.classList.toggle('active', t.dataset.type === newView.subType));
+                    
+                    if (currentView.subType === 'general_sales') {
+                        ui.chatMessages.classList.remove('hidden');
+                        listenForMessages();
+                    } else { 
+                        ui.salesView.classList.remove('hidden');
+                        ui.messageForm.style.display = 'none';
+                        listenForAuctions();
+                    }
+                } else { 
+                    currentView.subType = null;
+                    ui.subTabsContainer.classList.add('hidden');
+                    ui.chatMessages.classList.remove('hidden');
+                    listenForMessages();
+                }
+            } else if (newView.type === 'pm_list') {
+                ui.pmList.classList.remove('hidden');
+                ui.messageForm.style.display = 'none';
+                ui.subTabsContainer.classList.add('hidden');
+                listenForPMConversations();
+            } else if (newView.type === 'pm_chat') {
+                ui.chatMessages.classList.remove('hidden');
+                ui.subTabsContainer.classList.add('hidden');
+                listenForMessages();
+            }
+
+            if (newView.type === 'room' && newView.id) { listenForOnlineUsers(); await updatePresence(newView.id, true); } 
+            else { if (listeners.online) listeners.online(); ui.onlineUsersList.innerHTML = ''; }
+
+            const isLeadership = ['leader', 'coleader'].includes(currentUserProfile.role);
+            if (currentView.subType === 'clan_messages' && !isLeadership) {
+                ui.messageInput.placeholder = "Only leadership can post here."; ui.messageInput.disabled = true; ui.sendButton.disabled = true;
+            } else { ui.messageInput.placeholder = "Type your message..."; }
+        }
+
+        function listenForAuctions() {
+            if (listeners.auctions) listeners.auctions();
+            const q = query(collection(db, paths.auctions()));
+            listeners.auctions = onSnapshot(q, (snapshot) => {
+                const auctions = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                const active = auctions.find(a => a.status === 'active');
+                const queued = auctions.filter(a => a.status === 'queued').sort((a,b) => a.createdAt.seconds - b.createdAt.seconds);
+                activeAuctionData = active;
+                
+                if (currentView.subType === 'auction_house') {
+                    renderSalesView(active, queued);
+                } else if (currentView.subType === 'upcoming_auctions') {
+                    renderUpcomingAuctionsView(active, queued);
+                }
+            });
+        }
+
+        async function main() {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app); db = getFirestore(app); storage = getStorage(app);
+            setupEventListeners();
+            await authenticateUser();
+            auctionInterval = setInterval(auctionManager, 5000);
+        }
+
+        main();
+    </script>
+</body>
+</html>
+
