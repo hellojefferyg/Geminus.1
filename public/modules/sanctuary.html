@@ -200,24 +200,28 @@
         ui: {},
 
         init() {
-            // 1. Load Real Player Data
+            // 1. Always cache UI elements first so Dev Tools can find them
+            this.cacheUI();
+
+            // 2. Attempt real bridge resonance
             const realPlayer = GameBridge.getPlayer();
+            
             if (!realPlayer) {
-                console.error("Sanctuary: No player found in parent window.");
+                console.warn("Sanctuary: Bridge inactive. Use DEV tools below to simulate state.");
                 return;
             }
             
-            // Deep copy for UI rendering (so we don't mutate state directly here)
+            // 3. Sync local module state with the engine's player state
             this.player = JSON.parse(JSON.stringify(realPlayer));
             
-            // Inject calculated "isDefeated" state for the UI if coming from death
-            if (this.player.hp <= 0) {
+            // Force UI state based on GDD Defeat Status
+            if (this.player.hp <= 0 || this.player.isDefeated) {
                 this.player.isDefeated = true;
-                this.player.lastDeathType = 'PVE_DEATH'; // Defaulting for now
+                if (!this.player.lastDeathType) this.player.lastDeathType = 'PVE_DEATH';
             }
 
-            this.cacheUI();
-            this.updateUI();
+            this.updateUI(); 
+            console.log("🕯️ Sanctuary UI: Materialized and Synced.");
         },
 
         cacheUI() {
@@ -352,34 +356,26 @@
         },
         
         handleTithePayment() {
-            const paymentAmount = parseInt(prompt(`You have ${this.player.gildedVaultGold.toLocaleString()} Gold in your Vault. How much would you like to pay towards your debt?`, this.player.gildedVaultGold));
+            const vaultGold = this.player.gildedVaultGold || 0;
+            const paymentAmount = parseInt(prompt(
+                `Gilded Vault Balance: ${vaultGold.toLocaleString()} Gold.\nHow much would you like to pay towards your soul debt?`, 
+                vaultGold
+            ));
             
             if (isNaN(paymentAmount) || paymentAmount <= 0) return;
-            if (paymentAmount > this.player.gildedVaultGold) {
-                alert("You don't have enough gold in your vault.");
-                return;
-            }
 
-            this.player.gildedVaultGold -= paymentAmount;
-            let remainingPayment = paymentAmount;
-
-            if (this.player.soulDebt.gold > 0) {
-                const goldPaid = Math.min(remainingPayment, this.player.soulDebt.gold);
-                this.player.soulDebt.gold -= goldPaid;
-                remainingPayment -= goldPaid;
+            // Handshake with Engine Manager 
+            const manager = window.parent.gameManager?.SanctuaryManager;
+            if (manager && typeof manager.payDebtWithVaultGold === 'function') {
+                manager.payDebtWithVaultGold(paymentAmount);
+                
+                // Re-sync local module data with engine state after payment [cite: 1132]
+                const updatedPlayer = window.parent.gameManager.state.player;
+                this.player = JSON.parse(JSON.stringify(updatedPlayer));
+                this.updateUI();
+            } else {
+                console.error("Sanctuary UI: payDebtWithVaultGold not found in Engine.");
             }
-            
-            if (remainingPayment > 0 && this.player.soulDebt.xp > 0) {
-                 const xpPaid = Math.min(remainingPayment, this.player.soulDebt.xp);
-                 this.player.soulDebt.xp -= xpPaid;
-            }
-
-            if(this.player.soulDebt.gold === 0 && this.player.soulDebt.xp === 0) {
-                this.player.soulDebt.goldDebtTotal = 0;
-                this.player.soulDebt.xpDebtTotal = 0;
-            }
-            
-            this.updateUI();
         },
 
         reviveSequence(message) {
@@ -405,8 +401,32 @@
 
     // Maintain Dev Tools for manual testing
     function handleStateChange(scenarioKey) {
-       // Mock loading removed in favor of real engine bridge
-       console.log("DevTools: State change requested via bridge.");
+        // [RESTORED] Map of scenarios for internal testing
+        const mockScenarios = {
+            pveDeath: {
+                isDefeated: true, hp: 0, lastDeathType: 'PVE_DEATH', gold: 125830, gildedVaultGold: 5000000,
+                xp: 15000, xpToNextLevel: 25000, derivedStats: { maxHp: 100 },
+                soulDebt: { gold: 0, xp: 0, goldDebtTotal: 0, xpDebtTotal: 0 }
+            },
+            pvpDeath: {
+                isDefeated: true, hp: 0, lastDeathType: 'PVP_DEATH', gold: 125830, gildedVaultGold: 5000000,
+                xp: 15000, xpToNextLevel: 25000, derivedStats: { maxHp: 100 },
+                soulDebt: { gold: 0, xp: 0, goldDebtTotal: 0, xpDebtTotal: 0 }
+            },
+            withDebt: {
+                isDefeated: false, hp: 100, lastDeathType: null, gold: 500, gildedVaultGold: 5000000,
+                xp: 1000, xpToNextLevel: 25000, derivedStats: { maxHp: 100 },
+                soulDebt: { gold: 80000, xp: 12000, goldDebtTotal: 80000, xpDebtTotal: 12000 }
+            }
+        };
+
+        const scenario = mockScenarios[scenarioKey];
+        if (scenario) {
+            console.log(`🛠️ DevTools: Simulating ${scenarioKey} state...`);
+            // Deep copy to local state to allow UI rendering
+            SanctuaryManager.player = JSON.parse(JSON.stringify(scenario));
+            SanctuaryManager.updateUI();
+        }
     }
 
     // Keep the Dev Button listeners active
@@ -422,6 +442,29 @@
     const style = document.createElement('style');
     style.innerHTML = `@keyframes flash-revive { 0% { opacity: 1; } 50% { opacity: 0.5; box-shadow: 0 0 50px #38bdf8; } 100% { opacity: 1; } }`;
     document.head.appendChild(style);
+
+    // [REQUIRED TRIGGER] Final Handshake & Dev Tool Activation
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Prepare UI selectors for Dev Tools
+        SanctuaryManager.cacheUI();
+
+        // 2. Setup Dev Button Listeners for testing
+        const pveBtn = document.getElementById('dev-pve-btn');
+        const pvpBtn = document.getElementById('dev-pvp-btn');
+        const debtBtn = document.getElementById('dev-debt-btn');
+
+        if (pveBtn) pveBtn.onclick = () => handleStateChange('pveDeath');
+        if (pvpBtn) pvpBtn.onclick = () => handleStateChange('pvpDeath');
+        if (debtBtn) debtBtn.onclick = () => handleStateChange('withDebt');
+
+        // 3. Resonate with Real Engine or Fallback
+        if (window.parent && window.parent.gameManager) {
+            console.log("🕯️ Sanctuary: Engine Resonance established.");
+            SanctuaryManager.init();
+        } else {
+            console.log("🕯️ Sanctuary: Standalone mode. Use DEV buttons to test.");
+        }
+    });
 </script>
 </body>
 </html>

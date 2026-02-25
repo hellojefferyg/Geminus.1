@@ -531,16 +531,44 @@ const Systems = {
     let netGold = Math.floor((typeof monster.gold === 'number' ? monster.gold : 0) * zoneMult);
     let netXp = Math.floor((typeof monster.xp === 'number' ? monster.xp : 0) * zoneMult);
     
+    // --- 3. SOUL DEBT TITHE SYSTEM (Refined) ---
+    // Per GDD 3.5.2: 50% Tithe on all future Gold and XP gains.
     if (player.soulDebt && (player.soulDebt.gold > 0 || player.soulDebt.xp > 0)) {
-        const titheRate = 0.50; 
-        const goldTithe = Math.min(player.soulDebt.gold, Math.floor(netGold * titheRate));
-        const xpTithe = Math.min(player.soulDebt.xp, Math.floor(netXp * titheRate));
-        player.soulDebt.gold -= goldTithe; player.soulDebt.xp -= xpTithe;
-        netGold -= goldTithe; netXp -= xpTithe;
-        if (goldTithe > 0 || xpTithe > 0) lootMessages.push(`Soul Tithe: Paid ${goldTithe} Gold & ${xpTithe} XP.`);
+        const TITHE_RATE = 0.50; 
+
+        // Process Gold Tithe (Use Math.ceil to prevent 0-tithe exploits on small gains)
+        if (player.soulDebt.gold > 0) {
+            const potentialGoldTithe = Math.ceil(netGold * TITHE_RATE);
+            const actualGoldPaid = Math.min(player.soulDebt.gold, potentialGoldTithe);
+            
+            player.soulDebt.gold -= actualGoldPaid;
+            netGold -= actualGoldPaid;
+            if (actualGoldPaid > 0) lootMessages.push(`Soul Tithe: -${actualGoldPaid} Gold paid.`);
+        }
+
+        // Process XP Tithe
+        if (player.soulDebt.xp > 0) {
+            const potentialXpTithe = Math.ceil(netXp * TITHE_RATE);
+            const actualXpPaid = Math.min(player.soulDebt.xp, potentialXpTithe);
+            
+            player.soulDebt.xp -= actualXpPaid;
+            netXp -= actualXpPaid;
+            if (actualXpPaid > 0) lootMessages.push(`Soul Tithe: -${actualXpPaid} XP paid.`);
+        }
+
+        // Finalize Debt Cleanup
         if (player.soulDebt.gold <= 0 && player.soulDebt.xp <= 0) {
-            lootMessages.push(`✨ SOUL DEBT CLEARED!`);
-            player.soulDebt = null; 
+            lootMessages.push(`✨ SOUL DEBT FULLY REPAID!`);
+            // Reset totals so sanctuary.html progress bars clear
+            player.soulDebt.gold = 0;
+            player.soulDebt.xp = 0;
+            player.soulDebt.goldDebtTotal = 0;
+            player.soulDebt.xpDebtTotal = 0;
+            
+            // Persistence Handshake to update cloud state
+            if (window.gameManager?.DataManager) {
+                window.gameManager.DataManager.updatePlayer({ soulDebt: player.soulDebt });
+            }
         }
     }
 

@@ -341,15 +341,17 @@ export class GameManager {
         // We wait for the file to load, then we manually START the shop from here.
         iframe.onload = () => {
             const childWin = iframe.contentWindow;
-            
-            // Check if the loaded file has a ShopManager (Armory/Arcanum)
-            if (childWin && childWin.ShopManager) {
-                console.log(`⚡ GameManager: Injecting Player Data into ${moduleId}...`);
-                
-                // 1. Create the bridge so the child can talk back (for Buying)
-                childWin.gameManager = this; 
-                
-                // 2. Force Start the Shop with the current Player State
+            if (!childWin) return;
+
+            childWin.gameManager = this; 
+
+            // Handle Sanctuary via both potential IDs 
+            if ((moduleId === 'sanctuary' || moduleId === 'RESURRECTION_UI') && childWin.SanctuaryManager) {
+                console.log("🕯️ Sanctuary Module: Resonating with Engine...");
+                childWin.SanctuaryManager.init();
+            }
+
+            if (childWin.ShopManager) {
                 childWin.ShopManager.init(this.state.player);
             }
         };
