@@ -767,13 +767,11 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
   }
 
  /**
-   * [UPDATED] Trigger Combat - Opens Popup with PLAYER CHOICE
+   * [UPDATED] Trigger Combat - Opens Teleporting Vanilla UI
    */
   handleCombatInteraction(coords, isBoss = false) {
     console.log(`⚔️ ZoneManager: Interaction at [${coords.x}, ${coords.y}]`);
     
-    // 1. Reuse our new sync logic to get the FULL LIST
-    // (This calls the code you just added in Step 1)
     const validMobs = this.syncCombatData(); 
 
     if (!validMobs || validMobs.length === 0) {
@@ -781,13 +779,10 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
         return;
     }
 
-    // 2. Open Popup in "Selection Mode"
-    if (window.gameManager) {
-        // Pass the WHOLE LIST (Array), not just one enemy
-        window.gameManager.currentEncounterList = validMobs;
-        window.gameManager.currentEncounterBoss = isBoss; 
-
-        window.gameManager.openModule('combat_encounter');
+    if (window.gameManager && window.gameManager.CombatManager) {
+        // Deprecated React Bridge: window.gameManager.openModule('combat_encounter');
+        // Direct Vanilla Teleportation Integration:
+        window.gameManager.CombatManager.openWildEncounter(validMobs, isBoss);
     }
   }
 

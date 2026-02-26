@@ -168,95 +168,128 @@
  
 <script type="module">
    // --- MOCK DATA & CONFIG ---
-   const config = { ASCENSION_MIN_LEVEL: 10, CRITICAL_SUCCESS_CHANCE: 0.05, MASTERY_XP_GAIN: 10, MASTERY_CRITICAL_XP_BONUS: 100, MASTERY_XP_PER_LEVEL: (level) => 100 * Math.pow(1.5, level - 1), enchantmentPool: [ { name: 'STR', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'DEX', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'VIT', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'INT', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'WIS', value: () => `+${(Math.random() * 5 + 1).toFixed(2)}%` }, { name: 'Crit Chance', value: () => `+${(Math.random() * 3 + 0.5).toFixed(2)}%` }, { name: 'Crit Damage', value: () => `+${(Math.random() * 15 + 5).toFixed(2)}%` }, { name: 'Gold Find', value: () => `+${(Math.random() * 20 + 5).toFixed(0)}%` }, { name: 'EXP Gain', value: () => `+${(Math.random() * 10 + 2).toFixed(0)}%` }, ] };
- 
-   // --- ITEM GENERATOR ---
-   function generateMockInventory() {
-       const itemBases = { weapon: ['Sword', 'Axe', 'Mace', 'Dagger', 'Staff', 'Bow', 'Claw'], boots: ['Boots', 'Greaves', 'Sabatons', 'Striders'], armor: ['Plate', 'Mail', 'Jerkin', 'Robes'], offHand: ['Shield', 'Orb', 'Tome', 'Focus'], helmet: ['Helm', 'Coif', 'Crown', 'Visor'], };
-       const prefixes = { common: ['Sturdy', 'Basic', 'Worn', 'Simple'], shadow: ['Shadowy', 'Gloomy', 'Veiled', 'Phantom'], echo: ['Faint', 'Lingering', 'Resonant', 'Fading'], };
-       
-       const generateItem = (id, type, tier) => {
-           const slot = Object.keys(itemBases)[Math.floor(Math.random() * Object.keys(itemBases).length)];
-           const baseName = itemBases[slot][Math.floor(Math.random() * itemBases[slot].length)];
-           const prefixList = type === 'shadow' ? prefixes.shadow : (type === 'echo' ? prefixes.echo : prefixes.common);
-           const prefix = prefixList[Math.floor(Math.random() * prefixList.length)];
-           const name = `${prefix} ${baseName}`;
-           const essenceValue = tier * 1000 + Math.floor(Math.random() * 1000);
-           
-           const stats = {};
-           let primaryStatKey = null;
-           if (['weapon'].includes(slot)) { stats.wc = tier * 50 + Math.floor(Math.random() * 50); primaryStatKey = 'wc'; }
-           else if (['armor', 'helmet', 'boots'].includes(slot)) { stats.ac = tier * 30 + Math.floor(Math.random() * 30); primaryStatKey = 'ac'; }
-           else if (['offHand'].includes(slot)) { stats.sc = tier * 40 + Math.floor(Math.random() * 40); primaryStatKey = 'sc'; }
- 
-           if (type === 'shadow') {
-               const numEnchants = Math.floor(Math.random() * 3) + 1;
-               const availableEnchants = config.enchantmentPool.filter(e => e.name.toLowerCase() !== primaryStatKey);
-               for (let i = 0; i < numEnchants; i++) {
-                   if (availableEnchants.length === 0) break;
-                   const enchantIndex = Math.floor(Math.random() * availableEnchants.length);
-                   const enchant = availableEnchants[enchantIndex];
-                   stats[enchant.name.toLowerCase().replace(' ', '')] = enchant.value();
-                   availableEnchants.splice(enchantIndex, 1);
-               }
-           }
- 
-           const item = { id: `item_${id}`, tier, type, name, slot, isAscended: false, infusionLevel: 0, icon: 'https://raw.githubusercontent.com/juugboytv/Geminus/main/Weapons/Ascended-Sword.PNG', stats, essenceValue };
-           
-           if (type === 'dropper' || type === 'shadow') {
-               item.cost = { gold: tier * 100, essence: tier * 2000 };
-               item.rerollCost = { gold: tier * 10000, essence: tier * 5000 };
-           }
-           return item;
-       };
- 
-       let newInventory = [];
-       let idCounter = 1;
-       for (let i = 0; i < 20; i++) newInventory.push(generateItem(idCounter++, 'echo', Math.ceil(Math.random() * 10)));
-       for (let i = 0; i < 25; i++) newInventory.push(generateItem(idCounter++, 'shadow', Math.ceil(Math.random() * 20)));
-       for (let i = 0; i < 3; i++) newInventory.push(generateItem(idCounter++, 'dropper', Math.ceil(Math.random() * 15)));
-       
-       const ascensionReady = generateItem(idCounter++, 'shadow', 12);
-       ascensionReady.name = "Blade of the Precipice";
-       ascensionReady.infusionLevel = 10;
-       ascensionReady.ascensionCost = { gold: 2500000, essence: 5000000, primalSouls: 1 };
-       newInventory.push(ascensionReady);
- 
-       const ascendedItem = generateItem(idCounter++, 'shadow', 15);
-       ascendedItem.name = "Champion's Will";
-       ascendedItem.isAscended = true;
-       newInventory.push(ascendedItem);
- 
-       const equippedWeapon = generateItem(idCounter++, 'shadow', 18);
-       equippedWeapon.name = "Warlord's Longsword";
-       equippedWeapon.stats = { wc: 2000, str: '5000' };
-       newInventory.push(equippedWeapon);
-       
-       const mockPlayer = { id: 'player_1', resources: { gold: 5000000, essence: 10000000, primalSouls: 5 }, equipped: { weapon: equippedWeapon.id, offHand: null, boots: null }, mastery: { level: 1, xp: 20 } };
- 
-       return { mockPlayer, mockInventory: newInventory };
-   }
- 
-   const { mockPlayer, mockInventory } = generateMockInventory();
+   const config = { ASCENSION_MIN_LEVEL: 10, CRITICAL_SUCCESS_CHANCE: 0.05, MASTERY_XP_GAIN: 10, MASTERY_CRITICAL_XP_BONUS: 100, MASTERY_XP_PER_LEVEL: (level) => 100 * Math.pow(1.5, level - 1) };
  
    //================================================================
-   // MODULE: State Manager
+   // MODULE: State Manager (Engine Synchronized)
    //================================================================
    const StateManager = {
-       _state: { player: null, inventory: [], currentPage: 'infusion', currentItemId: null, selectedStatIndex: -1, filters: { search: '', sort: 'primaryStat' } }, _onUpdate: () => {},
-       init(player, inventory, onUpdateCallback) { this._state.player = JSON.parse(JSON.stringify(player)); this._state.inventory = JSON.parse(JSON.stringify(inventory)); this._onUpdate = onUpdateCallback; },
-       getState() { return this._state; }, getPlayer() { return this._state.player; }, getInventory() { return this._state.inventory; }, getCurrentItem() { return this._state.inventory.find(i => i.id === this._state.currentItemId); },
+       gm: null,
+       _state: { player: null, inventory: [], currentPage: 'infusion', currentItemId: null, selectedStatIndex: -1, filters: { search: '', sort: 'primaryStat' } }, 
+       _onUpdate: () => {},
+       
+       init(gm, onUpdateCallback) { 
+           this.gm = gm;
+           this._state.player = this.gm.state.player;
+           
+           // Ensure resources and mastery objects exist in live engine state
+           if (!this._state.player.resources) this._state.player.resources = { essence: 0, primalSouls: 0 };
+           if (!this._state.player.mastery) this._state.player.mastery = { level: 1, xp: 0 };
+           if (!this._state.player.inventory) this._state.player.inventory = [];
+           
+           // ENGINE DATA NORMALIZATION:
+           // The Soulforge requires specific nested structures (.stats, .forgeType) that the raw engine doesn't use natively.
+           this._state.player.inventory.forEach(item => {
+               if (item.infusionLevel === undefined) item.infusionLevel = 0;
+               if (item.isAscended === undefined) item.isAscended = false;
+               
+               // Assign a forgeType without overwriting the engine's real item.type
+               if (item.type === 'Shadow' || (item.name && item.name.toLowerCase().includes('shadow'))) item.forgeType = 'shadow';
+               else if (item.type === 'Echo' || (item.name && item.name.toLowerCase().includes('echo'))) item.forgeType = 'echo';
+               else item.forgeType = 'standard';
+
+               // Estimate essence value based on tier and rarity
+               if (item.essenceValue === undefined) {
+                   item.essenceValue = (item.tier || 1) * (item.forgeType === 'shadow' ? 500 : 100);
+               }
+               
+               // Ensure a nested stats object exists for the Soulforge UI to render
+               if (!item.stats) item.stats = {};
+               
+               // Map base combat stats
+               if (item.wc !== undefined) item.stats.wc = item.wc;
+               if (item.ac !== undefined) item.stats.ac = item.ac;
+               if (item.sc !== undefined) item.stats.sc = item.sc;
+               
+               // Map flat enchantments from the engine's root item object
+               const enchantKeys = ['str', 'dex', 'vit', 'int', 'wis', 'critchance', 'critdamage', 'goldfind', 'expgain'];
+               enchantKeys.forEach(key => {
+                   if (item[key] !== undefined) item.stats[key] = item[key];
+               });
+
+               // [ARCHITECT FIX] Map the engine's 'enchantments' array (Now using Effects!)
+               if (Array.isArray(item.enchantments)) {
+                   item.enchantments.forEach(ench => {
+                       const statKey = ench.effect || ench.name;
+                       item.stats[statKey] = `+${ench.value}%`; 
+                   });
+               }
+               // If the engine uses an explicit enchants object, merge it
+               if (item.enchants) Object.assign(item.stats, item.enchants);
+           });
+
+           this._state.inventory = this._state.player.inventory;
+           this._onUpdate = onUpdateCallback; 
+       },
+       
+       syncToEngine() {
+           if (this.gm.InventoryManager) this.gm.InventoryManager.refresh();
+           if (this.gm.ProfileManager) this.gm.ProfileManager.updateAllProfileUI();
+           if (this.gm.UIManager) this.gm.UIManager.updatePlayerStatusUI();
+       },
+
+       getState() { return this._state; }, 
+       getPlayer() { return this._state.player; }, 
+       getInventory() { return this._state.inventory; }, 
+       getCurrentItem() { return this._state.inventory.find(i => (i.uuid || i.id) === this._state.currentItemId); },
+       
        setCurrentPage(page) { this._state.currentPage = page; this._state.currentItemId = null; this._state.selectedStatIndex = -1; },
        setCurrentItemId(id) { this._state.currentItemId = id; this._state.selectedStatIndex = -1; },
        setSelectedStatIndex(index) { this._state.selectedStatIndex = index; },
        setFilters(filters) { this._state.filters = { ...this._state.filters, ...filters }; },
-       updatePlayerResources(cost) { for (const key in cost) { if (this._state.player.resources[key] !== undefined) { this._state.player.resources[key] -= cost[key]; } } },
-       addPlayerResources(gains) { for (const key in gains) { if (this._state.player.resources[key] !== undefined) { this._state.player.resources[key] += gains[key]; } } },
-       addMasteryXp(xp) { this._state.player.mastery.xp += xp; let xpToNextLevel = config.MASTERY_XP_PER_LEVEL(this._state.player.mastery.level); while (this._state.player.mastery.xp >= xpToNextLevel) { this._state.player.mastery.level++; this._state.player.mastery.xp -= xpToNextLevel; xpToNextLevel = config.MASTERY_XP_PER_LEVEL(this._state.player.mastery.level); } },
-       bulkRemoveItems(itemIds) { this._state.inventory = this._state.inventory.filter(i => !itemIds.includes(i.id)); },
-       updateAndSync(action) { action(); this._onUpdate(this.getState()); },
-       updateItem(updatedItem) { const index = this._state.inventory.findIndex(i => i.id === updatedItem.id); if (index !== -1) { this._state.inventory[index] = updatedItem; } },
-       removeItem(itemId) { this._state.inventory = this._state.inventory.filter(i => i.id !== itemId); }
+       
+       updatePlayerResources(cost) { 
+           for (const key in cost) { 
+               if (key === 'gold') this._state.player.gold = Math.max(0, (this._state.player.gold || 0) - cost[key]);
+               else this._state.player.resources[key] = Math.max(0, (this._state.player.resources[key] || 0) - cost[key]); 
+           } 
+       },
+       addPlayerResources(gains) { 
+           for (const key in gains) { 
+               if (key === 'gold') this._state.player.gold = (this._state.player.gold || 0) + gains[key];
+               else this._state.player.resources[key] = (this._state.player.resources[key] || 0) + gains[key]; 
+           } 
+       },
+       addMasteryXp(xp) { 
+           this._state.player.mastery.xp += xp; 
+           let xpToNextLevel = config.MASTERY_XP_PER_LEVEL(this._state.player.mastery.level); 
+           while (this._state.player.mastery.xp >= xpToNextLevel) { 
+               this._state.player.mastery.level++; 
+               this._state.player.mastery.xp -= xpToNextLevel; 
+               xpToNextLevel = config.MASTERY_XP_PER_LEVEL(this._state.player.mastery.level); 
+               if (this.gm.showToast) this.gm.showToast(`Soulforge Mastery Level Up! Now Level ${this._state.player.mastery.level}`, false);
+           } 
+       },
+       bulkRemoveItems(itemIds) { 
+           this._state.player.inventory = this._state.player.inventory.filter(i => !itemIds.includes(i.uuid || i.id)); 
+           this._state.inventory = this._state.player.inventory;
+       },
+       updateAndSync(action) { 
+           action(); 
+           this.syncToEngine();
+           this._onUpdate(this.getState()); 
+       },
+       updateItem(updatedItem) { 
+           const index = this._state.player.inventory.findIndex(i => (i.uuid || i.id) === (updatedItem.uuid || updatedItem.id)); 
+           if (index !== -1) { 
+               this._state.player.inventory[index] = updatedItem; 
+               this._state.inventory = this._state.player.inventory;
+           } 
+       },
+       removeItem(itemId) { 
+           this._state.player.inventory = this._state.player.inventory.filter(i => (i.uuid || i.id) !== itemId); 
+           this._state.inventory = this._state.player.inventory;
+       }
    };
  
    //================================================================
@@ -264,37 +297,104 @@
    //================================================================
    const CraftingSystems = {
        getPrimaryStatKey: (item) => {
-           if (item.stats.wc !== undefined) return 'wc';
-           if (item.stats.sc !== undefined) return 'sc';
-           if (item.stats.ac !== undefined) return 'ac';
+           if (!item) return null;
+           if (item.stats?.wc !== undefined || item.wc !== undefined) return 'wc';
+           if (item.stats?.sc !== undefined || item.sc !== undefined) return 'sc';
+           if (item.stats?.ac !== undefined || item.ac !== undefined) return 'ac';
            return null;
        },
-       infusion: { isEligible: (item) => (item.type === 'dropper' || item.type === 'shadow') && !item.isAscended, getCost: (item) => { const level = item.infusionLevel || 0; const mult = Math.pow(1.5, level); return { gold: Math.floor(item.cost.gold * mult), essence: Math.floor(item.cost.essence * mult) }; }, 
+       infusion: { 
+           // [ARCHITECT FIX] Ensure we only try to infuse Weapons, Armor, and Shields
+           isEligible: (item) => (item.forgeType === 'standard' || item.forgeType === 'shadow') && !item.isAscended && CraftingSystems.getPrimaryStatKey(item) !== null, 
+           getCost: (item) => {
+               const baseGold = item.price || ((item.tier || 1) * 100);
+               const baseEssence = (item.tier || 1) * 500;
+               const level = item.infusionLevel || 0; 
+               const mult = Math.pow(1.5, level); 
+               return { gold: Math.floor(baseGold * mult), essence: Math.floor(baseEssence * mult) }; 
+           }, 
            preview: (item, isCritical = false) => { 
                const newItem = JSON.parse(JSON.stringify(item));
                const statMultiplier = isCritical ? 1.20 : 1.1;
                const primaryStatKey = CraftingSystems.getPrimaryStatKey(newItem);
                if (primaryStatKey) {
                    newItem.stats[primaryStatKey] = Math.floor(newItem.stats[primaryStatKey] * statMultiplier);
+                   // Apply to root for the live engine to read
+                   newItem[primaryStatKey] = newItem.stats[primaryStatKey];
                }
                return newItem; 
            }, 
            execute: (item, isCritical) => CraftingSystems.infusion.preview(item, isCritical) 
        },
-       rerolling: { isEligible: (item) => item.type === 'shadow' && !item.isAscended, getCost: (item) => item.rerollCost, execute: (item, statKey, enchantmentPool) => { const newItem = JSON.parse(JSON.stringify(item)); const currentStatNames = Object.keys(newItem.stats); let potential = enchantmentPool.filter(e => !currentStatNames.includes(e.name.toLowerCase().replace(' ', ''))); if (potential.length === 0) potential = enchantmentPool; const newEnchant = potential[Math.floor(Math.random() * potential.length)]; delete newItem.stats[statKey]; newItem.stats[newEnchant.name.toLowerCase().replace(' ', '')] = newEnchant.value(); return newItem; } },
-       shatter: { isEligible: (item) => (item.type === 'shadow' || item.type === 'echo') && !item.isAscended, getGain: (item, isCritical) => ({ essence: item.essenceValue * (isCritical ? 2 : 1) }), },
-       ascension: { isEligible: (item, minLevel) => item.type === 'shadow' && !item.isAscended && item.infusionLevel >= minLevel, getCost: (item, isCritical) => { const cost = { ...item.ascensionCost }; if (isCritical) { cost.primalSouls = 0; } return cost; }, 
+       rerolling: { 
+           isEligible: (item) => item.forgeType === 'shadow' && !item.isAscended, 
+           getCost: (item) => {
+               return item.rerollCost || { gold: (item.tier || 1) * 1000, essence: (item.tier || 1) * 2000 };
+           }, 
+           execute: (item, statKey) => { 
+               const newItem = JSON.parse(JSON.stringify(item)); 
+               const currentStatNames = Object.keys(newItem.stats || {}); 
+               
+               // Ask the live Engine to perform the reroll logic
+               const newEnchant = StateManager.gm.Systems.rerollEnchantment(newItem, currentStatNames);
+               if (!newEnchant) return newItem;
+               
+               // Format the value for UI display
+               const displayValue = `+${newEnchant.value}%`;
+               
+               // Remove old stat from Soulforge UI and Engine Root
+               delete newItem.stats[statKey]; 
+               delete newItem[statKey];
+               
+               // [ARCHITECT FIX] Update the actual engine array so it saves properly
+               if (Array.isArray(newItem.enchantments)) {
+                   // Remove the old enchantment object by matching the effect
+                   newItem.enchantments = newItem.enchantments.filter(e => (e.effect || e.name) !== statKey);
+                   // Add the new enchantment object
+                   newItem.enchantments.push({
+                       name: newEnchant.name,
+                       effect: newEnchant.effect,
+                       value: newEnchant.value,
+                       tier: newEnchant.tier
+                   });
+               }
+               
+               // Apply new stat to Soulforge UI and Engine Root
+               newItem.stats[newEnchant.key] = displayValue; 
+               newItem[newEnchant.key] = displayValue;
+               
+               return newItem; 
+           } 
+       },
+       shatter: { 
+           isEligible: (item) => (item.forgeType === 'shadow' || item.forgeType === 'echo') && !item.isAscended, 
+           getGain: (item, isCritical) => ({ essence: (item.essenceValue || 100) * (isCritical ? 2 : 1) }), 
+       },
+       ascension: { 
+           isEligible: (item, minLevel) => item.forgeType === 'shadow' && !item.isAscended && item.infusionLevel >= minLevel, 
+           getCost: (item, isCritical) => { 
+               const cost = item.ascensionCost || { gold: (item.tier || 1) * 25000, essence: (item.tier || 1) * 50000, primalSouls: 1 }; 
+               if (isCritical) { cost.primalSouls = 0; } 
+               return cost; 
+           }, 
            execute: (item) => { 
                const newItem = JSON.parse(JSON.stringify(item));
                newItem.isAscended = true;
                const primaryStatKey = CraftingSystems.getPrimaryStatKey(newItem);
                if (primaryStatKey) {
                    newItem.stats[primaryStatKey] = Math.floor(newItem.stats[primaryStatKey] * 1.5);
+                   newItem[primaryStatKey] = newItem.stats[primaryStatKey];
                }
                return newItem; 
            } 
        },
-       canAfford: (player, cost) => { if (!cost) return false; return Object.keys(cost).every(key => player.resources[key] >= cost[key]); }
+       canAfford: (player, cost) => { 
+           if (!cost) return false; 
+           return Object.keys(cost).every(key => {
+               const val = key === 'gold' ? (player.gold || 0) : (player.resources?.[key] || 0);
+               return val >= cost[key];
+           }); 
+       }
    };
  
    //================================================================
@@ -310,15 +410,15 @@
        hideModal() { this._elements.modal.classList.add('hidden'); this._onConfirmCallback = () => {}; },
        showBulkShatterModal(state) { this.renderBulkShatterEchoes(state); this.renderBulkShatterShadows(state); this._elements.bulkShatterModal.classList.remove('hidden'); },
        hideBulkShatterModal() { this._elements.bulkShatterModal.classList.add('hidden'); },
-       renderBulkShatterEchoes(state) { const echoes = state.inventory.filter(i => i.type === 'echo'); if (echoes.length === 0) { this._elements.bulkShatterEchoesSection.innerHTML = '<p class="text-center text-secondary">No Echoes to shatter.</p>'; return; } const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); this._elements.bulkShatterEchoesSection.innerHTML = ` <h4 class="font-bold text-center mb-2 text-cyan-300">Shatter All Echoes</h4> <p class="text-center text-secondary mb-2">Shatter <strong>${echoes.length}</strong> Echoes for <strong>${totalGain.toLocaleString()}</strong> Essence.</p> <button id="bulk-shatter-echoes-btn" class="action-button shatter-mode w-full py-2">Shatter All Echoes</button> `; document.getElementById('bulk-shatter-echoes-btn').onclick = () => this._controller.onBulkShatterEchoes(); },
+       renderBulkShatterEchoes(state) { const echoes = state.inventory.filter(i => i.forgeType === 'echo'); if (echoes.length === 0) { this._elements.bulkShatterEchoesSection.innerHTML = '<p class="text-center text-secondary">No Echoes to shatter.</p>'; return; } const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); this._elements.bulkShatterEchoesSection.innerHTML = ` <h4 class="font-bold text-center mb-2 text-cyan-300">Shatter All Echoes</h4> <p class="text-center text-secondary mb-2">Shatter <strong>${echoes.length}</strong> Echoes for <strong>${totalGain.toLocaleString()}</strong> Essence.</p> <button id="bulk-shatter-echoes-btn" class="action-button shatter-mode w-full py-2">Shatter All Echoes</button> `; document.getElementById('bulk-shatter-echoes-btn').onclick = () => this._controller.onBulkShatterEchoes(); },
        renderBulkShatterShadows(state) {
-           const shadowTiers = [...new Set(state.inventory.filter(i => i.type === 'shadow' && !i.isAscended).map(i => i.tier))].sort((a,b) => a-b);
+           const shadowTiers = [...new Set(state.inventory.filter(i => i.forgeType === 'shadow' && !i.isAscended).map(i => i.tier))].sort((a,b) => a-b);
            if (shadowTiers.length === 0) { this._elements.bulkShatterTierList.innerHTML = '<p class="text-center text-secondary">No Shadows to shatter.</p>'; this._elements.bulkShatterShadowsSummary.innerHTML = ''; this._elements.bulkShatterShadowsBtn.disabled = true; return; }
            this._elements.bulkShatterTierList.innerHTML = shadowTiers.map(tier => ` <div> <input type="checkbox" id="tier-${tier}" value="${tier}" class="tier-checkbox"> <label for="tier-${tier}">T${tier}</label> </div> `).join('');
            const updateSummary = () => {
                const checkedTiers = [...this._elements.bulkShatterTierList.querySelectorAll('input:checked')].map(cb => parseInt(cb.value));
                if (checkedTiers.length === 0) { this._elements.bulkShatterShadowsSummary.innerHTML = 'Select tiers to shatter.'; this._elements.bulkShatterShadowsBtn.disabled = true; return; }
-               const itemsToShatter = state.inventory.filter(i => i.type === 'shadow' && !i.isAscended && checkedTiers.includes(i.tier));
+               const itemsToShatter = state.inventory.filter(i => i.forgeType === 'shadow' && !i.isAscended && checkedTiers.includes(i.tier));
                const totalGain = itemsToShatter.reduce((sum, item) => sum + item.essenceValue, 0);
                this._elements.bulkShatterShadowsSummary.innerHTML = `Shatter <strong>${itemsToShatter.length}</strong> items for <strong>${totalGain.toLocaleString()}</strong> Essence.`;
                this._elements.bulkShatterShadowsBtn.disabled = false;
@@ -332,8 +432,8 @@
        render(state, visibleInventory) { this.renderNav(state); this.renderInventory(state, visibleInventory); this.renderSelectedItem(state); this.renderMastery(state.player.mastery); },
        renderNav(state) { const { currentPage } = state; const pageName = currentPage.charAt(0).toUpperCase() + currentPage.slice(1); this._elements.pageTitle.textContent = `The Soulforge - ${pageName}`; this._elements.actionButton.textContent = pageName; this._elements.navButtons.forEach(b => b.classList.toggle('active', b.dataset.page === currentPage)); this._elements.actionButton.className = 'action-button w-full py-3'; if (currentPage === 'shatter') this._elements.actionButton.classList.add('shatter-mode'); if (currentPage === 'ascension') this._elements.actionButton.classList.add('ascension-mode'); this.renderSecondaryAction(state); },
        renderSecondaryAction(state) { this._elements.secondaryActionContainer.innerHTML = ''; if (state.currentPage === 'shatter') { const btn = document.createElement('button'); btn.textContent = 'Bulk'; btn.className = 'secondary-action-button w-full shatter-mode'; btn.onclick = () => this._controller.onBulkShatter(); this._elements.secondaryActionContainer.appendChild(btn); } },
-       renderInventory(state, visibleInventory) { if (visibleInventory.length > 0) { this._elements.inventorySelect.innerHTML = visibleInventory.map(item => { let suffix = ''; if (item.isAscended) suffix = ' (Ascended)'; else if (item.infusionLevel > 0) suffix = ` +${item.infusionLevel}`; return `<option value="${item.id}" ${item.id === state.currentItemId ? 'selected' : ''}>${item.name}${suffix}</option>`; }).join(''); } else { this._elements.inventorySelect.innerHTML = `<option disabled>No eligible items.</option>`; } },
-       renderSelectedItem(state) { const item = state.inventory.find(i => i.id === state.currentItemId); if (!item) { this.clearItemView(); return; } let displayName = item.name; if (item.isAscended) displayName = `${item.name} (Ascended)`; else if (item.infusionLevel > 0) displayName = `${item.name} +${item.infusionLevel}`; this._elements.itemIcon.querySelector('img')?.remove(); const img = document.createElement('img'); img.src = item.icon; img.className = "w-full h-full object-contain"; img.alt = item.name; this._elements.itemIcon.prepend(img); this._elements.itemIcon.classList.toggle('ascended', item.isAscended); this._elements.itemName.textContent = displayName; this._elements.itemName.style.color = item.isAscended ? 'var(--accent-ascended)' : 'var(--text-primary)'; this.renderStats(state, item); this.renderInteractionPanel(state, item); },
+       renderInventory(state, visibleInventory) { if (visibleInventory.length > 0) { this._elements.inventorySelect.innerHTML = visibleInventory.map(item => { let suffix = ''; if (item.isAscended) suffix = ' (Ascended)'; else if (item.infusionLevel > 0) suffix = ` +${item.infusionLevel}`; const itemId = item.uuid || item.id; return `<option value="${itemId}" ${itemId === state.currentItemId ? 'selected' : ''}>${item.name}${suffix}</option>`; }).join(''); } else { this._elements.inventorySelect.innerHTML = `<option disabled>No eligible items.</option>`; } },
+       renderSelectedItem(state) { const item = state.inventory.find(i => (i.uuid || i.id) === state.currentItemId); if (!item) { this.clearItemView(); return; } let displayName = item.name || 'Unknown Item'; if (item.isAscended) displayName = `${item.name} (Ascended)`; else if (item.infusionLevel > 0) displayName = `${item.name} +${item.infusionLevel}`; this._elements.itemIcon.querySelector('img')?.remove(); const img = document.createElement('img'); img.src = item.icon || item.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${displayName.substring(0,2)}`; img.className = "w-full h-full object-contain"; img.alt = displayName; this._elements.itemIcon.prepend(img); this._elements.itemIcon.classList.toggle('ascended', item.isAscended); this._elements.itemName.textContent = displayName; this._elements.itemName.style.color = item.isAscended ? 'var(--accent-ascended)' : 'var(--text-primary)'; this.renderStats(state, item); this.renderInteractionPanel(state, item); },
        renderStats(state, item) {
            const isRerollable = state.currentPage === 'rerolling' && CraftingSystems.rerolling.isEligible(item);
            const isInfusionPreview = state.currentPage === 'infusion' && CraftingSystems.infusion.isEligible(item);
@@ -395,12 +495,13 @@
        },
        _createCostPanelHTML(title, cost, player) {
            const resourceHTML = Object.keys(cost).map(key => {
-               const canAfford = player.resources[key] >= cost[key];
+               const playerVal = key === 'gold' ? (player.gold || 0) : (player.resources?.[key] || 0);
+               const canAfford = playerVal >= cost[key];
                const color = canAfford ? 'var(--text-affordable)' : 'var(--text-unaffordable)';
-               const iconSrc = this._resourceIcons[key];
+               const iconSrc = this._resourceIcons[key] || '';
                return `<div class="cost-item-compact p-2 flex-1 flex items-center justify-center gap-2">
-                           <img src="${iconSrc}" class="h-6 w-6" alt="${key}">
-                           <span class="text-sm" style="color: ${color};">${player.resources[key].toLocaleString()}/${cost[key].toLocaleString()}</span>
+                           ${iconSrc ? `<img src="${iconSrc}" class="h-6 w-6" alt="${key}">` : `<span class="text-xs uppercase text-gray-400">${key}</span>`}
+                           <span class="text-sm" style="color: ${color};">${playerVal.toLocaleString()}/${cost[key].toLocaleString()}</span>
                        </div>`;
            }).join('');
            return `<h3 class="text-center font-bold mb-2 text-orange-300">${title}</h3><div class="flex justify-center gap-2 sm:gap-4">${resourceHTML}</div>`;
@@ -413,7 +514,11 @@
    // MODULE: Soulforge Controller
    //================================================================
    const SoulforgeController = {
-       init(player, inventory, onUpdate) { StateManager.init(player, inventory, onUpdate); UIManager.init(this); this.refreshUI(); },
+       init(gm) { 
+           StateManager.init(gm, () => this.refreshUI()); 
+           UIManager.init(this); 
+           this.refreshUI(); 
+       },
        refreshUI() { UIManager.render(StateManager.getState(), this.getVisibleInventory()); },
        getVisibleInventory() { 
            const state = StateManager.getState();
@@ -424,7 +529,10 @@
            else if (state.currentPage === 'ascension') pool = state.inventory.filter(i => CraftingSystems.ascension.isEligible(i, config.ASCENSION_MIN_LEVEL)); 
            
            const { search, sort } = state.filters;
-           const filtered = pool.filter(i => i.name.toLowerCase().includes(search.toLowerCase())); 
+           const filtered = pool.filter(i => {
+               const itemName = i.name || 'Unknown Item';
+               return itemName.toLowerCase().includes(search.toLowerCase());
+           }); 
            
            const getPrimaryStatValue = item => {
                const key = CraftingSystems.getPrimaryStatKey(item);
@@ -432,30 +540,57 @@
            };
  
            return [...filtered].sort((a, b) => {
+               const nameA = a.name || 'Unknown Item';
+               const nameB = b.name || 'Unknown Item';
                if (sort === 'primaryStat') return getPrimaryStatValue(b) - getPrimaryStatValue(a);
-               return a.name.localeCompare(b.name);
+               return nameA.localeCompare(nameB);
            }); 
        },
        getState() { return StateManager.getState(); },
-       onNavigate(page) { StateManager.setCurrentPage(page); const visibleInventory = this.getVisibleInventory(); if (visibleInventory.length > 0) { StateManager.setCurrentItemId(visibleInventory[0].id); } this.refreshUI(); },
+       onNavigate(page) { 
+           StateManager.setCurrentPage(page); 
+           const visibleInventory = this.getVisibleInventory(); 
+           if (visibleInventory.length > 0) { 
+               // [ARCHITECT FIX] Safely target live Engine UUIDs
+               StateManager.setCurrentItemId(visibleInventory[0].uuid || visibleInventory[0].id); 
+           } 
+           this.refreshUI(); 
+       },
        onSelectItem(itemId) { StateManager.setCurrentItemId(itemId); this.refreshUI(); },
        onSelectStat(statKey) { StateManager.setSelectedStatIndex(statKey); this.refreshUI(); },
        onFilterChange(filter) { StateManager.setFilters(filter); this.refreshUI(); },
        onAction() { const state = StateManager.getState(); const item = StateManager.getCurrentItem(); if (!item) return; switch(state.currentPage) { case 'infusion': this.executeInfusion(item); break; case 'rerolling': this.executeReroll(item, state.selectedStatIndex); break; case 'shatter': UIManager.showModal({ title: 'Shatter Item', message: `Shatter <strong>${item.name}</strong>? This cannot be undone.`, onConfirm: () => this.executeShatter(item), confirmClass: 'shatter-mode' }); break; case 'ascension': UIManager.showModal({ title: 'Ascend Item', message: `Ascend <strong>${item.name}</strong>? The item will become permanent.`, onConfirm: () => this.executeAscension(item), confirmClass: 'ascension-mode' }); break; } },
        onBulkShatter() { UIManager.showBulkShatterModal(StateManager.getState()); },
-       onBulkShatterEchoes() { const echoes = StateManager.getInventory().filter(i => i.type === 'echo'); if (echoes.length === 0) return; const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); UIManager.hideBulkShatterModal(); UIManager.showModal({ title: 'Bulk Shatter Echoes', message: `Shatter <strong>${echoes.length}</strong> Echo items for <strong>${totalGain.toLocaleString()}</strong> Essence?`, onConfirm: () => this.executeBulkShatterEchoes(echoes), confirmClass: 'shatter-mode'}); },
-       onBulkShatterShadows(tiers) { if (tiers.length === 0) return; const itemsToShatter = StateManager.getInventory().filter(i => i.type === 'shadow' && !i.isAscended && tiers.includes(i.tier)); const totalGain = itemsToShatter.reduce((sum, item) => sum + item.essenceValue, 0); UIManager.hideBulkShatterModal(); UIManager.showModal({ title: 'Bulk Shatter Shadows', message: `Shatter <strong>${itemsToShatter.length}</strong> items from tiers <strong>[${tiers.join(', ')}]</strong> for <strong>${totalGain.toLocaleString()}</strong> Essence?`, onConfirm: () => this.executeBulkShatterShadows(itemsToShatter), confirmClass: 'shatter-mode'}); },
+       onBulkShatterEchoes() { const echoes = StateManager.getInventory().filter(i => i.forgeType === 'echo'); if (echoes.length === 0) return; const totalGain = echoes.reduce((sum, item) => sum + (item.essenceValue || 100), 0); UIManager.hideBulkShatterModal(); UIManager.showModal({ title: 'Bulk Shatter Echoes', message: `Shatter <strong>${echoes.length}</strong> Echo items for <strong>${totalGain.toLocaleString()}</strong> Essence?`, onConfirm: () => this.executeBulkShatterEchoes(echoes), confirmClass: 'shatter-mode'}); },
+       onBulkShatterShadows(tiers) { if (tiers.length === 0) return; const itemsToShatter = StateManager.getInventory().filter(i => i.forgeType === 'shadow' && !i.isAscended && tiers.includes(i.tier)); const totalGain = itemsToShatter.reduce((sum, item) => sum + (item.essenceValue || 500), 0); UIManager.hideBulkShatterModal(); UIManager.showModal({ title: 'Bulk Shatter Shadows', message: `Shatter <strong>${itemsToShatter.length}</strong> items from tiers <strong>[${tiers.join(', ')}]</strong> for <strong>${totalGain.toLocaleString()}</strong> Essence?`, onConfirm: () => this.executeBulkShatterShadows(itemsToShatter), confirmClass: 'shatter-mode'}); },
        _performCraft(logic) { const isCritical = Math.random() < config.CRITICAL_SUCCESS_CHANCE; let xpGained = config.MASTERY_XP_GAIN; if (isCritical) { xpGained += config.MASTERY_CRITICAL_XP_BONUS; UIManager.showCriticalSuccess(); } StateManager.updateAndSync(() => { logic(isCritical); StateManager.addMasteryXp(xpGained); }); this.refreshUI(); },
        executeInfusion(item) { this._performCraft((isCritical) => { const cost = CraftingSystems.infusion.getCost(item); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.infusion.execute(item, isCritical); StateManager.updatePlayerResources(cost); StateManager.updateItem({ ...newItem, infusionLevel: item.infusionLevel + 1 }); UIManager.triggerItemAnimation('var(--accent-cyan)'); }); },
-       executeReroll(item, statKey) { if (statKey === -1) return; this._performCraft((isCritical) => { const cost = CraftingSystems.rerolling.getCost(item); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.rerolling.execute(item, statKey, config.enchantmentPool); if (!isCritical) { StateManager.updatePlayerResources(cost); } else { UIManager.showModal({title: 'Critical Success!', message: 'Your reroll was free!', onConfirm: () => {}})} StateManager.updateItem(newItem); StateManager.setSelectedStatIndex(-1); UIManager.triggerItemAnimation('var(--accent-orange)'); }); },
-       executeShatter(item) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const gain = CraftingSystems.shatter.getGain(item, isCritical); StateManager.addPlayerResources(gain); StateManager.removeItem(item.id); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
-       executeBulkShatterEchoes(echoes) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const totalGain = echoes.reduce((sum, item) => sum + item.essenceValue, 0); const echoIds = echoes.map(i => i.id); StateManager.addPlayerResources({ essence: totalGain * (isCritical ? 2 : 1) }); StateManager.bulkRemoveItems(echoIds); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
-       executeBulkShatterShadows(items) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const totalGain = items.reduce((sum, item) => sum + item.essenceValue, 0); const itemIds = items.map(i => i.id); StateManager.addPlayerResources({ essence: totalGain * (isCritical ? 2 : 1) }); StateManager.bulkRemoveItems(itemIds); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
+       executeReroll(item, statKey) { if (statKey === -1) return; this._performCraft((isCritical) => { const cost = CraftingSystems.rerolling.getCost(item); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.rerolling.execute(item, statKey); if (!isCritical) { StateManager.updatePlayerResources(cost); } else { UIManager.showModal({title: 'Critical Success!', message: 'Your reroll was free!', onConfirm: () => {}})} StateManager.updateItem(newItem); StateManager.setSelectedStatIndex(-1); UIManager.triggerItemAnimation('var(--accent-orange)'); }); },
+       executeShatter(item) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const gain = CraftingSystems.shatter.getGain(item, isCritical); StateManager.addPlayerResources(gain); StateManager.removeItem(item.uuid || item.id); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
+       executeBulkShatterEchoes(echoes) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const totalGain = echoes.reduce((sum, item) => sum + (item.essenceValue || 100), 0); const echoIds = echoes.map(i => i.uuid || i.id); StateManager.addPlayerResources({ essence: totalGain * (isCritical ? 2 : 1) }); StateManager.bulkRemoveItems(echoIds); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
+       executeBulkShatterShadows(items) { this._performCraft((isCritical) => { UIManager.triggerItemAnimation('var(--accent-red)'); const totalGain = items.reduce((sum, item) => sum + (item.essenceValue || 500), 0); const itemIds = items.map(i => i.uuid || i.id); StateManager.addPlayerResources({ essence: totalGain * (isCritical ? 2 : 1) }); StateManager.bulkRemoveItems(itemIds); StateManager.setCurrentItemId(null); }); this.onNavigate('shatter'); },
        executeAscension(item) { this._performCraft((isCritical) => { const cost = CraftingSystems.ascension.getCost(item, isCritical); if (!CraftingSystems.canAfford(StateManager.getPlayer(), cost)) return; const newItem = CraftingSystems.ascension.execute(item); StateManager.updatePlayerResources(cost); StateManager.updateItem(newItem); UIManager.triggerItemAnimation('var(--accent-ascended)'); }); }
    };
  
    // --- INITIALIZATION ---
    window.SoulforgeController = SoulforgeController;
+
+   // --- ROBUST AUTO-START ---
+   (function connectToEngine() {
+       const findEngine = () => window.parent.gameManager || window.gameManager || (window.opener ? window.opener.gameManager : null);
+       
+       const attemptConnection = () => {
+           const gm = findEngine();
+           if (gm && gm.state && gm.state.player) {
+               console.log("🔨 Soulforge Connected to Engine.");
+               SoulforgeController.init(gm);
+           } else {
+               console.log("🔨 Soulforge waiting for Engine...");
+               setTimeout(attemptConnection, 200);
+           }
+       };
+       attemptConnection();
+   })();
 </script>
 </body>
 </html>

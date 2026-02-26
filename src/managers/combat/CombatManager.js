@@ -55,11 +55,24 @@ export class CombatManager {
   }
 
   renderLog() {
-    const logDisplay = document.querySelector('#tab-content-combat #combat-log-display');
+    const logDisplay = document.getElementById('combat-log-display');
     if (logDisplay) {
       logDisplay.innerHTML = this.logMessages.join('<br>');
       logDisplay.scrollTop = logDisplay.scrollHeight;
     }
+  }
+
+  bindTeleportUI() {
+    this.ui.combatRoot = document.getElementById('combat-module-root');
+    this.ui.combatModal = document.getElementById('combat-modal');
+    this.ui.combatModalBody = document.getElementById('combat-modal-body');
+    this.ui.closeCombatModalBtn = document.getElementById('close-combat-modal-btn');
+    this.ui.tabContentCombat = document.getElementById('tab-content-combat');
+    
+    // Chat Teleportation Bindings
+    this.ui.chatFooter = document.getElementById('footer-chat-container');
+    this.ui.mainFooterSlot = document.getElementById('footer-container');
+    this.ui.modalChatSlot = document.getElementById('combat-modal-chat-slot');
   }
 
   /**
@@ -68,8 +81,9 @@ export class CombatManager {
    * This keeps Fight and Action buttons close together for rapid clicks.
    */
   render() {
-    if (!this.ui.tabContentCombat) return;
-    this.ui.tabContentCombat.innerHTML = `
+    this.bindTeleportUI();
+    if (!this.ui.combatRoot) return;
+    this.ui.combatRoot.innerHTML = `
       <div class="flex flex-col h-full relative">
         
         <div id="combat-info-panel" class="w-full p-2 mb-1 rounded-lg bg-black/20 border shrink-0" style="border-color: var(--border-color-main)">
@@ -180,6 +194,73 @@ export class CombatManager {
       }
   }
 
+  teleport(toModal) {
+    // 1. Force Dynamic DOM Binding
+    this.bindTeleportUI();
+    
+    if (!this.ui.combatRoot || !this.ui.combatModalBody || !this.ui.tabContentCombat) {
+        console.error("❌ CombatManager: Teleport aborted. Missing DOM nodes.");
+        return;
+    }
+
+    // 2. SELF-HEALING ARCHITECTURE
+    // If the browser wiped the innerHTML during layout shifts, rebuild it instantly.
+    if (!this.ui.combatRoot.querySelector('#combat-info-panel')) {
+        console.warn("⚠️ CombatManager: Interface collapsed during shift. Executing Self-Healing rebuild...");
+        this.render();
+        this.addEventListeners();
+        this.updateCombatInfoPanel();
+    }
+    
+    // 3. Force Flex Display (overriding any inherited tab-hiding CSS)
+    this.ui.combatRoot.classList.remove('hidden');
+    this.ui.combatRoot.style.display = 'flex';
+    
+    // 4. Execute DOM Teleportation
+    if (toModal) {
+      this.ui.combatModalBody.appendChild(this.ui.combatRoot);
+      if (this.ui.chatFooter && this.ui.modalChatSlot) {
+          this.ui.modalChatSlot.appendChild(this.ui.chatFooter);
+          this.ui.chatFooter.style.display = 'flex'; // Force visibility of chat footer
+      }
+      if (this.ui.combatModal) {
+          this.ui.combatModal.classList.remove('hidden');
+          this.ui.combatModal.classList.add('flex');
+      }
+    } else {
+      this.ui.tabContentCombat.appendChild(this.ui.combatRoot);
+      if (this.ui.chatFooter && this.ui.mainFooterSlot) {
+          this.ui.mainFooterSlot.appendChild(this.ui.chatFooter);
+      }
+      if (this.ui.combatModal) {
+          this.ui.combatModal.classList.remove('flex');
+          this.ui.combatModal.classList.add('hidden');
+      }
+    }
+    
+    this.renderLog();
+
+    // 5. Delay Scroll to allow browser painting to finish
+    setTimeout(() => {
+        const chatContent = document.getElementById('footer-chat-content-wrapper');
+        if (chatContent) chatContent.scrollTop = chatContent.scrollHeight;
+    }, 25);
+  }
+
+  openWildEncounter(monsterList, isBoss = false) {
+    this.teleport(true);
+    const zoneId = this.state.game.currentZoneId || 'Z01';
+    this.populateMonsterListFromZone(zoneId, monsterList);
+    
+    if (monsterList && monsterList.length > 0) {
+      const mobId = monsterList[0].id || monsterList[0].eid;
+      const monsterSelect = document.getElementById('monsterSelect');
+      if (monsterSelect) monsterSelect.value = mobId;
+      this.selectMonster(mobId);
+    }
+    this.logToGame(isBoss ? "<span class='text-red-500 font-bold'>A BOSS approaches!</span>" : "<span class='text-yellow-400'>A wild monster attacks!</span>");
+  }
+
   updateCombatInfoPanel() {
     const p = this.state.player;
     if (!p || !p.derivedStats) return;
@@ -207,21 +288,25 @@ export class CombatManager {
   }
 
   addEventListeners() {
-    const combatTab = this.ui.tabContentCombat;
-    if (!combatTab) return;
+    if (this.ui.closeCombatModalBtn) {
+        this.ui.closeCombatModalBtn.addEventListener('click', () => this.teleport(false));
+    }
 
-    const monsterSelect = combatTab.querySelector('#monsterSelect');
+    const combatRoot = this.ui.combatRoot;
+    if (!combatRoot) return;
+
+    const monsterSelect = combatRoot.querySelector('#monsterSelect');
     if (monsterSelect) {
         monsterSelect.addEventListener('change', (e) => this.selectMonster(e.target.value));
     }
 
-    const fightBtn = combatTab.querySelector('#fightBtn');
+    const fightBtn = combatRoot.querySelector('#fightBtn');
     if (fightBtn) {
         fightBtn.addEventListener('click', () => this.fight());
     }
 
     // [NEW] Handedness Toggle Listener (Now Static)
-    const toggleBtn = combatTab.querySelector('#handedness-toggle');
+    const toggleBtn = combatRoot.querySelector('#handedness-toggle');
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
             // Flip State
@@ -236,7 +321,7 @@ export class CombatManager {
         });
     }
 
-    const logDisplay = combatTab.querySelector('#combat-log-display');
+    const logDisplay = combatRoot.querySelector('#combat-log-display');
     if (logDisplay) {
         logDisplay.addEventListener('click', (e) => {
             const link = e.target.closest('.stat-allocation-link');

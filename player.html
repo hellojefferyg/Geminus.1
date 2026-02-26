@@ -110,7 +110,7 @@
                             </div>
                         
                         <div id="tab-content-combat" class="main-tab-panel h-full flex flex-col">
-                            <div id="combat-log-display" class="flex-grow p-2 overflow-y-auto custom-scrollbar text-sm"></div>
+                            <div id="combat-module-root" class="h-full flex flex-col w-full"></div>
                         </div>
                     </div>
                     </main>
@@ -134,6 +134,19 @@
                     </footer>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="combat-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2050] p-4">
+        <div class="glass-panel relative w-full max-w-md h-[95vh] flex flex-col bg-black/95 rounded-xl border border-red-900/50 shadow-[0_0_30px_rgba(255,0,0,0.15)] overflow-hidden">
+            <header class="p-3 border-b border-red-900/50 flex justify-between items-center bg-red-900/20 shrink-0">
+                <h2 class="text-red-400 font-cinzel font-bold tracking-widest uppercase text-sm">Wild Encounter</h2>
+                <button id="close-combat-modal-btn" class="text-gray-400 hover:text-red-400 text-2xl transition-colors leading-none">&times;</button>
+            </header>
+            <div id="combat-modal-body" class="flex-grow overflow-hidden flex flex-col">
+                </div>
+            <div id="combat-modal-chat-slot" class="shrink-0 border-t border-cyan-500/30 h-[220px] flex flex-col bg-black/80">
+                </div>
         </div>
     </div>
 

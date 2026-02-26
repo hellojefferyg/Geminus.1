@@ -13,6 +13,26 @@ function findItemById(itemId) {
   return items[itemId];
 }
 
+// [NEW] Universal Enchantment Value Calculator (Handles arrays and min/max pairs)
+function getEnchantmentValue(enchData, magicTier) {
+    if (enchData.tiers && enchData.tiers.length >= magicTier) {
+        return enchData.tiers[magicTier - 1]; 
+    } else if (enchData.values) {
+         return enchData.values[Math.min(magicTier - 1, enchData.values.length - 1)];
+    } else {
+        // Linearly interpolate _min and _max across 9 tiers
+        const minKey = Object.keys(enchData).find(k => k.endsWith('_min'));
+        if (minKey) {
+            const maxKey = minKey.replace('_min', '_max');
+            const minVal = enchData[minKey];
+            const maxVal = enchData[maxKey];
+            const val = minVal + ((maxVal - minVal) / 8) * (magicTier - 1);
+            return Number(val.toFixed(2));
+        }
+    }
+    return magicTier; // fallback
+}
+
 const Systems = {
   calculateDerivedStats(player) {
     if (!player) return player; 
@@ -345,8 +365,42 @@ const Systems = {
         });
         
         allEnchants.splice(randIndex, 1);
-    }
-    return selected;
+        }
+        return selected;
+  },
+
+  // --- [NEW] EXPOSED FOR SOULFORGE REROLLING ---
+  rerollEnchantment(item, currentStatKeys) {
+      if (!enchantments) return null;
+
+      const itemTier = item.tier || 1;
+      let magicTier = Math.ceil(itemTier / 2.25);
+      magicTier = Math.max(1, Math.min(9, magicTier));
+
+      const allEnchants = [];
+      if (enchantments.caster) allEnchants.push(...Object.values(enchantments.caster));
+      if (enchantments.fighter) allEnchants.push(...Object.values(enchantments.fighter));
+      if (enchantments.support) allEnchants.push(...Object.values(enchantments.support));
+
+      // Filter out existing enchants (checking both effect and formatted name for safety)
+      const potential = allEnchants.filter(ench => {
+          const nameKey = ench.name.toLowerCase().replace(/ /g, '');
+          return !currentStatKeys.includes(ench.effect) && !currentStatKeys.includes(nameKey);
+      });
+
+      const pool = potential.length > 0 ? potential : allEnchants;
+      const randIndex = Math.floor(Math.random() * pool.length);
+      const enchData = pool[randIndex];
+
+      const value = getEnchantmentValue(enchData, magicTier);
+
+      return {
+          key: enchData.effect || ench.name, // Use effect as the primary key for the UI
+          name: enchData.name,
+          effect: enchData.effect,
+          value: value,
+          tier: magicTier
+      };
   },
 
 // --- [ARCHITECT FIX] SHADOW DROP SYSTEM ---
