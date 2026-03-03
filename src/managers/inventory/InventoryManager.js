@@ -480,11 +480,14 @@ export class InventoryManager {
         
         return `
             <div class="absolute top-0.5 right-0.5 flex flex-col gap-0.5 pointer-events-none z-10">
-                ${item.sockets.map(gem => `
+                ${Array.from({ length: item.sockets || 0 }).map((_, i) => {
+                    const gem = item.socketedGems && item.socketedGems[i];
+                    return `
                     <div class="w-1.5 h-1.5 rounded-full border border-black/50 shadow-sm" 
-                         style="background-color: ${gem.color || '#fff'}; box-shadow: 0 0 2px ${gem.color || '#fff'};">
+                         style="background-color: ${gem ? (gem.color || '#fff') : 'transparent'}; box-shadow: ${gem ? `0 0 2px ${gem.color || '#fff'}` : 'none'};">
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     }

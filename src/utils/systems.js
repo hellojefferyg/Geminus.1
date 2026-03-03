@@ -419,12 +419,14 @@ const Systems = {
       const actualSlotKey = slotKeyMap[selectedLegacySlot];
       
       let mother = player.equipped ? player.equipped[actualSlotKey] : null;
-      // [FIX] Normalize type to handle spaces/underscores for Arrows, Shields, and Buffs
-      const mType = mother ? (mother.type || mother.subType || '').replace(/ /g, '_').toLowerCase() : '';
       // Legacy support for string IDs
       if (typeof mother === 'string') {
           mother = player.inventory.find(i => i.instanceId === mother || i.uuid === mother);
       }
+
+      // [ARCHITECT FIX] Normalize type WITHOUT underscores so it matches dropTables spaces
+      const rawMotherType = mother ? (mother.type || mother.subType || '') : '';
+      const normalizedMotherType = rawMotherType.toLowerCase().trim();
 
       // Hardcoded Drop Tables (Mapped to match your dropTables.js)
       const dropTables = {
@@ -438,12 +440,12 @@ const Systems = {
           "DT9": { name: "Jewelry", pool: ["necklace", "ring"], crossDrop: null }
       };
 
-      // Helper to find base items in the flat registry
+      // [ARCHITECT FIX] Helper to find base items. Now correctly checks subType too!
       const findBaseItem = (targetType, targetTier) => {
           if (!targetType) return null;
-          const lowerType = targetType.toLowerCase();
+          const lowerType = targetType.toLowerCase().trim();
           return Object.values(items).find(i => 
-              (i.type || '').toLowerCase() === lowerType && 
+              ((i.type || '').toLowerCase().trim() === lowerType || (i.subType || '').toLowerCase().trim() === lowerType) && 
               i.tier === targetTier
           );
       };
@@ -477,6 +479,11 @@ const Systems = {
           child.enchantments = this.generateEnchantments(child, child.qualityMultiplier);
           child.category = baseItem.category || 'Misc';
           child.type = baseItem.type || 'Misc';
+          
+          // [ARCHITECT FIX] Array required for InventoryManager .map()
+          child.maxSockets = 2;
+          child.sockets = []; // [ARCHITECT FIX] Must be empty array
+          child.socketedGems = [];
       }
       
       // SCENARIO B: MOTHER IS SHADOW or ECHO -> Drops ECHO
@@ -512,6 +519,10 @@ const Systems = {
               ...e,
               value: safeVal(e.value) * 0.5 // Slash power
           }));
+          
+          // [ARCHITECT FIX] Inherit Mother's sockets (ensure array fallback)
+          child.sockets = Array.isArray(mother.sockets) ? mother.sockets : [null, null];
+          child.socketedGems = [];
       }
 
       // SCENARIO C: STANDARD ITEM ("Dropper") -> Drops SHADOW
@@ -519,22 +530,22 @@ const Systems = {
       else {
           // 1. Identify Drop Table
           let dtKey = null;
-          const mType = mother.type || mother.subType || '';
           
           for (const [key, dt] of Object.entries(dropTables)) {
-              if (dt.pool.some(t => t.replace(/ /g, '_').toLowerCase() === mType)) {
+              // [ARCHITECT FIX] Checking against normalized spaces, no underscores
+              if (dt.pool.some(t => t.toLowerCase().trim() === normalizedMotherType)) {
                   dtKey = key;
                   break;
               }
           }
 
           // 2. Build Weighted Pool (Target Farming: 3x Chance for Mother Type)
-          const pool = dtKey ? dropTables[dtKey].pool : [mType];
+          const pool = dtKey ? dropTables[dtKey].pool : [normalizedMotherType];
           const weightedPool = [];
           
           pool.forEach(type => {
-              const normalizedPoolType = type.replace(/ /g, '_').toLowerCase();
-              if (normalizedPoolType === mType) {
+              const normalizedPoolType = type.toLowerCase().trim();
+              if (normalizedPoolType === normalizedMotherType) {
                   weightedPool.push(type, type, type); // 3 Tickets for Mother
               } else {
                   weightedPool.push(type); // 1 Ticket for others
@@ -559,10 +570,18 @@ const Systems = {
           child.enchantments = this.generateEnchantments(child, child.qualityMultiplier);
           child.category = baseItem.category || 'Misc';
           child.type = baseItem.type || 'Misc';
+          
+          // [ARCHITECT FIX] Array required for InventoryManager .map()
+          child.sockets = [null, null];
+          child.socketedGems = [];
       }
+      
       child.uuid = crypto.randomUUID(); // Ensures compatibility with Equipment & Inventory Managers
-
       child.instanceId = `${child.baseItemId || 'GEN'}_${child.isEcho ? 'ECHO' : 'SHADOW'}_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+      
+      // [ARCHITECT FIX] Restore Strict Schema (Integer Capacity, Array Contents)
+      child.sockets = 2; 
+      child.socketedGems = Array.isArray(child.socketedGems) ? child.socketedGems.filter(gem => gem !== null && !gem.isEmpty) : [];
       
       return child;
   },

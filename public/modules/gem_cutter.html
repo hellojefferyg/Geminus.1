@@ -246,75 +246,132 @@
         }
     };
 
-    // --- MOCK DATA ---
-    function generateMockData() {
-        return {
-            player: {
-                level: 500, // Increased level to meet some salvage reqs
-                gold: 500000,
-                gemDust: 1250,
-                artisan: { level: 1, xp: 20, perkPoints: 1, unlockedPerks: {} },
-                inventory: [
-                    { instanceId: 'item_1', baseItemId: 'base_helm_1', tier: 5, socketedGems: [ { id: 'warstone', grade: 1 }, { id: 'mightstone', grade: 2 } ] },
-                    { instanceId: 'item_2', baseItemId: 'base_armor_1', tier: 7, socketedGems: [] },
-                    { instanceId: 'item_3', baseItemId: 'base_sword_1', tier: 6, socketedGems: [ { id: 'obsidian_heart', grade: 3 }] },
-                ],
-                gems: [
-                    { id: 'ascend_core', grade: 1, count: 2 }, { id: 'warstone', grade: 1, count: 5 }, { id: 'mightstone', grade: 5, count: 1 },
-                    { id: 'obsidian_heart', grade: 1, count: 8 }, { id: 'dullrite', grade: 2, count: 3 }, { id: 'true_core', grade: 2, count: 1}
-                ]
-            }
-        };
-    }
-
-    // --- STATE MANAGER ---
+    // --- STATE MANAGER (ENGINE SYNCHRONIZED) ---
     const State = {
+        gm: null,
         _state: {
-            ...generateMockData(),
-            ui: {
-                currentPage: 'socketing',
-                selectedItemId: null,
-                selectedGemId: null,
-                selectedGemGrade: null,
-                fuseSlots: [null, null, null],
-                crucibleSlots: [null, null],
-                massSalvageGemGrade: 1,
-            }
+            player: null,
+            ui: { currentPage: 'socketing', selectedItemId: null, selectedGemId: null, selectedGemGrade: null, fuseSlots: [null, null, null], crucibleSlots: [null, null], massSalvageGemGrade: 1 }
         },
         _listeners: [],
         
+        init(gm) {
+            this.gm = gm;
+            // Deep copy to prevent UI changes from breaking the live engine until we sync
+            const p = JSON.parse(JSON.stringify(this.gm.state.player)); 
+            
+            if (!p.gemDust) p.gemDust = 0;
+            if (!p.artisan) p.artisan = { level: 1, xp: 0, perkPoints: 0, unlockedPerks: {} };
+            if (!p.inventory) p.inventory = [];
+
+            // [ARCHITECT FIX] Scrape the flat inventory to build the Gem Pouch and fix Sockets
+            const virtualGemPouch = {};
+            const gearInventory = [];
+
+            p.inventory.forEach(item => {
+                // 1. IS IT A GEM? (Check IDs or Names)
+                if ((item.id && String(item.id).startsWith('GEM-')) || (item.name && item.name.includes('Grade'))) {
+                    // Extract family name by stripping 'Grade X'
+                    const normalizedName = item.name.toLowerCase().replace(/grade \d+\s*/i, '').trim().replace(/ /g, '_').replace(/'/g, '').replace(/-/g, '_');
+                    
+                    let familyId = null;
+                    for (const key in GDD.GEMS) {
+                        const gddName = GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_').replace(/'/g, '').replace(/-/g, '_');
+                        if (gddName === normalizedName || key === normalizedName) {
+                            familyId = key;
+                            break;
+                        }
+                    }
+
+                    if (familyId) {
+                        let grade = item.grade || item.tier || 1;
+                        const match = item.name.match(/Grade (\d+)/i);
+                        if (match) grade = parseInt(match[1]);
+
+                        const pKey = `${familyId}_${grade}`;
+                        if (!virtualGemPouch[pKey]) virtualGemPouch[pKey] = { id: familyId, grade: grade, count: 0 };
+                        virtualGemPouch[pKey].count++;
+                        return; // CRITICAL: Skip adding to gear inventory so they don't duplicate!
+                    }
+                }
+
+                // 2. IS IT GEAR? (Check for core combat stats instead of strict type names)
+                if (item.wc !== undefined || item.ac !== undefined || item.sc !== undefined || item.type === 'Armor' || item.type === 'Weapon') {
+                    if (!item.socketedGems) item.socketedGems = [];
+                    if (item.sockets === undefined) item.sockets = 2; // Force 2 sockets so the UI sees them
+                }
+                
+                gearInventory.push(item);
+            });
+
+            p.inventory = gearInventory; // Only Gear and standard items
+            p.gems = Object.values(virtualGemPouch); // Only Stacked Gems
+
+            this._state.player = p;
+            this._notify();
+        },
+
+        syncToEngine() {
+            if (!this.gm || !this.gm.state || !this.gm.state.player) return;
+
+            const enginePlayer = this.gm.state.player;
+            enginePlayer.gold = this._state.player.gold;
+            enginePlayer.gemDust = this._state.player.gemDust;
+            enginePlayer.artisan = this._state.player.artisan;
+            
+            // [ARCHITECT FIX] Re-inflate the Pouch back into individual objects for the live engine
+            const mergedInventory = [...this._state.player.inventory];
+            
+            this._state.player.gems.forEach(gemStack => {
+                const baseGem = State.findGemBase(gemStack.id) || { name: 'Unknown Gem' };
+                for (let i = 0; i < gemStack.count; i++) {
+                    mergedInventory.push({
+                        id: `GEM-${gemStack.id.substring(0,4).toUpperCase()}-G${gemStack.grade}`,
+                        uuid: `gem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: `Grade ${gemStack.grade} ${baseGem.name}`,
+                        type: 'Gem',
+                        grade: gemStack.grade,
+                        tier: gemStack.grade,
+                        icon: `https://placehold.co/40x40/1f2937/ffffff?text=${baseGem.name.substring(0,3).toUpperCase()}`
+                    });
+                }
+            });
+
+            enginePlayer.inventory = mergedInventory;
+
+            // Instantly force the main game UI to redraw
+            if (this.gm.InventoryManager) this.gm.InventoryManager.refresh();
+            if (this.gm.ProfileManager) this.gm.ProfileManager.updateAllProfileUI();
+            if (this.gm.UIManager) this.gm.UIManager.updatePlayerStatusUI();
+        },
+
         getState() { return this._state; },
         subscribe(listener) { this._listeners.push(listener); },
         _notify() { this._listeners.forEach(listener => listener(this._state)); },
         
         setState(updater) {
-            const oldState = JSON.parse(JSON.stringify(this._state)); // Deep copy for safety
-            this._state = updater(oldState);
+            this._state = updater(this._state);
+            this.syncToEngine();
             this._notify();
         },
 
         resetSelections() {
-            this.setState(s => ({ ...s, ui: {
-                ...s.ui, 
-                selectedItemId: null, 
-                selectedGemId: null, 
-                selectedGemGrade: null, 
-                fuseSlots: [null, null, null],
-                crucibleSlots: [null, null]
-            }}));
+            this.setState(s => ({ ...s, ui: { ...s.ui, selectedItemId: null, selectedGemId: null, selectedGemGrade: null, fuseSlots: [null, null, null], crucibleSlots: [null, null] }}));
         },
 
-        findItem(instanceId) { return this._state.player.inventory.find(i => i.instanceId === instanceId); },
-        findItemBase(baseId) { return GDD.ITEMS.baseItemTemplates.find(b => b.id === baseId); },
+        findItem(instanceId) { return this._state.player.inventory.find(i => (i.uuid || i.instanceId || i.id) === instanceId); },
+        findItemBase(baseId) { 
+            if (this.gm && this.gm.Systems && typeof this.gm.Systems.findItemById === 'function') {
+                return this.gm.Systems.findItemById(baseId) || {};
+            }
+            return GDD.ITEMS.baseItemTemplates.find(b => b.id === baseId) || {}; 
+        },
         findGem(gemId, grade) { return this._state.player.gems.find(g => g.id === gemId && g.grade === grade); },
         findGemBase(gemId) { 
             const gem = GDD.GEMS[gemId];
             if (gem) return gem;
-            // Handle fused gems which might not be in the base list but have recipes
             for (const key in GDD.GEMS) {
-                if (GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_') === gemId) {
-                    return GDD.GEMS[key];
-                }
+                if (GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_') === gemId) return GDD.GEMS[key];
             }
             return null;
         },
@@ -392,15 +449,14 @@
         renderSocketingPage(state) {
             const { ui, player } = state;
             const availableItems = player.inventory.filter(item => {
-                const base = State.findItemBase(item.baseItemId);
-                return base && item.socketedGems.length < base.sockets;
+                return (item.sockets || 0) > 0 && item.socketedGems.length < item.sockets;
             });
 
             this._elements.pageContent.innerHTML = `
                 <div class="panel p-4">
                     <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Item to Socket</h2>
                     <div id="socket-item-grid" class="inventory-grid">
-                        ${availableItems.map(item => this.renderItem(item, State.findItemBase(item.baseItemId), item.instanceId === ui.selectedItemId)).join('') || '<p class="text-center text-secondary col-span-full">No items with empty sockets.</p>'}
+                        ${availableItems.map(item => this.renderItem(item, State.findItemBase(item.baseItemId || item.id), (item.uuid || item.instanceId || item.id) === ui.selectedItemId)).join('') || '<p class="text-center text-secondary col-span-full">No gear with available sockets found.</p>'}
                     </div>
                 </div>
                 <div class="panel p-4">
@@ -553,7 +609,16 @@
 
         // --- SHARED & SUB-RENDERERS ---
         renderItem(item, base, isSelected) {
-            return `<div class="inventory-slot ${isSelected ? 'selected' : ''}" data-item-id="${item.instanceId}"><img src="${base.imageUrl}" alt="${base.name}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/1f2937/ffffff?text=ERR';"><span class="absolute bottom-1 right-1 text-xs font-bold bg-black/70 px-1 rounded">T${item.tier}</span></div>`;
+            const itemId = item.uuid || item.instanceId || item.id;
+            const imageUrl = item.imageUrl || item.icon || base.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${(item.name || 'UNK').substring(0,3)}`;
+            const tierStr = item.tier ? `<span class="absolute bottom-1 right-1 text-xs font-bold bg-black/70 px-1 rounded">T${item.tier}</span>` : '';
+            return `<div class="inventory-slot ${isSelected ? 'selected' : ''}" data-item-id="${itemId}">
+                <img src="${imageUrl}" alt="${item.name || base.name}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/1f2937/ffffff?text=ERR';">
+                ${tierStr}
+                <div class="absolute top-1 left-1 flex gap-1 pointer-events-none">
+                    ${Array(item.sockets || 0).fill(0).map((_, i) => `<div class="w-2 h-2 rounded-full border border-black ${i < item.socketedGems.length ? 'bg-cyan-400 shadow-[0_0_5px_cyan]' : 'bg-gray-800'}"></div>`).join('')}
+                </div>
+            </div>`;
         },
         renderGem(gem, base, count, isSelected) {
             // Use a placeholder if the gem base is not found
@@ -945,7 +1010,7 @@
                 }
 
                 const newInventory = s.player.inventory.map(item => {
-                    if (item.instanceId === s.ui.selectedItemId) {
+                    if ((item.uuid || item.instanceId || item.id) === s.ui.selectedItemId) {
                         return {...item, socketedGems: [...item.socketedGems, gemToSocket]};
                     }
                     return item;
@@ -1028,6 +1093,24 @@
 
     // --- INITIALIZATION ---
     window.Controller = Controller;
+
+    // --- ROBUST AUTO-START ---
+    (function connectToEngine() {
+        const findEngine = () => window.parent.gameManager || window.gameManager || (window.opener ? window.opener.gameManager : null);
+        
+        const attemptConnection = () => {
+            const gm = findEngine();
+            if (gm && gm.state && gm.state.player) {
+                console.log("💎 GemCutter Connected to Engine.");
+                State.init(gm);
+                Controller.init();
+            } else {
+                console.log("💎 GemCutter waiting for Engine...");
+                setTimeout(attemptConnection, 200);
+            }
+        };
+        attemptConnection();
+    })();
 </script>
 </body>
 </html>

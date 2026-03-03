@@ -104,7 +104,9 @@ export class MerchantManager {
             type: baseItem.type || 'Unknown', // Persist type
             qualityMultiplier: 1.0,
             locked: false,
-            sellValue: Math.floor(price * 0.25)
+            sellValue: Math.floor(price * 0.25),
+            sockets: 2, // [ARCHITECT FIX] Strict Schema: Integer Capacity
+            socketedGems: [] // [ARCHITECT FIX] Strict Schema: Array Contents
         };
 
         p.inventory.push(newItem);

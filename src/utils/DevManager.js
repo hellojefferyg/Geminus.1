@@ -1,4 +1,5 @@
 import { racesData } from '../data/racesData.js';
+import { armory, jewelry, arcanum } from '../config/gdd.js'; // [ARCHITECT FIX] Import Raw Modules
 // src/utils/DevManager.js
 /**
  * @file src/utils/DevManager.js
@@ -56,46 +57,51 @@ export const DevManager = {
         const t = parseInt(tier);
         
         const templates = [
-            // --- WEAPONS ---
-            { name: "Axe", cat: "Weapons" }, { name: "Sword", cat: "Weapons" },
-            { name: "Mace", cat: "Weapons" }, { name: "Dagger", cat: "Weapons" },
-            { name: "Bow", cat: "Weapons" }, { name: "Staff", cat: "Weapons" },
-            { name: "Claw", cat: "Weapons" }, { name: "Shield", cat: "Weapons" },
-            { name: "Arrow", cat: "Weapons" }, { name: "Caster_offhand", cat: "Weapons" },
-            // --- ARMOR ---
-            { name: "Helmet", cat: "Armor" }, { name: "Chest", cat: "Armor" },
-            { name: "Leggings", cat: "Armor" }, { name: "Boots", cat: "Armor" },
-            { name: "Gloves", cat: "Armor" }, 
-            // --- JEWELRY ---
-            { name: "Ring", cat: "Jewelry" }, { name: "Necklace", cat: "Jewelry" }, 
-            { name: "Amulet", cat: "Jewelry" },
-            // --- BUFFS ---
-            { name: "might", cat: "Buff" }, { name: "guard", cat: "Buff" },
-            { name: "swiftness", cat: "Buff" },
-            // --- FULL SPELL REPERTOIRE (DNA Verified) ---
-            { name: "fire", cat: "Spell" }, { name: "ice", cat: "Spell" },
-            { name: "arcane", cat: "Spell" }, { name: "cold", cat: "Spell" },
-            { name: "earth", cat: "Spell" }, { name: "air", cat: "Spell" },
-            { name: "death", cat: "Spell" }, { name: "drain", cat: "Spell" }
+            "Axe", "Sword", "Mace", "Dagger", "Bow", "Staff", "Claw", "Shield", "Arrow", "Caster_offhand",
+            "Helmet", "Chest", "Leggings", "Boots", "Gloves",
+            "Ring", "Necklace", "Amulet",
+            "might", "guard", "swiftness",
+            "fire", "ice", "arcane", "cold", "earth", "air", "death", "drain"
         ];
 
-        templates.forEach(tmp => {
-            p.inventory.push({
-                uuid: crypto.randomUUID(),
-                instanceId: `DEV_T${t}_${tmp.name.toUpperCase()}_${Date.now()}`,
-                name: `${tmp.name.charAt(0).toUpperCase() + tmp.name.slice(1)} (T${t})`,
-                type: tmp.name,
-                category: tmp.cat,
-                tier: t,
-                qualityMultiplier: 1.0,
-                wc: (tmp.cat === "Weapons") ? 10 * t : 0,
-                ac: (tmp.cat === "Armor") ? 5 * t : 0,
-                sc: (tmp.cat === "Spell") ? 10 * t : 0,
-                description: "Dev Test Gear"
-            });
+        // [ARCHITECT FIX] Aggregate authentic items AND inject 'type' from parent keys
+        let allItems = [];
+        if (armory?.weapons) Object.entries(armory.weapons).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+        if (armory?.armor) Object.entries(armory.armor).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+        if (jewelry?.necklace) Object.values(jewelry.necklace).forEach(i => allItems.push({...i, type: 'necklace'}));
+        if (jewelry?.ring) Object.values(jewelry.ring).forEach(i => allItems.push({...i, type: 'ring'}));
+        if (arcanum?.spells) Object.entries(arcanum.spells).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+        if (arcanum?.Buff) Object.entries(arcanum.Buff).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+
+        templates.forEach(typeName => {
+            // Normalize template names to match GDD standards
+            let searchType = typeName.toLowerCase();
+            if (searchType === 'amulet') searchType = 'necklace';
+            if (searchType === 'ice') searchType = 'cold';
+
+            const baseItem = allItems.find(i => 
+                ((i.type || '').toLowerCase() === searchType || (i.subType || '').toLowerCase() === searchType) && 
+                i.tier === t
+            );
+
+            if (baseItem) {
+                p.inventory.push({
+                    ...baseItem,
+                    uuid: crypto.randomUUID(),
+                    instanceId: `DEV_T${t}_${typeName.toUpperCase()}_${Date.now()}`,
+                    qualityMultiplier: 1.0,
+                    locked: false,
+                    description: "Authentic Dev Test Gear",
+                    sockets: 2, // [ARCHITECT FIX] Strict Schema: Integer Capacity
+                    socketedGems: [] // [ARCHITECT FIX] Strict Schema: Array Contents
+                });
+            } else {
+                console.warn(`⚠️ Dev: Authentic base item for '${searchType}' at Tier ${t} not found.`);
+            }
         });
+        
         this.sync();
-        console.log(`✅ Dev: Injected full Tier ${t} set including all 8 Spell elements.`);
+        console.log(`✅ Dev: Injected authentic Tier ${t} set from Master Registry.`);
     },
     /**
      * Calculates and displays projected stats in the UI before applying.
