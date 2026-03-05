@@ -91,15 +91,18 @@
        <main id="app-content" class="flex-grow overflow-y-auto">
            <div id="page-content" class="p-4 space-y-4">
                <div class="panel p-4">
-                   <h2 id="selected-item-name" class="font-bold text-center mb-4 text-lg font-cinzel"></h2>
-                   <div class="grid grid-cols-3 gap-4">
-                       <div class="col-span-1 flex flex-col items-center justify-start">
-                           <div id="selected-item-icon" class="inventory-slot w-24 h-24 p-1">
-                               <div id="critical-success-message" class="absolute inset-0 flex items-center justify-center text-lg font-bold text-yellow-300 pointer-events-none opacity-0" style="text-shadow: 0 0 5px black;"></div>
-                           </div>
-                           <p id="primary-stat-display" class="text-sm font-bold text-orange-400 mt-2 text-center"></p>
+                   <div class="flex items-center gap-4 mb-3 border-b border-gray-700 pb-3">
+                       <div id="selected-item-icon" class="inventory-slot w-16 h-16 p-1 flex-shrink-0 bg-black/60">
+                           <div id="critical-success-message" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-yellow-300 pointer-events-none opacity-0" style="text-shadow: 0 0 5px black;"></div>
                        </div>
-                       <div id="selected-item-stats" class="col-span-2"></div>
+                       <div class="flex-grow">
+                           <h2 id="selected-item-name" class="font-bold text-orange-400 text-lg font-cinzel leading-tight"></h2>
+                           <div id="selected-item-type-tier" class="text-xs text-gray-400"></div>
+                       </div>
+                   </div>
+                   <div class="bg-black/50 p-3 rounded border border-gray-700">
+                       <p id="primary-stat-display" class="text-sm font-bold text-cyan-300 mb-2 border-b border-gray-700 pb-1"></p>
+                       <div id="selected-item-stats" class="flex flex-col gap-1"></div>
                    </div>
                    <div id="item-interaction-panel" class="mt-4 pt-4 border-t border-dashed border-gray-600"></div>
                </div>
@@ -112,13 +115,22 @@
                </nav>
  
                <div class="panel p-4">
-                    <div id="inventory-controls" class="flex justify-between items-center gap-2 mb-2">
-                       <input type="text" id="inventory-search" class="custom-input w-2/5 text-sm" placeholder="Search...">
-                       <select id="inventory-sort" class="custom-select w-2/5 text-sm">
-                           <option value="primaryStat">Sort by Power</option>
-                           <option value="name">Sort by Name</option>
-                       </select>
-                       <div id="secondary-action-container" class="w-1/5"></div>
+                    <div id="inventory-controls" class="flex flex-col gap-2 mb-3 bg-black/40 p-2 rounded border border-gray-700">
+                        <div class="flex justify-between items-center gap-2">
+                            <input type="text" id="inventory-search" class="w-full bg-gray-900 text-cyan-100 text-xs p-2 rounded border border-gray-600 focus:border-cyan-500 outline-none font-mono" placeholder="Search item name...">
+                            <select id="inventory-sort" class="custom-select w-1/3 text-xs p-2">
+                                <option value="primaryStat">Sort: Power</option>
+                                <option value="name">Sort: Name</option>
+                            </select>
+                            <div id="secondary-action-container" class="w-1/4"></div>
+                        </div>
+                        <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1" id="filter-tabs">
+                            <button class="filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-cyan-700 text-white border-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.3)]" data-filter="all">All</button>
+                            <button class="filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700" data-filter="weapon">Weapons</button>
+                            <button class="filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700" data-filter="armor">Armor</button>
+                            <button class="filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700" data-filter="jewelry">Jewelry</button>
+                            <button class="filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700" data-filter="spell">Spells</button>
+                        </div>
                    </div>
                    <select id="inventory-select" size="6" class="custom-select w-full"></select>
                </div>
@@ -175,7 +187,7 @@
    //================================================================
    const StateManager = {
        gm: null,
-       _state: { player: null, inventory: [], currentPage: 'infusion', currentItemId: null, selectedStatIndex: -1, filters: { search: '', sort: 'primaryStat' } }, 
+       _state: { player: null, inventory: [], currentPage: 'infusion', currentItemId: null, selectedStatIndex: -1, filters: { search: '', sort: 'primaryStat', category: 'all' } },
        _onUpdate: () => {},
        
        init(gm, onUpdateCallback) { 
@@ -405,7 +417,28 @@
        _resourceIcons: { gold: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f9a825' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8'%3E%3C/circle%3E%3Cpath d='M12 4v16M8 8h8M8 16h8'%3E%3C/path%3E%3C/svg%3E`, essence: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'%3E%3C/path%3E%3C/svg%3E`, primalSouls: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff4d4d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'%3E%3C/path%3E%3C/svg%3E` },
        init(controller) { this._controller = controller; this._cacheElements(); this._addEventListeners(); },
        _cacheElements() { this._elements = { root: document.getElementById('soulforge-root'), pageTitle: document.getElementById('page-title'), navButtons: document.querySelectorAll('.nav-button'), itemIcon: document.getElementById('selected-item-icon'), criticalSuccessMessage: document.getElementById('critical-success-message'), itemName: document.getElementById('selected-item-name'), primaryStatDisplay: document.getElementById('primary-stat-display'), itemStats: document.getElementById('selected-item-stats'), interactionPanel: document.getElementById('item-interaction-panel'), actionButton: document.getElementById('action-button'), inventorySelect: document.getElementById('inventory-select'), inventorySearch: document.getElementById('inventory-search'), inventorySort: document.getElementById('inventory-sort'), secondaryActionContainer: document.getElementById('secondary-action-container'), modal: document.getElementById('confirmation-modal'), modalTitle: document.getElementById('modal-title'), modalMessage: document.getElementById('modal-message'), modalConfirmBtn: document.getElementById('modal-confirm-btn'), modalCancelBtn: document.getElementById('modal-cancel-btn'), masteryLevel: document.getElementById('mastery-level'), masteryProgress: document.getElementById('mastery-progress'), bulkShatterModal: document.getElementById('bulk-shatter-modal'), bulkShatterEchoesSection: document.getElementById('bulk-shatter-echoes-section'), bulkShatterTierList: document.getElementById('bulk-shatter-tier-list'), bulkShatterShadowsSummary: document.getElementById('bulk-shatter-shadows-summary'), bulkShatterShadowsBtn: document.getElementById('bulk-shatter-shadows-btn'), bulkShatterCancelBtn: document.getElementById('bulk-shatter-cancel-btn'), }; },
-       _addEventListeners() { this._elements.navButtons.forEach(b => b.addEventListener('click', () => this._controller.onNavigate(b.dataset.page))); this._elements.inventorySelect.addEventListener('change', (e) => this._controller.onSelectItem(e.target.value)); this._elements.inventorySearch.addEventListener('input', (e) => this._controller.onFilterChange({ search: e.target.value })); this._elements.inventorySort.addEventListener('change', (e) => this._controller.onFilterChange({ sort: e.target.value })); this._elements.itemStats.addEventListener('click', (e) => { const statRow = e.target.closest('.stat-row'); if (statRow) this._controller.onSelectStat(statRow.dataset.statKey); }); this._elements.actionButton.addEventListener('click', () => this._controller.onAction()); this._elements.modalCancelBtn.addEventListener('click', () => this.hideModal()); this._elements.modalConfirmBtn.addEventListener('click', () => { this._onConfirmCallback(); this.hideModal(); }); this._elements.bulkShatterCancelBtn.addEventListener('click', () => this.hideBulkShatterModal()); },
+       _addEventListeners() { 
+           this._elements.navButtons.forEach(b => b.addEventListener('click', () => this._controller.onNavigate(b.dataset.page))); 
+           this._elements.inventorySelect.addEventListener('change', (e) => this._controller.onSelectItem(e.target.value)); 
+           this._elements.inventorySearch.addEventListener('input', (e) => this._controller.onFilterChange({ search: e.target.value })); 
+           this._elements.inventorySort.addEventListener('change', (e) => this._controller.onFilterChange({ sort: e.target.value })); 
+           this._elements.itemStats.addEventListener('click', (e) => { const statRow = e.target.closest('.stat-row'); if (statRow) this._controller.onSelectStat(statRow.dataset.statKey); }); 
+           this._elements.actionButton.addEventListener('click', () => this._controller.onAction()); 
+           this._elements.modalCancelBtn.addEventListener('click', () => this.hideModal()); 
+           this._elements.modalConfirmBtn.addEventListener('click', () => { this._onConfirmCallback(); this.hideModal(); }); 
+           this._elements.bulkShatterCancelBtn.addEventListener('click', () => this.hideBulkShatterModal()); 
+           
+           // Filter Tabs Listeners
+           document.querySelectorAll('.filter-tab-btn').forEach(btn => {
+               btn.addEventListener('click', (e) => {
+                   document.querySelectorAll('.filter-tab-btn').forEach(b => {
+                       b.className = 'filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700';
+                   });
+                   e.target.className = 'filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border bg-cyan-700 text-white border-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.3)]';
+                   this._controller.onFilterChange({ category: e.target.dataset.filter });
+               });
+           });
+       },
        showModal({ title, message, onConfirm, confirmClass }) { this._elements.modalTitle.textContent = title; this._elements.modalMessage.innerHTML = message; this._onConfirmCallback = onConfirm; this._elements.modalConfirmBtn.className = `action-button modal-confirm-btn w-full py-2 ${confirmClass || ''}`; this._elements.modal.classList.remove('hidden'); },
        hideModal() { this._elements.modal.classList.add('hidden'); this._onConfirmCallback = () => {}; },
        showBulkShatterModal(state) { this.renderBulkShatterEchoes(state); this.renderBulkShatterShadows(state); this._elements.bulkShatterModal.classList.remove('hidden'); },
@@ -432,8 +465,52 @@
        render(state, visibleInventory) { this.renderNav(state); this.renderInventory(state, visibleInventory); this.renderSelectedItem(state); this.renderMastery(state.player.mastery); },
        renderNav(state) { const { currentPage } = state; const pageName = currentPage.charAt(0).toUpperCase() + currentPage.slice(1); this._elements.pageTitle.textContent = `The Soulforge - ${pageName}`; this._elements.actionButton.textContent = pageName; this._elements.navButtons.forEach(b => b.classList.toggle('active', b.dataset.page === currentPage)); this._elements.actionButton.className = 'action-button w-full py-3'; if (currentPage === 'shatter') this._elements.actionButton.classList.add('shatter-mode'); if (currentPage === 'ascension') this._elements.actionButton.classList.add('ascension-mode'); this.renderSecondaryAction(state); },
        renderSecondaryAction(state) { this._elements.secondaryActionContainer.innerHTML = ''; if (state.currentPage === 'shatter') { const btn = document.createElement('button'); btn.textContent = 'Bulk'; btn.className = 'secondary-action-button w-full shatter-mode'; btn.onclick = () => this._controller.onBulkShatter(); this._elements.secondaryActionContainer.appendChild(btn); } },
-       renderInventory(state, visibleInventory) { if (visibleInventory.length > 0) { this._elements.inventorySelect.innerHTML = visibleInventory.map(item => { let suffix = ''; if (item.isAscended) suffix = ' (Ascended)'; else if (item.infusionLevel > 0) suffix = ` +${item.infusionLevel}`; const itemId = item.uuid || item.id; return `<option value="${itemId}" ${itemId === state.currentItemId ? 'selected' : ''}>${item.name}${suffix}</option>`; }).join(''); } else { this._elements.inventorySelect.innerHTML = `<option disabled>No eligible items.</option>`; } },
-       renderSelectedItem(state) { const item = state.inventory.find(i => (i.uuid || i.id) === state.currentItemId); if (!item) { this.clearItemView(); return; } let displayName = item.name || 'Unknown Item'; if (item.isAscended) displayName = `${item.name} (Ascended)`; else if (item.infusionLevel > 0) displayName = `${item.name} +${item.infusionLevel}`; this._elements.itemIcon.querySelector('img')?.remove(); const img = document.createElement('img'); img.src = item.icon || item.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${displayName.substring(0,2)}`; img.className = "w-full h-full object-contain"; img.alt = displayName; this._elements.itemIcon.prepend(img); this._elements.itemIcon.classList.toggle('ascended', item.isAscended); this._elements.itemName.textContent = displayName; this._elements.itemName.style.color = item.isAscended ? 'var(--accent-ascended)' : 'var(--text-primary)'; this.renderStats(state, item); this.renderInteractionPanel(state, item); },
+       renderInventory(state, visibleInventory) { 
+           if (visibleInventory.length > 0) { 
+               this._elements.inventorySelect.innerHTML = visibleInventory.map(item => { 
+                   let suffix = ''; 
+                   if (item.isAscended) suffix = ' (Ascended)'; 
+                   else if (item.infusionLevel > 0) suffix = ` +${item.infusionLevel}`; 
+                   const itemId = item.uuid || item.id; 
+                   
+                   // Build standard tooltip string
+                   const stats = [];
+                   if (item.wc) stats.push(`WC: ${item.wc}`);
+                   if (item.ac) stats.push(`AC: ${item.ac}`);
+                   if (item.sc) stats.push(`SC: ${item.sc}`);
+                   const tooltip = `Tier: ${item.tier || 1} | ${stats.join(' | ')}`;
+                   
+                   return `<option value="${itemId}" title="${tooltip}" ${itemId === state.currentItemId ? 'selected' : ''}>${item.name}${suffix} (T${item.tier || 1})</option>`; 
+               }).join(''); 
+           } else { 
+               this._elements.inventorySelect.innerHTML = `<option disabled>No eligible items.</option>`; 
+           } 
+       },
+       renderSelectedItem(state) { 
+           const item = state.inventory.find(i => (i.uuid || i.id) === state.currentItemId); 
+           if (!item) { this.clearItemView(); return; } 
+           
+           let displayName = item.name || 'Unknown Item'; 
+           if (item.isAscended) displayName = `${item.name} (Ascended)`; 
+           else if (item.infusionLevel > 0) displayName = `${item.name} +${item.infusionLevel}`; 
+           
+           this._elements.itemIcon.querySelector('img')?.remove(); 
+           const img = document.createElement('img'); 
+           img.src = item.icon || item.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${displayName.substring(0,2)}`; 
+           img.className = "w-full h-full object-contain"; 
+           img.alt = displayName; 
+           this._elements.itemIcon.prepend(img); 
+           this._elements.itemIcon.classList.toggle('ascended', item.isAscended); 
+           
+           this._elements.itemName.textContent = displayName; 
+           this._elements.itemName.style.color = item.isAscended ? 'var(--accent-ascended)' : 'var(--accent-orange)'; 
+           
+           const typeTierEl = document.getElementById('selected-item-type-tier');
+           if (typeTierEl) typeTierEl.textContent = `${item.type || item.category || 'Misc'} | Tier ${item.tier || 1}`;
+           
+           this.renderStats(state, item); 
+           this.renderInteractionPanel(state, item); 
+       },
        renderStats(state, item) {
            const isRerollable = state.currentPage === 'rerolling' && CraftingSystems.rerolling.isEligible(item);
            const isInfusionPreview = state.currentPage === 'infusion' && CraftingSystems.infusion.isEligible(item);
@@ -449,13 +526,109 @@
            }
            this._elements.primaryStatDisplay.innerHTML = primaryStatHTML;
  
-           this._elements.itemStats.innerHTML = Object.entries(item.stats).map(([key, value]) => {
-               if (key === primaryStatKey) return ''; // Don't show primary stat in the list
+           let statsHTML = '';
+           let enchantHTML = '';
+           let gemsHTML = '';
+
+           // 1. Base Stats & Enchants
+           Object.entries(item.stats).forEach(([key, value]) => {
+               if (key === primaryStatKey) return; 
+               
+               // Check if this stat is an enchantment (required for the Rerolling Tab to function)
+               const isEnchant = Array.isArray(item.enchantments) && item.enchantments.some(e => (e.effect || e.name) === key);
                const currentValue = typeof value === 'number' ? value.toLocaleString() : value;
-               const selectableClass = isRerollable ? 'selectable' : '';
-               const selectedClass = isRerollable && key === state.selectedStatIndex ? 'selected' : '';
-               return `<div class="stat-row flex justify-between items-center py-1 px-2 text-sm ${selectableClass} ${selectedClass}" data-stat-key="${key}"><span class="text-secondary">${key.toUpperCase()}</span><span class="font-bold text-primary">${currentValue}</span></div>`;
-           }).join('');
+               
+               if (isEnchant) {
+                   const selectableClass = isRerollable ? 'selectable hover:bg-gray-800 cursor-pointer' : '';
+                   const selectedClass = isRerollable && key === state.selectedStatIndex ? 'selected bg-gray-800 outline outline-1 outline-cyan-500' : '';
+                   enchantHTML += `<div class="stat-row flex justify-between items-center py-1 px-2 mb-1 text-xs text-purple-400 rounded ${selectableClass} ${selectedClass}" data-stat-key="${key}">
+                       <span class="flex items-center gap-1">✧ ${key.replace(/_/g, ' ').toUpperCase()}</span>
+                       <span class="font-mono bg-black/40 px-1.5 rounded">${currentValue}</span>
+                   </div>`;
+               } else {
+                   statsHTML += `<div class="flex justify-between items-center py-1 px-2 text-sm"><span class="text-secondary">${key.replace(/_/g, ' ').toUpperCase()}</span><span class="font-bold text-primary">${currentValue}</span></div>`;
+               }
+           });
+
+           if (enchantHTML) {
+               enchantHTML = `<div class="mt-2 pt-2 border-t border-gray-700"><div class="text-[10px] text-cyan-500 uppercase tracking-widest mb-1 font-orbitron">Enchantments</div>${enchantHTML}</div>`;
+           }
+
+           // 2. Sockets & Gems
+           if (item.sockets && item.sockets > 0) {
+               gemsHTML = `<div class="mt-2 pt-2 border-t border-gray-700">`;
+               gemsHTML += `<div class="text-[10px] text-cyan-500 uppercase tracking-widest mb-1 font-orbitron">Sockets (${(item.socketedGems||[]).length}/${item.sockets})</div>`;
+               
+               gemsHTML += Array.from({ length: item.sockets || 0 }).map((_, i) => {
+                   const gem = item.socketedGems && item.socketedGems[i];
+                   if (gem) {
+                       let statText = 'Stat Boost';
+                       let gName = gem.id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                       const grade = gem.grade || 1;
+                       
+                       // A. Safely parse native stats on the socketed gem
+                       const stats = [];
+                       for (const [k, v] of Object.entries(gem)) {
+                           if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                               let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                               if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC';
+                               stats.push(`${v > 0 ? '+' : ''}${v} ${label}`);
+                           }
+                       }
+                       if (stats.length > 0) statText = stats.join(', ');
+                       
+                       // B. Dynamic Engine Translation (No Hardcoding)
+                       try {
+                           // Tap directly into the live engine's master databases
+                           const engineItems = StateManager.gm?.items || window.parent?.items || window.items || null;
+                           const engineGems = StateManager.gm?.gems || window.parent?.gems || window.gems || null;
+                           
+                           let gBase = engineItems ? engineItems[gem.id] : null;
+                           let specificGem = null;
+                           
+                           // Translate Family ID (e.g. 'warstone') to Specific ID ('GEM-WAR-G1')
+                           if (!gBase && engineGems && engineGems.base_gems) {
+                               const family = engineGems.base_gems[gem.id.toLowerCase()] || engineGems.base_gems[gem.id];
+                               if (family) {
+                                   specificGem = Object.values(family).find(g => Number(g.grade) === grade);
+                                   if (specificGem && engineItems) gBase = engineItems[specificGem.id];
+                               }
+                           }
+                           
+                           // 1. Try to pull pre-formatted stats from the Flattened Items Registry
+                           if (gBase && gBase.stat && Object.keys(gBase.stat).length > 0) {
+                               gName = gBase.name.replace(/Grade \d+ /, '');
+                               statText = Object.entries(gBase.stat).map(([k, v]) => `${v} ${k}`).join(', ');
+                           } 
+                           // 2. Dynamic Fallback: Parse the raw keys (e.g., 'sc_bonus', 'wis_steal') from the Gems Database
+                           else if (specificGem) {
+                               gName = specificGem.name.replace(/Grade \d+ /, '');
+                               const fbStats = [];
+                               for (const [k, v] of Object.entries(specificGem)) {
+                                   if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                                       let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                                       if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC';
+                                       fbStats.push(`${Number(v) > 0 && !label.includes('Debuff') ? '+' : ''}${v} ${label}`);
+                                   }
+                               }
+                               if (fbStats.length > 0) statText = fbStats.join(', ');
+                           }
+                       } catch(e) {
+                           console.error("Soulforge Dynamic Gem Translation Error:", e);
+                       }
+                       
+                       return `
+                           <div class="flex justify-between text-xs items-center mb-1">
+                               <span class="text-cyan-300">♦ ${gName} <span class="text-[9px] text-gray-400">(G${grade})</span></span>
+                               <span class="font-mono text-cyan-200 text-[10px] bg-cyan-900/30 border border-cyan-800/50 px-1.5 rounded text-right">${statText}</span>
+                           </div>`;
+                   }
+                   return `<div class="flex justify-between text-xs items-center mb-1 opacity-50"><span class="text-gray-500">♢ Empty Socket</span></div>`;
+               }).join('');
+               gemsHTML += `</div>`;
+           }
+
+           this._elements.itemStats.innerHTML = statsHTML + enchantHTML + gemsHTML;
        },
        renderInteractionPanel(state, item) {
            const { currentPage, player, selectedStatIndex } = state;
@@ -528,11 +701,22 @@
            else if (state.currentPage === 'rerolling') pool = state.inventory.filter(i => CraftingSystems.rerolling.isEligible(i)); 
            else if (state.currentPage === 'ascension') pool = state.inventory.filter(i => CraftingSystems.ascension.isEligible(i, config.ASCENSION_MIN_LEVEL)); 
            
-           const { search, sort } = state.filters;
+           const { search, sort, category } = state.filters;
            const filtered = pool.filter(i => {
-               const itemName = i.name || 'Unknown Item';
-               return itemName.toLowerCase().includes(search.toLowerCase());
-           }); 
+               const itemName = (i.name || 'Unknown Item').toLowerCase();
+               const itemType = (i.type || i.category || '').toLowerCase();
+               
+               if (search && !itemName.includes(search.toLowerCase()) && !itemType.includes(search.toLowerCase())) return false;
+               
+               if (category !== 'all') {
+                   if (category === 'weapon' && !['weapon', 'axe', 'sword', 'mace', 'dagger', 'bow', 'staff', 'claw', 'shield', 'arrow', 'offhand'].some(t => itemType.includes(t) || itemName.includes(t))) return false;
+                   if (category === 'armor' && !['armor', 'helmet', 'chest', 'leggings', 'boots', 'gloves'].some(t => itemType.includes(t) || itemName.includes(t))) return false;
+                   if (category === 'jewelry' && !['jewelry', 'ring', 'necklace', 'amulet'].some(t => itemType.includes(t) || itemName.includes(t))) return false;
+                   if (category === 'spell' && !['spell', 'scroll', 'buff', 'air', 'earth', 'fire', 'water', 'cold', 'arcane', 'death', 'drain'].some(t => itemType.includes(t) || itemName.includes(t))) return false;
+               }
+               
+               return true;
+           });
            
            const getPrimaryStatValue = item => {
                const key = CraftingSystems.getPrimaryStatKey(item);

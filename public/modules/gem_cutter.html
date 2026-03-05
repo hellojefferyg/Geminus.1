@@ -251,7 +251,7 @@
         gm: null,
         _state: {
             player: null,
-            ui: { currentPage: 'socketing', selectedItemId: null, selectedGemId: null, selectedGemGrade: null, fuseSlots: [null, null, null], crucibleSlots: [null, null], massSalvageGemGrade: 1 }
+            ui: { currentPage: 'socketing', selectedItemId: null, selectedGemId: null, selectedGemGrade: null, fuseSlots: [null, null, null], crucibleSlots: [null, null], massSalvageGemGrade: 1, filterCategory: 'all', searchQuery: '' }
         },
         _listeners: [],
         
@@ -356,7 +356,7 @@
         },
 
         resetSelections() {
-            this.setState(s => ({ ...s, ui: { ...s.ui, selectedItemId: null, selectedGemId: null, selectedGemGrade: null, fuseSlots: [null, null, null], crucibleSlots: [null, null] }}));
+            this.setState(s => ({ ...s, ui: { ...s.ui, selectedItemId: null, selectedGemId: null, selectedGemGrade: null, fuseSlots: [null, null, null], crucibleSlots: [null, null], filterCategory: 'all', searchQuery: '' }}));
         },
 
         findItem(instanceId) { return this._state.player.inventory.find(i => (i.uuid || i.instanceId || i.id) === instanceId); },
@@ -374,6 +374,34 @@
                 if (GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_') === gemId) return GDD.GEMS[key];
             }
             return null;
+        },
+        
+        // [ARCHITECT FIX] Bulletproof Recursive Evaluator
+        getCalculatedGemStats(gemId, grade) {
+            const gemBase = State.findGemBase(gemId);
+            if (!gemBase) return 'Stat Boost';
+            
+            const stats = [];
+            const parsedGrade = Number(grade) || 1;
+            
+            const extract = (base) => {
+                if (base.effects) {
+                    base.effects.forEach(eff => {
+                        const val = eff.values[parsedGrade - 1] || eff.values[eff.values.length - 1];
+                        let desc = eff.desc.replace('Increase ', '').replace('Base ', '');
+                        if (desc.includes('Decrease')) desc = desc.replace('Decrease ', '-');
+                        stats.push(`${Number(val) > 0 && !desc.includes('-') ? '+' : ''}${val} ${desc}`);
+                    });
+                }
+                if (base.recipe) {
+                    base.recipe.forEach(ingId => {
+                        const ingBase = State.findGemBase(ingId);
+                        if (ingBase) extract(ingBase);
+                    });
+                }
+            };
+            extract(gemBase);
+            return stats.length > 0 ? stats.join(', ') : 'Stat Boost';
         },
         
         getPerkRank(perkId) { return this._state.player.artisan.unlockedPerks[perkId] || 0; },
@@ -448,41 +476,125 @@
         // --- RENDER PAGES ---
         renderSocketingPage(state) {
             const { ui, player } = state;
-            const availableItems = player.inventory.filter(item => {
-                return (item.sockets || 0) > 0 && item.socketedGems.length < item.sockets;
+            
+            // Apply Filters
+            let availableItems = player.inventory.filter(item => {
+                if (!((item.sockets || 0) > 0 && item.socketedGems.length < item.sockets)) return false;
+                
+                const cat = (item.category || item.type || '').toLowerCase();
+                const name = (item.name || '').toLowerCase();
+                
+                if (ui.filterCategory !== 'all') {
+                    if (ui.filterCategory === 'weapon' && !['weapon', 'axe', 'sword', 'mace', 'dagger', 'bow', 'staff', 'claw', 'shield', 'arrow', 'offhand', 'caster'].some(t => cat.includes(t) || name.includes(t))) return false;
+                    if (ui.filterCategory === 'armor' && !['armor', 'helmet', 'chest', 'leggings', 'boots', 'gloves'].some(t => cat.includes(t) || name.includes(t))) return false;
+                    if (ui.filterCategory === 'jewelry' && !['jewelry', 'ring', 'necklace', 'amulet'].some(t => cat.includes(t) || name.includes(t))) return false;
+                    if (ui.filterCategory === 'spell' && !['spell', 'scroll', 'buff', 'air', 'earth', 'fire', 'water', 'cold', 'arcane', 'death', 'drain'].some(t => cat.includes(t) || name.includes(t))) return false;
+                }
+                if (ui.searchQuery && !name.includes(ui.searchQuery) && !cat.includes(ui.searchQuery)) return false;
+                
+                return true;
             });
+
+            const selectedItem = player.inventory.find(i => (i.uuid || i.instanceId || i.id) === ui.selectedItemId);
 
             this._elements.pageContent.innerHTML = `
                 <div class="panel p-4">
                     <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Item to Socket</h2>
-                    <div id="socket-item-grid" class="inventory-grid">
-                        ${availableItems.map(item => this.renderItem(item, State.findItemBase(item.baseItemId || item.id), (item.uuid || item.instanceId || item.id) === ui.selectedItemId)).join('') || '<p class="text-center text-secondary col-span-full">No gear with available sockets found.</p>'}
-                    </div>
+                    ${this.renderFilterUI(state)}
+                    <select id="socket-item-select" class="custom-select w-full mb-2">
+                        <option value="">-- Choose Equipment --</option>
+                        ${availableItems.map(item => {
+                            // Build native OS tooltip string
+                            const stats = [];
+                            if (item.wc) stats.push(`WC: ${item.wc}`);
+                            if (item.ac) stats.push(`AC: ${item.ac}`);
+                            if (item.sc) stats.push(`SC: ${item.sc}`);
+                            const tooltip = `Tier: ${item.tier || 1} | ${stats.join(' | ')}`;
+                            
+                            return `
+                            <option value="${item.uuid || item.instanceId || item.id}" ${ui.selectedItemId === (item.uuid || item.instanceId || item.id) ? 'selected' : ''} title="${tooltip}">
+                                ${item.name} (T${item.tier || 1}) - Sockets: ${item.socketedGems.length}/${item.sockets}
+                            </option>
+                            `;
+                        }).join('')}
+                    </select>
+                    ${selectedItem ? this.renderItemCard(selectedItem) : ''}
                 </div>
                 <div class="panel p-4">
                     <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Gem to Insert</h2>
-                    <div id="socket-gem-grid" class="gem-pouch-grid">
-                        ${player.gems.map(gem => this.renderGem(gem, State.findGemBase(gem.id), gem.count, gem.id === ui.selectedGemId && gem.grade === ui.selectedGemGrade)).join('') || '<p class="text-center text-secondary col-span-full">No gems available.</p>'}
-                    </div>
+                    <select id="socket-gem-select" class="custom-select w-full">
+                        <option value="">-- Choose Gem --</option>
+                        ${player.gems.map(gem => {
+                            const base = State.findGemBase(gem.id);
+                            return `<option value="${gem.id}|${gem.grade}" ${ui.selectedGemId === gem.id && ui.selectedGemGrade === gem.grade ? 'selected' : ''}>
+                                Grade ${gem.grade} ${base ? base.name : gem.id} (x${gem.count})
+                            </option>`;
+                        }).join('')}
+                    </select>
+                    ${ui.selectedGemId ? `
+                        <div class="mt-3 p-2 bg-black/40 border border-cyan-900/50 rounded text-center">
+                            <div class="text-[10px] font-bold text-cyan-500 uppercase tracking-widest mb-1 font-orbitron">Gem Preview</div>
+                            <div class="font-mono text-xs text-green-400">♦ ${State.getCalculatedGemStats(ui.selectedGemId, ui.selectedGemGrade)}</div>
+                        </div>
+                    ` : ''}
                 </div>`;
             
-            document.querySelectorAll('#socket-item-grid .inventory-slot').forEach(el => el.onclick = () => Controller.onSelectItem(el.dataset.itemId));
-            document.querySelectorAll('#socket-gem-grid .gem-item').forEach(el => el.onclick = () => Controller.onSelectGem(el.dataset.gemId, parseInt(el.dataset.gemGrade)));
+            document.getElementById('socket-item-select').onchange = (e) => Controller.onSelectItem(e.target.value);
+            document.getElementById('socket-gem-select').onchange = (e) => {
+                if (!e.target.value) return Controller.onSelectGem(null, null);
+                const [id, grade] = e.target.value.split('|');
+                Controller.onSelectGem(id, parseInt(grade));
+            };
+            this.attachFilterListeners();
             this.renderActionPanel(state);
         },
         renderUnsocketingPage(state) {
-            const { player } = state;
-            const socketedItems = player.inventory.filter(item => item.socketedGems.length > 0);
+            const { ui, player } = state;
+            
+            // Apply Filters
+            let socketedItems = player.inventory.filter(item => {
+                if (!(item.socketedGems && item.socketedGems.length > 0)) return false;
+                
+                const cat = (item.category || item.type || '').toLowerCase();
+                const name = (item.name || '').toLowerCase();
+                
+                if (ui.filterCategory !== 'all') {
+                    if (ui.filterCategory === 'weapon' && !['weapon', 'axe', 'sword', 'mace', 'dagger', 'bow', 'staff', 'claw', 'shield', 'arrow', 'offhand', 'caster'].some(t => cat.includes(t) || name.includes(t))) return false;
+                    if (ui.filterCategory === 'armor' && !['armor', 'helmet', 'chest', 'leggings', 'boots', 'gloves'].some(t => cat.includes(t) || name.includes(t))) return false;
+                    if (ui.filterCategory === 'jewelry' && !['jewelry', 'ring', 'necklace', 'amulet'].some(t => cat.includes(t) || name.includes(t))) return false;
+                    if (ui.filterCategory === 'spell' && !['spell', 'scroll', 'buff', 'air', 'earth', 'fire', 'water', 'cold', 'arcane', 'death', 'drain'].some(t => cat.includes(t) || name.includes(t))) return false;
+                }
+                if (ui.searchQuery && !name.includes(ui.searchQuery) && !cat.includes(ui.searchQuery)) return false;
+                
+                return true;
+            });
+
+            const selectedItem = player.inventory.find(i => (i.uuid || i.instanceId || i.id) === ui.selectedItemId);
 
             this._elements.pageContent.innerHTML = `
                 <div class="panel p-4">
                     <h2 class="font-bold text-center mb-4 text-lg font-cinzel">Select Item to Unsocket</h2>
-                    <div id="unsocket-item-grid" class="inventory-grid">
-                        ${socketedItems.map(item => this.renderItem(item, State.findItemBase(item.baseItemId), false)).join('') || '<p class="text-center text-secondary col-span-full">No items with gems socketed.</p>'}
-                    </div>
+                    ${this.renderFilterUI(state)}
+                    <select id="unsocket-item-select" class="custom-select w-full mb-2">
+                        <option value="">-- Choose Equipment --</option>
+                        ${socketedItems.map(item => `
+                            <option value="${item.uuid || item.instanceId || item.id}" ${ui.selectedItemId === (item.uuid || item.instanceId || item.id) ? 'selected' : ''}>
+                                ${item.name} (T${item.tier || 1}) - Sockets Filled: ${item.socketedGems.length}/${item.sockets}
+                            </option>
+                        `).join('')}
+                    </select>
+                    ${selectedItem ? `
+                        ${this.renderItemCard(selectedItem)}
+                        <button id="trigger-unsocket-btn" class="action-button destroy w-full py-2 mt-4" data-item-id="${selectedItem.uuid || selectedItem.instanceId || selectedItem.id}">Manage Sockets</button>
+                    ` : ''}
                 </div>`;
             
-            document.querySelectorAll('#unsocket-item-grid .inventory-slot').forEach(el => el.onclick = () => Controller.onUnsocketItemSelect(el.dataset.itemId));
+            document.getElementById('unsocket-item-select').onchange = (e) => Controller.onSelectItem(e.target.value);
+            const triggerBtn = document.getElementById('trigger-unsocket-btn');
+            if (triggerBtn) {
+                triggerBtn.onclick = () => Controller.onUnsocketItemSelect(triggerBtn.dataset.itemId);
+            }
+            this.attachFilterListeners();
             this.renderActionPanel(state);
         },
         renderFusingPage(state) {
@@ -608,6 +720,87 @@
         },
 
         // --- SHARED & SUB-RENDERERS ---
+        renderFilterUI(state) {
+            const { ui } = state;
+            const filters = [
+                { id: 'all', label: 'All' }, { id: 'weapon', label: 'Weapons' },
+                { id: 'armor', label: 'Armor' }, { id: 'jewelry', label: 'Jewelry' },
+                { id: 'spell', label: 'Spells' }
+            ];
+            
+            const tabsHTML = filters.map(f => {
+                const isActive = ui.filterCategory === f.id;
+                const activeClass = 'bg-cyan-700 text-white border-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.3)]';
+                const inactiveClass = 'bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700';
+                return `<button class="filter-tab-btn px-2 py-1 rounded text-[10px] font-bold uppercase border transition-all ${isActive ? activeClass : inactiveClass}" data-filter="${f.id}">${f.label}</button>`;
+            }).join('');
+
+            return `
+                <div class="flex flex-col gap-2 mb-4 bg-black/40 p-2 rounded border border-gray-700">
+                    <div class="flex relative items-center">
+                        <input type="text" id="gemcutter-search" class="w-full bg-gray-900 text-cyan-100 text-xs p-2 pr-8 rounded border border-gray-600 focus:border-cyan-500 outline-none font-mono" placeholder="Search item name or type..." value="${ui.searchQuery}">
+                        ${ui.searchQuery ? `<button id="gemcutter-clear-search" class="absolute right-2 text-gray-500 hover:text-cyan-400 font-bold">✕</button>` : ''}
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                        ${tabsHTML}
+                    </div>
+                </div>
+            `;
+        },
+        attachFilterListeners() {
+            const searchInput = document.getElementById('gemcutter-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => Controller.setSearch(e.target.value));
+                // Restore Focus Hack
+                setTimeout(() => {
+                    const el = document.getElementById('gemcutter-search');
+                    if (el && document.activeElement !== el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+                }, 0);
+            }
+            const clearBtn = document.getElementById('gemcutter-clear-search');
+            if (clearBtn) clearBtn.addEventListener('click', () => Controller.setSearch(''));
+            
+            document.querySelectorAll('.filter-tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => Controller.setFilter(e.target.dataset.filter));
+            });
+        },
+
+        renderItemCard(item) {
+            if (!item) return '';
+            const base = State.findItemBase(item.baseItemId || item.id);
+            const enchants = item.enchantments ? item.enchantments.map(ench => {
+                const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : ench.value;
+                const effectDesc = ench.effect || "Stat Boost";
+                return `<div class="text-xs text-purple-400 mb-0.5">✧ ${ench.name} <span class="font-mono text-[10px] text-gray-400">(+${val} ${effectDesc})</span></div>`;
+            }).join('') : '';
+            
+            const sockets = Array.from({ length: item.sockets || 0 }).map((_, i) => {
+                const gem = item.socketedGems && item.socketedGems[i];
+                if (gem) {
+                    const gBase = State.findGemBase(gem.id);
+                    const statText = State.getCalculatedGemStats(gem.id, gem.grade);
+                    const name = gBase ? gBase.name.replace(/Grade \d+ /, '') : gem.id;
+                    return `<div class="text-xs text-cyan-300">♦ ${statText} <span class="text-[10px] text-gray-500">(${name} G${gem.grade})</span></div>`;
+                }
+                return `<div class="text-xs text-gray-500">♢ Empty Socket</div>`;
+            }).join('');
+
+            return `
+                <div class="mt-4 p-3 bg-black/50 border border-gray-600 rounded">
+                    <div class="font-bold text-orange-400">${item.name || base.name}</div>
+                    <div class="text-xs text-gray-400 mb-2">${item.type} | Tier ${item.tier || 1}</div>
+                    <div class="flex flex-col gap-1">
+                        ${item.wc ? `<div class="text-xs">WC: ${item.wc.toFixed(1)}</div>` : ''}
+                        ${item.ac ? `<div class="text-xs">AC: ${item.ac.toFixed(1)}</div>` : ''}
+                        ${item.sc ? `<div class="text-xs">SC: ${item.sc.toFixed(1)}</div>` : ''}
+                        ${enchants}
+                        <div class="mt-2 border-t border-gray-700 pt-1">
+                            ${sockets}
+                        </div>
+                    </div>
+                </div>
+            `;
+        },
         renderItem(item, base, isSelected) {
             const itemId = item.uuid || item.instanceId || item.id;
             const imageUrl = item.imageUrl || item.icon || base.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${(item.name || 'UNK').substring(0,3)}`;
@@ -733,6 +926,8 @@
         onNavigate(page) { State.setState(s => ({...s, ui: {...s.ui, currentPage: page}})); State.resetSelections(); },
         onSelectItem(itemId) { State.setState(s => ({...s, ui: {...s.ui, selectedItemId: itemId}})); },
         onSelectGem(gemId, grade) { State.setState(s => ({...s, ui: {...s.ui, selectedGemId: gemId, selectedGemGrade: grade}})); },
+        setFilter(category) { State.setState(s => ({...s, ui: {...s.ui, filterCategory: category}})); },
+        setSearch(query) { State.setState(s => ({...s, ui: {...s.ui, searchQuery: query.toLowerCase()}})); },
         
         // --- GEM CRUCIBLE CONTROLLER ---
         onSelectGemForCrucible(gemId, grade) {
@@ -972,8 +1167,29 @@
             });
         },
         onAction() {
-            const { ui } = State.getState();
-            if (ui.currentPage === 'socketing') this.executeSocket();
+            const { ui, player } = State.getState();
+            if (ui.currentPage === 'socketing') {
+                const item = player.inventory.find(i => (i.uuid || i.instanceId || i.id) === ui.selectedItemId);
+                const statText = State.getCalculatedGemStats(ui.selectedGemId, ui.selectedGemGrade);
+                
+                // [ARCHITECT FIX] Trigger Confirmation Modal
+                const content = `
+                    <h3 class="font-cinzel text-xl text-center mb-4">Confirm Socketing</h3>
+                    <p class="text-center text-secondary mb-4">Permanently attach this gem to <strong>${item.name}</strong>?</p>
+                    <div class="flex justify-center mb-6">
+                        <span class="font-mono text-cyan-200 text-sm bg-cyan-900/30 border border-cyan-800/50 px-3 py-1 rounded text-center">
+                            ♦ ${statText}
+                        </span>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <button id="confirm-socket-btn" class="action-button w-full py-2 border-cyan-500 text-cyan-300">Confirm & Socket</button>
+                        <button id="cancel-btn" class="action-button destroy w-full py-2" style="background-color: #4b5563;">Cancel</button>
+                    </div>`;
+                UI.showModal(content);
+                
+                document.getElementById('confirm-socket-btn').onclick = () => { UI.hideModal(); this.executeSocket(); };
+                document.getElementById('cancel-btn').onclick = () => UI.hideModal();
+            }
             else if (ui.currentPage === 'fusing') this.executeFuse();
             else if (ui.currentPage === 'gem_crucible') this.executeCrucibleFuse();
         },

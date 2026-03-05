@@ -2,7 +2,7 @@
  * @file src/managers/inventory/InventoryManager.js
  * @description Manages player item storage, filtering, search, and GDD-driven interaction logic.
  */
-import { items, races, equipmentSlotConfig, formulas } from '../../config/gdd.js';
+import { items, races, equipmentSlotConfig, formulas, gems } from '../../config/gdd.js'; // [ARCHITECT FIX] Import gems
 
 export class InventoryManager {
     constructor(deps) {
@@ -28,6 +28,12 @@ export class InventoryManager {
     init() {
         if (this.isInitialized) return;
         this.isInitialized = true;
+        
+        // [ARCHITECT FIX] Expose Master Registries to external UI frames (Soulforge, Gemcutter, etc.)
+        if (window.gameManager) {
+            window.gameManager.items = items;
+            window.gameManager.gems = gems;
+        }
         
         this.createGlobalTooltip(); // [FIX] Initialize floating tooltip layer
         this.setupListeners();
@@ -354,7 +360,8 @@ export class InventoryManager {
             sc: fullItem.sc,
             regen: fullItem.hp_regen_percent,
             qm: fullItem.qualityMultiplier,
-            isShadow: isShadow
+            isShadow: isShadow,
+            socketedGems: fullItem.socketedGems || [] // [ARCHITECT FIX] Pass gems to tooltip renderer
         }).replace(/"/g, '&quot;');
 
         // [UPDATED] Replaced nested Tooltip HTML with mouse events for Global Tooltip
@@ -403,12 +410,54 @@ export class InventoryManager {
             
             if (qm > 1.0) statString += ` (+${Math.round((qm-1)*100)}%)`;
 
-            // [UPDATED] Added Tier Display
+            // [ARCHITECT FIX] O(1) Master Registry Lookup utilizing pre-formatted GDD stats
+            let gemsHTML = '';
+            if (data.socketedGems && data.socketedGems.length > 0) {
+                gemsHTML = `<div class="mt-1 pt-1 w-full border-t border-gray-700 flex flex-col items-center">`;
+                data.socketedGems.forEach(gem => {
+                    // [ARCHITECT FIX] Ultra-Robust Fallback Stat Parser
+                    let gBase = items[gem.id];
+                    let specificGem = null;
+                    
+                    if (!gBase && gems && gems.base_gems) {
+                        const family = gems.base_gems[gem.id.toLowerCase()] || gems.base_gems[gem.id];
+                        if (family) {
+                            specificGem = Object.values(family).find(g => Number(g.grade) === Number(gem.grade || 1));
+                            if (specificGem) gBase = items[specificGem.id];
+                        }
+                    }
+                    
+                    const name = gBase ? gBase.name.replace(/Grade \d+ /, '') : (specificGem ? specificGem.name.replace(/Grade \d+ /, '') : gem.id);
+                    const grade = gem.grade || (gBase ? gBase.grade : 1);
+                    
+                    let statText = 'Stat Boost';
+                    if (gBase && gBase.stat && Object.keys(gBase.stat).length > 0) {
+                        statText = Object.entries(gBase.stat).map(([k, v]) => `${v} ${k}`).join(', ');
+                    } else if (specificGem) {
+                        const stats = [];
+                        for (const [k, v] of Object.entries(specificGem)) {
+                            if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                                let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                                if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC';
+                                stats.push(`${v > 0 ? '+' : ''}${v} ${label}`);
+                            }
+                        }
+                        if (stats.length > 0) statText = stats.join(', ');
+                    }
+                    
+                    // Prioritize exact mathematical stats in the tooltip
+                    gemsHTML += `<span class="text-[8px] text-cyan-300 font-mono text-center">♦ ${statText} <span class="text-[7px] text-gray-400">(${name} G${grade})</span></span>`;
+                });
+                gemsHTML += `</div>`;
+            }
+
+            // [UPDATED] Added Tier Display & Gems
             el.innerHTML = `
                 <span class="text-[10px] text-cyan-100 font-bold text-center leading-tight mb-1">${data.name}</span>
                 <span class="text-[8px] text-yellow-500 font-mono mb-0.5">Tier ${data.tier || 1}</span>
                 <span class="text-[9px] ${statColor} font-mono text-center">${statString}</span>
                 ${data.isShadow ? `<span class="text-[8px] text-purple-400 text-center mt-1 uppercase tracking-widest">Shadow</span>` : ''}
+                ${gemsHTML}
             `;
 
             // Position Logic

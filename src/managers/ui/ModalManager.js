@@ -1,5 +1,5 @@
 // src/managers/ui/ModalManager.js
-import { armory, arcanum, jewelry } from '../../config/gdd.js';
+import { armory, arcanum, jewelry, items, gems } from '../../config/gdd.js'; // [ARCHITECT FIX] Import gems to prevent crashes
 
 // [ARCHITECT FIX] Robust Lookup Helper
 // Searches all data sources to ensure we find stats for everything.
@@ -215,13 +215,73 @@ export class ModalManager {
 
             enchantHTML += `
                 <div class="flex justify-between text-xs items-center mb-1">
-                    <span class="${color}">${ench.name}</span>
+                    <span class="${color}">✧ Enchantment</span>
                     <span class="font-mono ${color} text-[10px] bg-black/40 px-1.5 rounded">
                         +${val} ${effectDesc}
                     </span>
                 </div>`;
         });
         enchantHTML += `</div>`;
+    }
+
+    // 3.5 Build Sockets Block
+    let gemsHTML = '';
+    const totalSockets = fullItem.sockets || 0;
+    const socketedGems = fullItem.socketedGems || [];
+
+    if (totalSockets > 0) {
+        gemsHTML = `<div class="mt-3 pt-2 border-t border-gray-700">`;
+        gemsHTML += `<div class="text-[10px] text-cyan-500 uppercase tracking-widest mb-1 font-orbitron">Sockets (${socketedGems.length}/${totalSockets})</div>`;
+        
+        for (let i = 0; i < totalSockets; i++) {
+            const gem = socketedGems[i];
+            if (gem) {
+                // [ARCHITECT FIX] Ultra-Robust Fallback Stat Parser
+                  let gBase = items[gem.id];
+                  let specificGem = null;
+                  
+                  if (!gBase && gems && gems.base_gems) {
+                      const family = gems.base_gems[gem.id.toLowerCase()] || gems.base_gems[gem.id];
+                      if (family) {
+                          specificGem = Object.values(family).find(g => Number(g.grade) === Number(gem.grade || 1));
+                          if (specificGem) gBase = items[specificGem.id];
+                      }
+                  }
+                  
+                  const name = gBase ? gBase.name.replace(/Grade \d+ /, '') : (specificGem ? specificGem.name.replace(/Grade \d+ /, '') : gem.id);
+                  const grade = gem.grade || (gBase ? gBase.grade : 1);
+                  
+                  let statText = 'Stat Boost';
+                  if (gBase && gBase.stat && Object.keys(gBase.stat).length > 0) {
+                      statText = Object.entries(gBase.stat).map(([k, v]) => `${v} ${k}`).join(', ');
+                  } else if (specificGem) {
+                      // Manual parse if master registry misses it
+                      const stats = [];
+                      for (const [k, v] of Object.entries(specificGem)) {
+                          if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                              let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                              if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC';
+                              stats.push(`${v > 0 ? '+' : ''}${v} ${label}`);
+                          }
+                      }
+                      if (stats.length > 0) statText = stats.join(', ');
+                  }
+                
+                gemsHTML += `
+                    <div class="flex justify-between text-xs items-center mb-1">
+                        <span class="text-cyan-300">♦ ${name} <span class="text-[9px] text-gray-400">(G${grade})</span></span>
+                        <span class="font-mono text-cyan-200 text-[10px] bg-cyan-900/30 border border-cyan-800/50 px-1.5 rounded text-right">
+                            ${statText}
+                        </span>
+                    </div>`;
+            } else {
+                gemsHTML += `
+                    <div class="flex justify-between text-xs items-center mb-1 opacity-50">
+                        <span class="text-gray-500">♢ Empty Socket</span>
+                    </div>`;
+            }
+        }
+        gemsHTML += `</div>`;
     }
 
     // 4. Dynamic Action Button
@@ -267,6 +327,7 @@ export class ModalManager {
             ${qm !== 1.0 ? `<div class="flex justify-between mt-2 pt-2 border-t border-gray-700"><span class="text-yellow-500">Quality</span> <span class="text-yellow-400">${qm > 1 ? '+' : ''}${Math.round((qm - 1) * 100)}%</span></div>` : ''}
             
             ${enchantHTML}
+            ${gemsHTML}
         </div>
 
         <p class="text-xs text-gray-400 italic text-center px-4 leading-relaxed">"${desc}"</p>
