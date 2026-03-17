@@ -95,7 +95,7 @@ export class InventoryManager {
             spell: ['Air', 'Arcane', 'Cold', 'Ice', 'Death', 'Drain', 'Earth', 'Fire', 'Might', 'Guard', 'Swiftness'],
             jewelry: ['Ring', 'Necklace'],
             gem: [], 
-            misc: [],
+            misc: ['Resource', 'Estate', 'Clan', 'Crafting', 'Quest'], // [ARCHITECT FIX] Added Misc sub-tabs for resources
             all: []
         };
 
@@ -229,7 +229,32 @@ export class InventoryManager {
         }
         grid.innerHTML = '';
 
-        const rawInventory = this.state.player.inventory || [];
+        // [ARCHITECT FIX] Merge standard inventory with the Resource Pouch
+        const rawInventory = [...(this.state.player.inventory || [])];
+        
+        if (this.state.player.resources) {
+            Object.entries(this.state.player.resources).forEach(([key, amount]) => {
+                // Ignore empty resources and internal currencies if needed
+                if (amount > 0 && key !== 'essence' && key !== 'primalSouls') { 
+                    // Auto-categorize based on common naming conventions
+                    let guessedSubType = 'Resource';
+                    if (key.includes('Timber') || key.includes('Stone') || key.includes('Ore')) guessedSubType = 'Estate';
+                    if (key.includes('Log') || key.includes('Granite') || key.includes('Ingot')) guessedSubType = 'Clan';
+                    if (key.toLowerCase().includes('quest')) guessedSubType = 'Quest';
+
+                    rawInventory.push({
+                        id: key,
+                        instanceId: `res_${key}`,
+                        name: key.replace(/([A-Z])/g, ' $1').trim(), // Auto-space PascalCase (e.g., "HeartwoodLog" -> "Heartwood Log")
+                        category: 'Misc',
+                        type: 'Resource',
+                        subType: guessedSubType,
+                        qty: amount, // The card renderer will automatically put this in a blue badge!
+                        isResource: true
+                    });
+                }
+            });
+        }
         
         // --- 1. FILTER LOGIC ---
         const filteredItems = rawInventory.filter(item => {
@@ -281,7 +306,8 @@ export class InventoryManager {
             // Sub-Filter
             if (this.subFilter !== 'all') {
                 const subTarget = this.subFilter.toLowerCase();
-                const matchesSub = name.includes(subTarget) || type.includes(subTarget);
+                const subType = (full.subType || '').toLowerCase();
+                const matchesSub = name.includes(subTarget) || type.includes(subTarget) || subType.includes(subTarget);
                 if (!matchesSub) return false;
             }
 

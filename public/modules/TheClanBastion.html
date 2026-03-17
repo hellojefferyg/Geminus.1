@@ -459,7 +459,20 @@
             drawHex(hex) {}
             drawPlayer(q, r) {
                 const { x, y } = Hex.hexToPixel(q, r, this.hexSize);
-                this.ctx.save(); this.ctx.globalAlpha = 1.0; this.ctx.font = `${this.hexSize * 1.2}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText("👤", x, y); this.ctx.restore();
+                this.ctx.save();
+                this.ctx.globalAlpha = 1.0; // Force full opacity
+                
+                // [ARCHITECT FIX] High-contrast stroke instead of blur to prevent translucency
+                this.ctx.strokeStyle = "white";
+                this.ctx.lineWidth = 4;
+                this.ctx.font = `900 ${this.hexSize * 1.8}px Inter, sans-serif`; 
+                this.ctx.textAlign = 'center'; 
+                this.ctx.textBaseline = 'middle'; 
+                
+                // Draw outline first, then the solid icon
+                this.ctx.strokeText("👤", x, y);
+                this.ctx.fillText("👤", x, y); 
+                this.ctx.restore();
             }
             resizeAndCenter() { this.canvas.width = this.canvas.parentElement.clientWidth; this.canvas.height = this.canvas.parentElement.clientHeight; this.centerOnPlayer(); }
             handlePointerDown(e) { if (e.target.closest('#hex-tooltip')) return; this.isPointerDown = true; this.hasDragged = false; this.canvas.style.cursor = 'grabbing'; this.startPanCoords = { x: e.clientX, y: e.clientY }; }
@@ -480,10 +493,57 @@
 
         // --- STORAGE MANAGER ---
         const StorageManager = {
+            gm: null, // Engine Reference
             saveWorld(grid, imageUrl) { const data = { grid: Array.from(grid.entries()), imageUrl: imageUrl }; localStorage.setItem('clan_world_map', JSON.stringify(data)); },
             loadWorld() { const data = localStorage.getItem('clan_world_map'); if (!data) return null; const parsed = JSON.parse(data); return { grid: new Map(parsed.grid), imageUrl: parsed.imageUrl }; },
-            saveGame() { localStorage.setItem('clan_game_data', JSON.stringify(game)); },
-            loadGame() { const data = localStorage.getItem('clan_game_data'); if(data) { const loadedGame = JSON.parse(data); game = { ...game, ...loadedGame }; } },
+            
+            saveGame() { 
+                if (this.gm && this.gm.state) {
+                    if (this.gm.state.player) {
+                        // [ARCHITECT BRIDGE] Sync current map coordinates and zoom
+                        this.gm.state.player.clanMapQ = game.worldMap.q;
+                        this.gm.state.player.clanMapR = game.worldMap.r;
+                        this.gm.state.player.clanMapZoom = worldManager.zoom;
+
+                        this.gm.state.player.clanName = game.player.clanName;
+                        this.gm.state.player.killsSinceDrop = game.player.killsSinceDrop;
+                        this.gm.state.player.gold = game.player.gold;
+                    }
+                    // Master clan registry stored in the engine state
+                    this.gm.state.clans = game.clans;
+                    
+                    if (this.gm.saveGame) this.gm.saveGame();
+                    if (this.gm.UIManager) this.gm.UIManager.updatePlayerStatusUI();
+                } else {
+                    localStorage.setItem('clan_game_data', JSON.stringify(game)); 
+                }
+            },
+            
+            loadGame() { 
+                if (this.gm && this.gm.state) {
+                    const enginePlayer = this.gm.state.player;
+                    if (enginePlayer) {
+                        game.player.name = enginePlayer.name || "Hero";
+                        game.player.level = enginePlayer.level || 1;
+                        game.player.gold = enginePlayer.gold || 0;
+                        game.player.clanName = enginePlayer.clanName || null;
+                        game.player.killsSinceDrop = enginePlayer.killsSinceDrop || 0;
+                        
+                        // [ARCHITECT BRIDGE] Restore coordinates and zoom
+                        game.worldMap.q = enginePlayer.clanMapQ || 0;
+                        game.worldMap.r = enginePlayer.clanMapR || 0;
+                        if (enginePlayer.clanMapZoom) worldManager.zoom = enginePlayer.clanMapZoom;
+
+                        game.player.inventory = enginePlayer.inventory || [];
+                    }
+                    // Ensure the engine has a clans array, then map the Bastion to it
+                    if (!this.gm.state.clans) this.gm.state.clans = [];
+                    game.clans = this.gm.state.clans;
+                } else {
+                    const data = localStorage.getItem('clan_game_data'); 
+                    if(data) { const loadedGame = JSON.parse(data); game = { ...game, ...loadedGame }; } 
+                }
+            },
             clearAllData() { localStorage.removeItem('clan_game_data'); localStorage.removeItem('clan_world_map'); }
         };
 
@@ -576,7 +636,12 @@
 
         // --- WORLD MAP MANAGER ---
         class WorldMap extends MapManager {
-            constructor(canvas) { super(canvas, 6); this.image = null; } // Adjusted hexSize for larger world feel
+            constructor(canvas) { 
+                super(canvas, 6); 
+                this.image = null; 
+                // [ARCHITECT FIX] Tightened initial zoom to keep icons large and clear
+                this.zoom = 3.5; 
+            }
             init(grid, image) { this.image = image; super.init(grid); }
             drawBackground() { if (!this.image) return; const imgX = -this.image.width / 2; const imgY = -this.image.height / 2; this.ctx.drawImage(this.image, imgX, imgY); }
             drawHex(hex) {
@@ -597,7 +662,19 @@
                 this.ctx.stroke();
 
                 if (hex.isClanCapital) {
-                     this.ctx.font = `${this.hexSize * 1.5}px sans-serif`; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillText("🏰", x, y);
+                     this.ctx.save();
+                     // [ARCHITECT FIX] Full opacity with a dark outline to ensure solid appearance
+                     this.ctx.globalAlpha = 1.0;
+                     this.ctx.strokeStyle = "rgba(0,0,0,0.8)"; // Dark outline
+                     this.ctx.lineWidth = 3;
+                     this.ctx.font = `bold ${this.hexSize * 2.0}px Inter, sans-serif`; 
+                     this.ctx.textAlign = 'center'; 
+                     this.ctx.textBaseline = 'middle'; 
+                     
+                     // Draw background stroke first, then the solid icon
+                     this.ctx.strokeText("🏰", x, y);
+                     this.ctx.fillText("🏰", x, y);
+                     this.ctx.restore();
                 } else if (hex.feature) {
                     this.ctx.save();
                     const isPlayersNode = hex.owner === game.player.clanName;
@@ -618,6 +695,9 @@
                     game.worldMap.q = q;
                     game.worldMap.r = r;
                     ui.worldMap.tooltip.container.classList.add('hidden');
+                    
+                    // [ARCHITECT BRIDGE] Save position immediately after stepping
+                    StorageManager.saveGame();
                     return; 
                 }
                 this.showTooltip(hex, screenPos);
@@ -1532,6 +1612,31 @@
             animate();
             gameTickInterval = setInterval(gameTick, 1000);
         });
+
+        // --- ROBUST AUTO-START (ENGINE BRIDGE) ---
+        (function connectToEngine() {
+            const findEngine = () => window.parent.gameManager || window.gameManager || (window.opener ? window.opener.gameManager : null);
+            
+            const attemptConnection = () => {
+                const gm = findEngine();
+                if (gm && gm.state && gm.state.player) {
+                    console.log("🛡️ Clan Bastion Connected to Master Engine.");
+                    StorageManager.gm = gm;
+                    
+                    // Reload data now that we are connected to the live database
+                    StorageManager.loadGame();
+                    
+                    // Force a UI refresh so player gold/clan variables show up immediately
+                    if (typeof updateGameUI === 'function') updateGameUI();
+                } else {
+                    console.log("🛡️ Clan Bastion waiting for Engine...");
+                    setTimeout(attemptConnection, 200);
+                }
+            };
+            
+            // Delay slightly to let the Bastion DOM finish building
+            setTimeout(attemptConnection, 500);
+        })();
     </script>
 </body>
 </html>

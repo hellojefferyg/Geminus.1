@@ -332,21 +332,21 @@
     <div id="estate-setup-modal" class="modal-view hidden items-center justify-center bg-black/80">
         <div class="glass-panel p-8 rounded-lg w-full max-w-2xl text-center">
             <h1 class="text-4xl font-cinzel mb-4">Found Your Estate</h1>
-            <p class="mb-6 text-gray-300">Give your new home a name and description to create its identity.</p>
-            <div class="mb-4 text-left">
-                <label for="estate-name-input" class="block mb-2 text-sm font-bold">Estate Name</label>
-                <input type="text" id="estate-name-input" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" value="My First Estate">
+            <p class="mb-6 text-gray-300 italic opacity-80">A new land has been claimed in your name.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left mb-6">
+                <div class="space-y-2">
+                    <label for="estate-name-input" class="block text-xs uppercase tracking-widest text-cyan-400 font-bold">Estate Name</label>
+                    <input type="text" id="estate-name-input" class="w-full bg-black/50 border border-cyan-900/50 rounded px-3 py-2 text-white focus:outline-none focus:border-cyan-400 transition-colors" placeholder="Enter Name...">
+                    <div id="name-suggestions" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+                <div class="space-y-2">
+                    <label for="estate-desc-input" class="block text-xs uppercase tracking-widest text-cyan-400 font-bold">Lore & History</label>
+                    <textarea id="estate-desc-input" rows="4" class="w-full bg-black/50 border border-cyan-900/50 rounded px-3 py-2 text-white resize-none focus:outline-none focus:border-cyan-400 transition-colors" placeholder="Describe your new home..."></textarea>
+                </div>
             </div>
-            <div class="mb-6 text-left">
-                <label for="estate-desc-input" class="block mb-2 text-sm font-bold">Description</label>
-                <textarea id="estate-desc-input" rows="4" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="e.g., A towering keep on a misty cliffside, overlooking a dense, ancient forest..."></textarea>
-            </div>
-            <div class="flex gap-4 mb-6">
-                <button id="ai-desc-btn" class="glass-button py-2 rounded-lg w-full">✨ Generate AI Description</button>
-                <button id="ai-name-btn" class="glass-button py-2 rounded-lg w-full">✨ Suggest Names</button>
-            </div>
-            <div id="name-suggestions" class="flex flex-wrap gap-2 mb-4"></div>
-            <button id="confirm-estate-setup-btn" class="glass-button text-2xl font-cinzel px-8 py-4 rounded-lg w-full">Confirm & Build</button>
+
+            <button id="confirm-estate-setup-btn" class="glass-button text-2xl font-cinzel px-8 py-4 rounded-lg w-full">Enter Estate</button>
             <p id="setup-status-message" class="text-cyan-300 mt-4 h-6"></p>
         </div>
     </div>
@@ -673,8 +673,11 @@
             drawPlayer(q, r) {
                 const { x, y } = Hex.hexToPixel(q, r, this.hexSize);
                 this.ctx.save();
-                this.ctx.globalAlpha = 1.0;
-                this.ctx.font = `${this.hexSize * 1.2}px sans-serif`;
+                this.ctx.globalAlpha = 1.0; // Ensures 100% opacity
+                // [ARCHITECT FIX] Added text shadow for high visibility against dark/busy biomes
+                this.ctx.shadowColor = "white";
+                this.ctx.shadowBlur = 7;
+                this.ctx.font = `bold ${this.hexSize * 1.5}px sans-serif`; 
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(game.player.icon, x, y);
@@ -743,20 +746,84 @@
 
         // --- STORAGE MANAGER ---
         const StorageManager = {
+            gm: null, // Engine Reference
             saveWorld(grid, imageUrl) { const data = { grid: Array.from(grid.entries()), imageUrl: imageUrl }; localStorage.setItem('estate_world_map', JSON.stringify(data)); },
             loadWorld() { const data = localStorage.getItem('estate_world_map'); if (!data) return null; const parsed = JSON.parse(data); return { grid: new Map(parsed.grid), imageUrl: parsed.imageUrl }; },
-            savePlayer() { localStorage.setItem('estate_player_data', JSON.stringify(game.player)); },
+            
+            savePlayer() { 
+                // [ARCHITECT FIX] Lock current coordinates into the local player object
+                game.player.mapQ = game.worldMap.q;
+                game.player.mapR = game.worldMap.r;
+
+                if (this.gm && this.gm.state && this.gm.state.player) {
+                    // Sync local state directly into the Main Engine's Player Object
+                    this.gm.state.player.estate = game.player.estate;
+                    this.gm.state.player.worldShards = game.player.worldShards;
+                    this.gm.state.player.hasPlacedFirstEstate = game.player.hasPlacedFirstEstate;
+                    
+                    // Pass coordinates to the Engine
+                    this.gm.state.player.estateMapQ = game.player.mapQ;
+                    this.gm.state.player.estateMapR = game.player.mapR;
+                    
+                    // Trigger a master save in the main game
+                    if (this.gm.saveGame) this.gm.saveGame();
+                    if (this.gm.UIManager) this.gm.UIManager.updatePlayerStatusUI();
+                } else {
+                    // Fallback for standalone testing
+                    localStorage.setItem('estate_player_data', JSON.stringify(game.player)); 
+                }
+            },
+            
             loadPlayer() { 
-                const data = localStorage.getItem('estate_player_data'); 
-                if(data) { 
-                    let loadedPlayer = JSON.parse(data); 
-                    if (!loadedPlayer.estate) { loadedPlayer.estate = {}; }
-                    if (!loadedPlayer.estate.research) { loadedPlayer.estate.research = {}; }
-                    if (!loadedPlayer.estate.resources) { loadedPlayer.estate.resources = {}; }
-                    if (!loadedPlayer.estate.activeTimers) { loadedPlayer.estate.activeTimers = []; }
-                    if (!loadedPlayer.estate.lastLoginTimestamp) { loadedPlayer.estate.lastLoginTimestamp = Math.floor(Date.now() / 1000); }
-                    game.player = { ...game.player, ...loadedPlayer }; 
-                } 
+                if (this.gm && this.gm.state && this.gm.state.player) {
+                    const enginePlayer = this.gm.state.player;
+                    
+                    // Initialize Engine Estate data if it doesn't exist yet
+                    if (!enginePlayer.estate) enginePlayer.estate = {};
+                    if (!enginePlayer.estate.research) enginePlayer.estate.research = {};
+                    if (!enginePlayer.estate.resources) enginePlayer.estate.resources = {};
+                    if (!enginePlayer.estate.activeTimers) enginePlayer.estate.activeTimers = [];
+                    // [ARCHITECT FIX] Initialize the buildings object to prevent UI crashes!
+                    if (!enginePlayer.estate.buildings) enginePlayer.estate.buildings = {
+                        storehouse: { level: 1 }, quarry: { level: 0 }, lumberMill: { level: 0 }, farm: { level: 0 }, mines: { level: 0 }, barracks: { level: 0 }, arcanum: { level: 0 }
+                    };
+                    if (!enginePlayer.estate.lastLoginTimestamp) enginePlayer.estate.lastLoginTimestamp = Math.floor(Date.now() / 1000);
+                    if (!enginePlayer.resources) enginePlayer.resources = {}; // Master resource pouch
+                    
+                    // Map Engine Data to the Estate's local 'game.player' object
+                    game.player.estate = enginePlayer.estate;
+                    game.player.worldShards = enginePlayer.worldShards || 0;
+                    game.player.hasPlacedFirstEstate = enginePlayer.hasPlacedFirstEstate || false;
+                    game.player.name = enginePlayer.name || "Hero";
+                    game.player.level = enginePlayer.level || 250;
+                    
+                    // [ARCHITECT FIX] Restore the avatar's exact location
+                    game.player.mapQ = enginePlayer.estateMapQ || 0;
+                    game.player.mapR = enginePlayer.estateMapR || 0;
+                    game.worldMap.q = game.player.mapQ;
+                    game.worldMap.r = game.player.mapR;
+                    
+                    // ARCHITECT BRIDGE: Point the Estate's inventory directly at the Engine's resource pouch!
+                    game.player.inventory = enginePlayer.resources; 
+                } else {
+                    // Fallback for standalone testing
+                    const data = localStorage.getItem('estate_player_data'); 
+                    if(data) { 
+                        let loadedPlayer = JSON.parse(data); 
+                        if (!loadedPlayer.estate) { loadedPlayer.estate = {}; }
+                        if (!loadedPlayer.estate.research) { loadedPlayer.estate.research = {}; }
+                        if (!loadedPlayer.estate.resources) { loadedPlayer.estate.resources = {}; }
+                        if (!loadedPlayer.estate.activeTimers) { loadedPlayer.estate.activeTimers = []; }
+                        if (!loadedPlayer.estate.lastLoginTimestamp) { loadedPlayer.estate.lastLoginTimestamp = Math.floor(Date.now() / 1000); }
+                        game.player = { ...game.player, ...loadedPlayer }; 
+                        
+                        // Fallback coordinate restore
+                        if (game.player.mapQ !== undefined) {
+                            game.worldMap.q = game.player.mapQ;
+                            game.worldMap.r = game.player.mapR;
+                        }
+                    } 
+                }
             },
             saveGDD() { localStorage.setItem('estate_gdd', JSON.stringify(GDD)); },
             loadGDD() {
@@ -875,7 +942,13 @@
 
         // --- WORLD MAP MANAGER ---
         class WorldMap extends MapManager {
-            constructor(canvas) { super(canvas, 5); this.image = null; this.gatheringTimer = null; this.gatheringInterval = null; }
+            constructor(canvas) { 
+                super(canvas, 5); 
+                this.image = null; 
+                this.gatheringTimer = null; 
+                this.gatheringInterval = null; 
+                this.zoom = 3.5; // [ARCHITECT FIX] Start zoomed in (Approx 10-12 hex radius)
+            }
             init(grid, image) { this.image = image; super.init(grid); }
             drawBackground() { if (!this.image) return; const imgX = -this.image.width / 2; const imgY = -this.image.height / 2; this.ctx.drawImage(this.image, imgX, imgY); }
             drawHex(hex) {
@@ -931,6 +1004,9 @@
                     game.worldMap.q = q;
                     game.worldMap.r = r;
                     ui.worldMap.tooltip.container.classList.add('hidden');
+                    
+                    // [ARCHITECT FIX] Save position immediately after every step
+                    StorageManager.savePlayer();
                     return; 
                 }
 
@@ -1183,9 +1259,11 @@
         function showLoading(message) { ui.loadingMessage.textContent = message; ui.loadingOverlay.classList.remove('hidden'); }
         function hideLoading() { ui.loadingOverlay.classList.add('hidden'); }
 
+        const DEFAULT_MAP_URL = 'https://i.ibb.co/B506BgZS/IMG-1918.jpg';
+
         function startWorldGeneration(imageUrl) {
-            showLoading("Generating world from image...");
-            const image = new Image();
+            showLoading("Surveying the Estate...");
+            const image = new Image(); 
             image.crossOrigin = "Anonymous";
             image.onload = () => {
                 const grid = new Map();
@@ -1193,32 +1271,37 @@
                 MapGenerator.placeFeatures(grid);
                 StorageManager.saveWorld(grid, imageUrl);
                 worldManager.init(grid, image);
-                hideLoading();
+                hideLoading(); 
                 showWorld();
             };
             image.onerror = () => {
                 hideLoading();
-                ui.mainMenuStatus.textContent = "Error: Could not load image. Check URL and CORS policy.";
+                console.error("Failed to load map image URL.");
             };
             image.src = imageUrl;
         }
 
         function loadExistingWorld() {
             const savedData = StorageManager.loadWorld();
-            if (!savedData) { ui.mainMenuStatus.textContent = "No saved world found."; return; }
-            showLoading("Loading saved world...");
-            const image = new Image();
+            
+            // Auto-generate if no save exists, or if the URL doesn't match the default
+            if (!savedData || savedData.imageUrl !== DEFAULT_MAP_URL) {
+                console.log("No saved Estate map found. Generating default...");
+                startWorldGeneration(DEFAULT_MAP_URL);
+                return;
+            }
+            
+            showLoading("Loading Estate...");
+            const image = new Image(); 
             image.crossOrigin = "Anonymous";
-            image.onload = () => {
-                worldManager.init(savedData.grid, image);
-                const estateHex = Array.from(savedData.grid.values()).find(h => h.feature?.type === 'estate_plot');
-                if (estateHex) { worldManager.movePlayerNextTo(estateHex); }
-                hideLoading();
-                showWorld();
+            image.onload = () => { 
+                worldManager.init(savedData.grid, image); 
+                hideLoading(); 
+                showWorld(); 
             };
             image.onerror = () => {
-                hideLoading();
-                ui.mainMenuStatus.textContent = "Error loading world's background image.";
+                console.error("Failed to load saved Estate map. Regenerating...");
+                startWorldGeneration(DEFAULT_MAP_URL);
             };
             image.src = savedData.imageUrl;
         }
@@ -1246,7 +1329,19 @@
 
         function enterEstate() {
             if (!game.player.estate) { purchaseEstate(); }
-            if (!game.player.estate.hasBeenSetup) { ui.estateSetup.modal.classList.remove('hidden'); } 
+            if (!game.player.estate.hasBeenSetup) { 
+                // [ARCHITECT FIX] Auto-populate procedural lore so the boxes aren't empty
+                const adjs = ["Obsidian", "Silver", "Crimson", "Emerald", "Azure", "Golden", "Shadow", "Crystal", "Iron", "Storm"];
+                const nouns = ["Keep", "Spire", "Bastion", "Hold", "Sanctuary", "Manor", "Citadel", "Peak"];
+                const starts = ["A magnificent", "An ancient", "A towering", "A secluded", "A majestic"];
+                const middles = ["fortress built upon", "estate overlooking", "sanctuary hidden within"];
+                const ends = ["a jagged mountain peak.", "a dense, enchanted forest.", "a quiet, mist-covered valley."];
+
+                ui.estateSetup.nameInput.value = `${adjs[Math.floor(Math.random()*adjs.length)]} ${nouns[Math.floor(Math.random()*nouns.length)]}`;
+                ui.estateSetup.descInput.value = `${starts[Math.floor(Math.random()*starts.length)]} ${middles[Math.floor(Math.random()*middles.length)]} ${ends[Math.floor(Math.random()*ends.length)]}`;
+                
+                ui.estateSetup.modal.classList.remove('hidden'); 
+            } 
             else { loadEstateView(); }
         }
 
@@ -1322,7 +1417,9 @@
             invList.innerHTML = ''; 
             storeList.innerHTML = '';
             
-            const capacity = EstateGameData.storehouse[game.player.estate.buildings.storehouse.level]?.capacity || 1000;
+            // [ARCHITECT FIX] Defensive check to ensure storehouse exists before reading level
+const storehouseLevel = game.player.estate.buildings?.storehouse?.level || 1;
+const capacity = EstateGameData.storehouse[storehouseLevel]?.capacity || 1000;
             
             for (const key in RESOURCES) {
                 const invAmount = game.player.inventory[key] || 0;
@@ -1911,84 +2008,12 @@
 
             GddEditor.init();
 
-            ui.estateSetup.aiDescBtn.addEventListener('click', async () => {
-                const btn = ui.estateSetup.aiDescBtn;
-                btn.disabled = true;
-                btn.textContent = "Generating...";
-                try {
-                    const prompt = "Generate a short, evocative description for a fantasy estate in a single paragraph.";
-                    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                    const payload = { contents: chatHistory };
-                    const apiKey = "";
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    const resultText = await response.text();
-                    const result = extractJson(resultText);
-
-                    if (result && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        ui.estateSetup.descInput.value = result.candidates[0].content.parts[0].text;
-                    } else if (resultText) {
-                        ui.estateSetup.descInput.value = resultText.replace(/```/g, "").trim();
-                    } else {
-                        throw new Error("Invalid or empty response from AI.");
-                    }
-                } catch (error) {
-                    console.error("AI Description Error:", error);
-                    ui.estateSetup.statusMsg.textContent = "Could not generate description.";
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = "✨ Generate AI Description";
-                }
-            });
             
-            ui.estateSetup.aiNameBtn.addEventListener('click', async () => {
-                const btn = ui.estateSetup.aiNameBtn;
-                btn.disabled = true;
-                btn.textContent = "Suggesting...";
-                try {
-                    const description = ui.estateSetup.descInput.value.trim() || 'a generic fantasy castle';
-                    const prompt = `Generate 5 cool, one-or-two-word names for a fantasy estate based on this description: "${description}". Return a JSON object with a single key "names" which is an array of strings.`;
-                    const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                    const payload = { 
-                        contents: chatHistory,
-                        generationConfig: {
-                            responseMimeType: "application/json",
-                            responseSchema: {
-                                type: "OBJECT",
-                                properties: { "names": { "type": "ARRAY", "items": { "type": "STRING" } } }
-                            }
-                        }
-                    };
-                    const apiKey = "";
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    const resultText = await response.text();
-                    const result = extractJson(resultText);
+            
+           
 
-                    if (result && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        const nameData = extractJson(result.candidates[0].content.parts[0].text);
-                        if (!nameData || !nameData.names) { throw new Error("Could not parse valid names JSON from AI response.");}
-                        const names = nameData.names;
-                        const suggestionsContainer = ui.estateSetup.nameSuggestions;
-                        suggestionsContainer.innerHTML = '';
-                        names.forEach(name => {
-                            const nameBtn = document.createElement('button');
-                            nameBtn.className = 'glass-button text-sm px-3 py-1 rounded-full';
-                            nameBtn.textContent = name;
-                            nameBtn.onclick = () => { ui.estateSetup.nameInput.value = name; };
-                            suggestionsContainer.appendChild(nameBtn);
-                        });
-                    } else { throw new Error("Invalid response from AI."); }
-                } catch (error) {
-                    console.error("AI Name Suggestion Error:", error);
-                    ui.estateSetup.statusMsg.textContent = "Could not suggest names.";
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = "✨ Suggest Names";
-                }
-            });
-
-            ui.estateSetup.confirmBtn.addEventListener('click', async () => {
+            // [ARCHITECT FIX] 100% Reliable Pre-Rendered Image Pool
+            ui.estateSetup.confirmBtn.addEventListener('click', () => {
                 const btn = ui.estateSetup.confirmBtn;
                 const name = ui.estateSetup.nameInput.value.trim();
                 const description = ui.estateSetup.descInput.value.trim();
@@ -1996,37 +2021,70 @@
                     ui.estateSetup.statusMsg.textContent = "Name and description are required.";
                     return;
                 }
+                
                 btn.disabled = true;
-                ui.estateSetup.statusMsg.textContent = "Generating your estate's vista...";
-                showLoading("Generating Estate Background...");
+                ui.estateSetup.statusMsg.textContent = "Forging your Estate...";
+                showLoading("Forging Estate Background...");
 
-                try {
-                    const prompt = `A beautiful, detailed fantasy painting of ${description}. Cinematic lighting, epic view.`;
-                    const payload = { instances: [{ prompt: prompt }], parameters: { "sampleCount": 1} };
-                    const apiKey = "";
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    const result = await response.json();
-                    if (result.predictions?.[0]?.bytesBase64Encoded) {
-                        game.player.estate.name = name;
-                        game.player.estate.description = description;
-                        game.player.estate.backgroundUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
-                        game.player.estate.hasBeenSetup = true;
-                        StorageManager.savePlayer();
-                        hideLoading();
-                        loadEstateView();
-                    } else { throw new Error("Invalid image response from AI."); }
-                } catch (error) {
-                    console.error("AI Image Generation Error:", error);
-                    ui.estateSetup.statusMsg.textContent = "Could not generate the estate background. Please try again.";
-                    hideLoading();
-                } finally {
-                    btn.disabled = false;
+                // Add as many Image URLs as you want here! The game will pick one randomly.
+                // [ARCHITECT FIX] Corrected singular 'Background' folder and included /public path
+                const backgroundPool = [
+                    "/Visual-Effects/Estate/Background/estate_1.png",
+                    "/Visual-Effects/Estate/Background/estate_2.png",
+                    "/Visual-Effects/Estate/Background/estate_3.png",
+                    "/Visual-Effects/Estate/Background/estate_4.png",
+                    "/Visual-Effects/Estate/Background/estate_5.png"
+                ];
+                
+                const randomBgUrl = backgroundPool[Math.floor(Math.random() * backgroundPool.length)];
+
+                // [ARCHITECT FIX] Ensure the entire building tree is initialized to prevent 'level' read errors
+                if (!game.player.estate.buildings) {
+                    game.player.estate.buildings = {
+                        estateHall: { level: 1 },
+                        researchCottage: { level: 1 },
+                        storehouse: { level: 1 },
+                        blacksmith: { level: 1 },
+                        tannery: { level: 1 },
+                        arcanistsAltar: { level: 1 },
+                        dragonwoodGrove: { level: 1 },
+                        bedrockQuarry: { level: 1 },
+                        estateMine: { level: 1 },
+                        huntingPreserve: { level: 1 },
+                        questBoard: { level: 1 },
+                        bank: { level: 1 }
+                    };
                 }
+
+                // Preload the image so it fades in beautifully
+                const img = new Image();
+                img.onload = () => {
+                    game.player.estate.name = name;
+                    game.player.estate.description = description;
+                    game.player.estate.backgroundUrl = randomBgUrl; 
+                    game.player.estate.hasBeenSetup = true;
+                    StorageManager.savePlayer();
+                    hideLoading();
+                    loadEstateView();
+                    btn.disabled = false;
+                };
+                img.onerror = () => {
+                    game.player.estate.name = name;
+                    game.player.estate.description = description;
+                    game.player.estate.backgroundUrl = DEFAULT_MAP_URL; 
+                    game.player.estate.hasBeenSetup = true;
+                    StorageManager.savePlayer();
+                    hideLoading();
+                    loadEstateView();
+                    btn.disabled = false;
+                };
+                img.src = randomBgUrl;
             });
 
 
-            setupMainMenu();
+            // [ARCHITECT FIX] Skip the main menu and instantly load the world
+            loadExistingWorld();
+            
             animate();
             gameTickInterval = setInterval(gameTick, 1000);
         });
@@ -2485,6 +2543,36 @@
                 this.renderContent(currentKey);
             }
         };
+
+        // --- ROBUST AUTO-START (ENGINE BRIDGE) ---
+        (function connectToEngine() {
+            const findEngine = () => window.parent.gameManager || window.gameManager || (window.opener ? window.opener.gameManager : null);
+            
+            const attemptConnection = () => {
+                const gm = findEngine();
+                if (gm && gm.state && gm.state.player) {
+                    console.log("🏰 The Estate Connected to Master Engine.");
+                    StorageManager.gm = gm;
+                    
+                    // Reload data now that we are connected to the live database
+                    StorageManager.loadPlayer();
+                    
+                    // Force a UI refresh if the player already owns an estate
+                    if (game.player.estate && game.player.estate.isOwned) {
+                        estateManager.loadPlayerData(game.player);
+                        estateManager.processOfflineProgress();
+                        StorageManager.savePlayer();
+                        updateGameUI();
+                    }
+                } else {
+                    console.log("🏰 The Estate waiting for Engine...");
+                    setTimeout(attemptConnection, 200);
+                }
+            };
+            
+            // Delay slightly to let the Estate DOM finish building
+            setTimeout(attemptConnection, 500);
+        })();
     </script>
 </body>
 </html>

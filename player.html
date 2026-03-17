@@ -85,6 +85,10 @@
                         <section id="mini-map-panel" class="w-20 h-20 cursor-pointer group">
                             <canvas id="mini-map-canvas" class="rounded-full border-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></canvas>
                         </section>
+                        <div class="flex flex-col gap-1">
+                            <button id="open-estate-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-[0_0_10px_rgba(34,211,238,0.2)] hover:shadow-[0_0_15px_rgba(34,211,238,0.5)]" title="The Estate">🏰</button>
+                            <button id="open-clan-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-[0_0_10px_rgba(245,166,35,0.2)] hover:shadow-[0_0_15px_rgba(245,166,35,0.5)]" title="Clan Bastion">🛡️</button>
+                        </div>
                         <button id="toggle-controls-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg">🎮</button>
                     </header>
                 </div>
@@ -338,6 +342,41 @@
             btn.classList.toggle('text-green-400', state);
             btn.classList.toggle('text-gray-300', !state);
         };
+
+        // --- QUICK ACCESS MODULE BRIDGES ---
+        document.getElementById('open-estate-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('module-overlay');
+            const iframe = document.getElementById('module-iframe');
+            if (overlay && iframe) {
+                iframe.src = '/modules/TheEstate.html';
+                overlay.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('open-clan-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('module-overlay');
+            const iframe = document.getElementById('module-iframe');
+            if (overlay && iframe) {
+                // If they aren't in a clan, it will seamlessly prompt them to join/create one!
+                iframe.src = '/modules/TheClanBastion.html';
+                overlay.classList.remove('hidden');
+            }
+        });
+
+        // Ensure the close button works
+        document.getElementById('module-close-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('module-overlay');
+            const iframe = document.getElementById('module-iframe');
+            if (overlay && iframe) {
+                overlay.classList.add('hidden');
+                iframe.src = ''; // Clear source to stop background processing/audio
+                
+                // Refresh main game inventory just in case they spent gold or moved resources
+                if (window.gameManager && window.gameManager.InventoryManager) {
+                    window.gameManager.InventoryManager.refresh();
+                }
+            }
+        });
     </script>
 </body>
 </html>
