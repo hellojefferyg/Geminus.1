@@ -96,55 +96,55 @@ const Systems = {
     const VIT = safeVal(player.baseStats?.VIT) + gearVit;
     const DEX = safeVal(player.baseStats?.DEX) + gearDex;
     const WIS = safeVal(player.baseStats?.WIS) + gearWis;
-    
-    // Map current primary scaling value
-    const primaryStat = racialData.primaryStat;
-    let scalingStatValue = (primaryStat === 'VIT') ? VIT : (primaryStat === 'DEX') ? DEX : WIS;
+    const STR = safeVal(player.baseStats?.STR); 
+    const NTL = safeVal(player.baseStats?.NTL);
 
     let finalWC = 0, finalSC = 0;
     const isTroll = player.race === 'Troll';
     const isVampire = player.race === 'Vampire';
     const basePower = 5 + (player.level * 2);
 
-    switch (racialData.archetype) {
-      case 'True Fighter':
-        const fighterStat = isTroll ? VIT : scalingStatValue;
-        finalWC = (totalGearWC + basePower) * (1 + (fighterStat * 0.0055));
-        finalSC = totalGearSC + (basePower * 0.5); 
-        break;
+    // [ARCHITECT FIX] Stat Decoupling & Damage DR (The Gear Wall)
+    let primaryRating = 0;   // Used for Hit Contest & Precision Overflow
+    let secondaryRating = 0; // Used for Damage Multiplier
 
-      case 'True Caster':
-        const casterStat = isVampire ? VIT : scalingStatValue;
-        finalSC = (totalGearSC + basePower) * (1 + (casterStat * 0.0055));
+    if (isTroll) { primaryRating = VIT; secondaryRating = STR; }
+    else if (isVampire) { primaryRating = VIT; secondaryRating = NTL; }
+    else if (racialData.archetype === 'True Fighter' || racialData.subArchetype === 'Martial Hybrid') { primaryRating = DEX; secondaryRating = STR; }
+    else if (racialData.archetype === 'True Caster' || racialData.subArchetype === 'Mystic Hybrid') { primaryRating = WIS; secondaryRating = NTL; }
+    else { primaryRating = Math.max(DEX, WIS); secondaryRating = Math.max(STR, NTL); }
+
+    // Diminishing Returns Damage Multiplier based on Secondary Stat
+    // Formula: 1 + ((Secondary_Stat ^ 0.75) * 0.005)
+    const dmgMultiplier = 1 + (Math.pow(secondaryRating, 0.75) * 0.005);
+
+    if (racialData.archetype === 'True Fighter' || isTroll) {
+        finalWC = (totalGearWC + basePower) * dmgMultiplier;
+        finalSC = totalGearSC + (basePower * 0.5); 
+    } else if (racialData.archetype === 'True Caster' || isVampire) {
+        finalSC = (totalGearSC + basePower) * dmgMultiplier;
         finalWC = totalGearWC + (basePower * 0.5);
-        break;
-        
-      case 'Hybrid':
-        finalWC = (totalGearWC + basePower) * (1 + (scalingStatValue * 0.0055));
-        finalSC = (totalGearSC + basePower) * (1 + (scalingStatValue * 0.0055));
-        break;
+    } else {
+        finalWC = (totalGearWC + basePower) * dmgMultiplier;
+        finalSC = (totalGearSC + basePower) * dmgMultiplier;
     }
 
-    // [Safety] Apply Bonuses and Floors
+    // Apply Buff Multipliers
     finalWC = Math.max(1, finalWC * bonusWcScMultiplier);
     finalSC = Math.max(1, finalSC * bonusWcScMultiplier);
 
     // 3. Derived Combat Values
     player.derivedStats.maxHp = 100 + (VIT * 10);
-    player.derivedStats.AC = totalGearAC * (1 + (VIT * 0.0075));
+    player.derivedStats.AC = totalGearAC * (1 + (VIT * 0.0075)) * bonusAcMultiplier;
     player.derivedStats.WC = Math.floor(finalWC);
     player.derivedStats.SC = Math.floor(finalSC);
+    
+    // Export Primary Stat for dynamic combat calculations
+    player.derivedStats.accuracyRating = primaryRating; 
 
-    // Hit & Crit Logic
-    if (primaryStat === 'DEX' || (racialData.archetype === 'True Fighter' && primaryStat === 'VIT')) {
-      player.derivedStats.hitChance = 90 + (DEX * 0.05);
-      player.derivedStats.critChance = 5 + (DEX * 0.01);
-    } else {
-      player.derivedStats.hitChance = 90 + (WIS * 0.05);
-      player.derivedStats.critChance = 5 + (WIS * 0.01);
-    }
-
-    player.derivedStats.hitChance += (player.derivedStats.hitChance * bonusHitChance);
+    // UI Baselines (Dynamic calculation occurs per-swing in resolveCombatTurn)
+    player.derivedStats.hitChance = 75 + (bonusHitChance * 100); 
+    player.derivedStats.critChance = 5;
 
     // --- HP REGEN CALCULATION ---
     const baseRegen = Math.floor(5 + ((player.level || 1) * 1.5));
@@ -171,6 +171,10 @@ const Systems = {
     baseMonster.xp = safeVal(baseMonster.xp) || 10;
     baseMonster.gold = safeVal(baseMonster.gold) || 5;
 
+    // [ARCHITECT FIX] Base Evasion Injection
+    // Serves as the mathematical floor before Tier multipliers are applied
+    baseMonster.evasion = safeVal(baseMonster.evasion) || 50;
+
     // --- 1. SUPER EASY MECHANIC ---
     if (zoneId && zones) {
         const zoneKey = Object.keys(zones).find(k => zones[k].id === zoneId);
@@ -192,12 +196,15 @@ const Systems = {
     const ATK_RATE = gddConstants?.MONSTER_SCALING_ATK_RATE || 1.1;
     const DEF_RATE = gddConstants?.MONSTER_SCALING_DEF_RATE || 1.05;
     const REWARD_RATE = gddConstants?.MONSTER_SCALING_REWARD_RATE || 1.2;
+    // [ARCHITECT FIX] Evasion Scaling Rate (Scales aggressively to match player AP growth)
+    const EVASION_RATE = gddConstants?.MONSTER_SCALING_EVASION_RATE || 1.35; 
 
     baseMonster.hp *= Math.pow(HP_RATE, tierDiff);
     baseMonster.atk *= Math.pow(ATK_RATE, tierDiff);
     baseMonster.def *= Math.pow(DEF_RATE, tierDiff);
     baseMonster.xp *= Math.pow(REWARD_RATE, tierDiff);
     baseMonster.gold *= Math.pow(REWARD_RATE, tierDiff);
+    baseMonster.evasion *= Math.pow(EVASION_RATE, tierDiff);
 
     // --- 2. MONSTER TITLES  ---
     if (baseMonster.title) {
@@ -263,12 +270,37 @@ const Systems = {
     playerDamage = (DAMAGE_CONST * stat) / monsterAC;
     playerDamage = Math.max(1, playerDamage); // Minimum 1 damage
 
+    // --- [ARCHITECT FIX] HIT CONTEST & PRECISION OVERFLOW ---
+    // Uses monster.evasion if manually set in Zone Data, else falls back to monster.def
+    const monsterEvasion = Math.max(1, monster.evasion || monster.def || 10); 
+    const playerAccuracy = safeVal(pStats.accuracyRating);
+    
+    // Calculate Hit Score (75 Base + Ratio + Gear Hit Bonuses)
+    const gearHitBonus = Math.max(0, (pStats.hitChance || 75) - 75);
+    const hitScore = 75 + ((playerAccuracy / monsterEvasion) * 15) + gearHitBonus;
+    
+    let finalHitChance = hitScore;
+    let precisionBonus = 0;
+
+    // Route Overflow into Precision Damage
+    if (hitScore > 100) {
+        finalHitChance = 100;
+        precisionBonus = hitScore - 100; 
+    }
+
+    const isHit = (Math.random() * 100) <= finalHitChance;
+    if (!isHit) playerDamage = 0; // The attack missed
+
     // --- CRIT & DOUBLE HIT LOGIC ---
-    const isCrit = Math.random() * 100 < (pStats.critChance || 5);
-    const critMultiplier = isCrit ? (pStats.critDamage || 2.0) : 1.0; 
+    const isCrit = isHit && (Math.random() * 100 < (pStats.critChance || 5));
+    
+    // Precision Overflow adds directly to the Crit Multiplier (e.g., 50 overflow = +50% Crit Dmg)
+    const baseCritMult = pStats.critDamage || 2.0;
+    const critMultiplier = isCrit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0; 
+    
     playerDamage *= critMultiplier;
 
-    const isDoubleHit = Math.random() * 100 < (pStats.doubleHitChance || 0);
+    const isDoubleHit = isHit && (Math.random() * 100 < (pStats.doubleHitChance || 0));
     if (isDoubleHit) playerDamage *= 2; 
 
     // Apply to monster
@@ -276,13 +308,16 @@ const Systems = {
 
     if (monster.currentHP <= 0) return { status: 'VICTORY', player, monster, damageDealt: playerDamage };
 
-    // Monster Counter-Attack
-    // [FIXED] Prevent NaN from AC calc
-    const AC_FACTOR = gddConstants?.MONSTER_DAMAGE_AC_REDUCTION_FACTOR || 0.5;
-    let monsterDamage = Math.max(0, monster.atk - (safeVal(pStats.AC) * AC_FACTOR));
+    // --- [ARCHITECT FIX] MONSTER COUNTER-ATTACK (DIVISION CURVE) ---
+    // Mirrors player damage math to prevent 0-damage invincibility loops
+    const AC_FACTOR = gddConstants?.MONSTER_DAMAGE_AC_REDUCTION_FACTOR || 1.0;
+    const effectivePlayerAC = Math.max(1, safeVal(pStats.AC) * AC_FACTOR);
     
-    // Ensure monster damage is a number
-    if (isNaN(monsterDamage)) monsterDamage = 0;
+    // Formula: (Constant * Monster_ATK) / Player_AC
+    let monsterDamage = (DAMAGE_CONST * monster.atk) / effectivePlayerAC;
+    
+    // Ensure monster damage is a number and minimum 1
+    monsterDamage = Math.max(1, isNaN(monsterDamage) ? 1 : monsterDamage);
 
     player.hp = Math.max(0, player.hp - monsterDamage);
     
