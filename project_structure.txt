@@ -11000,10 +11000,14 @@ C:.
 |   |       
 |   \---Visual-Effects
 |       +---Animations
-|       |       Teleport_Animation.mp4
-|       |       Teleport_Animation1.mp4
-|       |       Teleport_Animation_Ready.mp4
-|       |       
+|       |   |   Teleport_Animation.mp4
+|       |   |   Teleport_Animation1.mp4
+|       |   |   Teleport_Animation_Ready.mp4
+|       |   |   
+|       |   \---Races
+|       |       \---Vampire
+|       |               Female_Vampire_Idle_Walk.mp4
+|       |               
 |       +---Estate
 |       |   +---Background
 |       |   |       estate_1.png
@@ -11013,9 +11017,199 @@ C:.
 |       |   |       estate_5.png
 |       |   |       
 |       |   \---Nodes
-|       \---Images
-|               Portal.png
-|               
+|       +---Images
+|       |       Portal.png
+|       |       
+|       \---Visuals-20260327T155907Z-3-001
+|           \---Visuals
+|               \---Races
+|                   +---Avatars
+|                   |   |   Aasimar_Female.heic
+|                   |   |   Aasimar_Male .heic
+|                   |   |   Angel_Female.heic
+|                   |   |   Angel_Male.heic
+|                   |   |   Baba _Yaga_Female.heic
+|                   |   |   Baba _Yaga_Male .heic
+|                   |   |   Banshee_Female.heic
+|                   |   |   Banshee_Male.heic
+|                   |   |   Centaur_Female.heic
+|                   |   |   Centaur_Male.heic
+|                   |   |   Dragonborn_Female.heic
+|                   |   |   Dragonborn_Male .heic
+|                   |   |   Draugr_Female.heic
+|                   |   |   Draugr_Male .heic
+|                   |   |   Dwarf_Female.heic
+|                   |   |   Dwarf_Male .heic
+|                   |   |   Elf_Female.heic
+|                   |   |   Elf_Male .heic
+|                   |   |   Gnome_Female.heic
+|                   |   |   Gnome_Male .heic
+|                   |   |   Griffin_Male .heic
+|                   |   |   Halfling_Female.heic
+|                   |   |   Halfling_Male .heic
+|                   |   |   Hobbit_Female.heic
+|                   |   |   Hobbit_Male.heic
+|                   |   |   Human _Male.heic
+|                   |   |   Human_Female.heic
+|                   |   |   Minotaur_Female.heic
+|                   |   |   Minotaur_Male.heic
+|                   |   |   Orc_Female.heic
+|                   |   |   Orc_Male.heic
+|                   |   |   Tiefling_Female.heic
+|                   |   |   Tiefling_Male.heic
+|                   |   |   Troll_Female.heic
+|                   |   |   Troll_Male.heic
+|                   |   |   Unicorn_Female.heic
+|                   |   |   Unicorn_Male .heic
+|                   |   |   Vampire_Female.heic
+|                   |   |   Vampire_Male .heic
+|                   |   |   Werewolf_Female.heic
+|                   |   |   
+|                   |   \---Vampire
+|                   |       \---Vampire-Female
+|                   |               Vampire-Female-Front-Walking.mp4
+|                   |               
+|                   \---Characters
+|                       +---Casters
+|                       |   +---Air
+|                       |   |   \---Griffin
+|                       |   |           Griffin (Sky Patrol)_ Appearance and Abilities.docx
+|                       |   |           Griffin Aerie Spire.docx
+|                       |   |           
+|                       |   +---Arcane
+|                       |   |   \---Unicorn
+|                       |   |           Unicorn (Forest)_ Appearance and Abilities.docx
+|                       |   |           Unicorn The Lumina Grove.docx
+|                       |   |           
+|                       |   +---Cold
+|                       |   |   \---Sirens
+|                       |   |           Siren Aqualuma.docx
+|                       |   |           Sirens_ Appearance and Abilities.docx
+|                       |   |           
+|                       |   +---Death
+|                       |   |   +---Baba Yaga
+|                       |   |   |   |   Baba Yaga (Cunning Hag)_ Appearance and Abilities.docx
+|                       |   |   |   |   Baba Yaga Ancient Forest.docx
+|                       |   |   |   |   BABA YAGA ZONE.png
+|                       |   |   |   |   Baba_Yaga_Animation_Cycle_Details.mp4
+|                       |   |   |   |   Untitled document.docx
+|                       |   |   |   |   
+|                       |   |   |   \---Zone
+|                       |   |   +---Banshee
+|                       |   |   |       Banshee (Spirit of Doom)_ Appearance and Abilities.docx
+|                       |   |   |       Banshee The Lamenting Veil.docx
+|                       |   |   |       
+|                       |   |   \---Draugr
+|                       |   |           Draugr (Ancient Warrior)_ Appearance and Abilities.docx
+|                       |   |           Draugr Burial Mounds (Haugr).docx
+|                       |   |           
+|                       |   +---Drain
+|                       |   |   \---Vampire
+|                       |   |           Vampire (Night Lord)_ Appearance and Abilities.docx
+|                       |   |           Vampire Crimsonhold.docx
+|                       |   |           
+|                       |   +---Earth
+|                       |   |   \---Gnome
+|                       |   |           Gnome (Tinker_Artisan)_ Appearance and Abilities.docx
+|                       |   |           Gnome The Whirrlands.docx
+|                       |   |           
+|                       |   \---Fire
+|                       |       +---Dragonborn
+|                       |       |       Dragonborn Champion_ Appearance and Abilities.docx
+|                       |       |       Dragonborn Cinderpeak Dominion.docx
+|                       |       |       
+|                       |       +---Pheonix
+|                       |       |       Pheonix The Emberglow Sanctum.docx
+|                       |       |       Phoenix (Sacred Fire)_ Appearance and Abilities.docx
+|                       |       |       
+|                       |       \---Tiefling
+|                       |               Tiefling Shadow_ Appearance and Abilities.docx
+|                       |               Tiefling Umbral Spire.docx
+|                       |               
+|                       +---Elite
+|                       |   +---Angel
+|                       |   |   |   Angel 1, 2, 3.docx
+|                       |   |   |   Untitled document.docx
+|                       |   |   |   
+|                       |   |   +---Angel Arcane
+|                       |   |   |       Angel Arcane.docx
+|                       |   |   |       Angel The Verdant Sanctum.docx
+|                       |   |   |       
+|                       |   |   \---Angel Shield
+|                       |   |           Angel Shield.docx
+|                       |   |           Angel The Bastion of Lumina.docx
+|                       |   |           
+|                       |   +---Demon
+|                       |   |   |   DemonOption 1, 2, 3.docx
+|                       |   |   |   
+|                       |   |   +---Demon Fire
+|                       |   |   |       Demon Fire.docx
+|                       |   |   |       Demon The Obsidian Furnace.docx
+|                       |   |   |       
+|                       |   |   \---Demon GreatAxe
+|                       |   |           Demon Great Axe.docx
+|                       |   |           Untitled document.docx
+|                       |   |           
+|                       |   \---Paladin
+|                       |       |   Paladin 1,2,3.docx
+|                       |       |   
+|                       |       +---Paladin Arcance
+|                       |       |       Arcane Paladin The Radiant Vigil.docx
+|                       |       |       Paladin The Holy Oathkeeper.docx
+|                       |       |       
+|                       |       \---Paladin Shield
+|                       |               Paladin The Impenetrable Protector.docx
+|                       |               Shield Paladin The Verdant Balm.docx
+|                       |               
+|                       +---Fighters
+|                       |   +---Axe
+|                       |   |   +---Dwarf
+|                       |   |   |       Dwarf Ironfang Mountains.docx
+|                       |   |   |       Dwarf Miner Animation Cycle_.docx
+|                       |   |   |       
+|                       |   |   \---Minotaur
+|                       |   |           Minotaur (Guardian)_ Appearance and Abilities.docx
+|                       |   |           Minotaur The Obsidian Labyrinth.docx
+|                       |   |           
+|                       |   +---Bow
+|                       |   |   +---Centaur
+|                       |   |   |       Centaur (Hunter_Scout)_ Appearance and Abilities.docx
+|                       |   |   |       Centaur Verdant Wilds of Eldoria.docx
+|                       |   |   |       
+|                       |   |   \---Elven
+|                       |   |           Elven Ranger_ Appearance and Abilities.docx
+|                       |   |           Elven The Verdant Heartwood.docx
+|                       |   |           
+|                       |   +---Claw
+|                       |   |   \---Werewolf
+|                       |   |           Werewolf (Predator)_ Appearance and Abilities.docx
+|                       |   |           Werewolf The Shattered Peaks.docx
+|                       |   |           
+|                       |   +---Dagger
+|                       |   |   \---Halfling
+|                       |   |           Halfling Burglar_ Appearance and Abilities.docx
+|                       |   |           Halfling The Green Gables.docx
+|                       |   |           
+|                       |   +---Mace
+|                       |   |   \---Orc
+|                       |   |           Orc Raider_ Appearance and Abilities.docx
+|                       |   |           Orc The Blighted Crags.docx
+|                       |   |           Orc_Raider_Animation_Cycle_Details.mp4
+|                       |   |           
+|                       |   +---Shield
+|                       |   +---Staff
+|                       |   |   \---Troll
+|                       |   |           Troll (Siege Beast)_ Appearance and Abilities.docx
+|                       |   |           Troll Ancient, Untamed Mountain Ranges.docx
+|                       |   |           
+|                       |   \---Sword
+|                       |       \---Human
+|                       |               Human -Veridia-Stonemark-Ironwood Reach.docx
+|                       |               Human Soldier_ Appearance and Abilities.docx
+|                       |               
+|                       \---Master lists
+|                               Races.docx
+|                               
 +---src
 |   |   App.css
 |   |   App.jsx
@@ -11069,6 +11263,7 @@ C:.
 |   |       alignmentData.js
 |   |       arcanumData.js
 |   |       armoryData.js
+|   |       bestiaryData-old.js
 |   |       bestiaryData.js
 |   |       clanData.js
 |   |       dropTables.js
@@ -11083,6 +11278,7 @@ C:.
 |   |       resourceData.js
 |   |       soulforgeData.js
 |   |       vaultData.js
+|   |       zonesData-old.js
 |   |       zonesData.js
 |   |       
 |   +---managers

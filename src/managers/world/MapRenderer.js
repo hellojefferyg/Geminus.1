@@ -3,6 +3,16 @@
  * @description Full-featured map renderer.
  * INTEGRITY CHECK: Restored Particle System, Multiplayer Entities, and Cursor Logic.
  */
+
+// --- VIDEO ASSET REGISTRY ---
+// This maps the GDD Race Name to the corresponding Video Asset Path.
+const RACE_VIDEO_ASSETS = {
+    'vampire': '/Visual-Effects/Animations/Races/Vampire/Female_Vampire_Idle_Walk.mp4',
+    'human': '/Visual-Effects/Animations/Human_Idle_Walk.mp4', // Placeholder
+    'orc': '/Visual-Effects/Animations/Orc_Idle_Walk.mp4',     // Placeholder
+    // Add all 24 races here as you generate them...
+};
+
 export class MapRenderer {
   constructor(canvas, isMiniMap = false) {
     this.canvas = canvas;
@@ -331,32 +341,53 @@ export class MapRenderer {
         }
     });
 
-    // 5. DRAW PLAYER
+    // 5. DRAW PLAYER (Surgical Update: Video Avatar Integration)
     if (playerPos) {
         const pc = this.getTileCenter(playerPos.x, playerPos.y, mapSize, tileType, view);
-        const pRad = tileType === 'hex' ? TILE_SIZE / 2.5 : TILE_SIZE / 3;
-
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
-        ctx.shadowBlur = 15;
         
-        // Base Circle
-        ctx.beginPath();
-        ctx.arc(pc.x, pc.y, pRad, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(0, 255, 255, 0.9)'; // Cyan Hero
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Hero Icon
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#000';
-        ctx.font = `bold ${TILE_SIZE * 0.4}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('⚡', pc.x, pc.y + 1);
-        ctx.restore();
+        // 1. Identify the Video Element for the Player's Race
+        // We use a single video element in player.html that we swap the 'src' on.
+        const video = document.getElementById('game-player-video');
+        
+        if (video && video.readyState >= 2) { 
+            ctx.save();
+            
+            // Scaled to 2.5x TILE_SIZE to match the visual weight of Crystal Cave assets
+            const vidWidth = TILE_SIZE * 0.75; 
+            const vidHeight = vidWidth * (video.videoHeight / video.videoWidth);
+            
+            // 'multiply' blend mode removes the white background box
+            ctx.globalCompositeOperation = 'multiply';
+            
+            ctx.drawImage(
+                video, 
+                pc.x - vidWidth / 2, 
+                pc.y - vidHeight + (TILE_SIZE / 2), 
+                vidWidth, 
+                vidHeight
+            );
+            ctx.restore();
+        } else {
+            // FALLBACK: Original Cyan Hero Icon (Restoring Intricacy if Video buffers)
+            const pRad = tileType === 'hex' ? TILE_SIZE / 2.5 : TILE_SIZE / 3;
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(pc.x, pc.y, pRad, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.9)'; 
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000';
+            ctx.font = `bold ${TILE_SIZE * 0.4}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚡', pc.x, pc.y + 1);
+            ctx.restore();
+        }
     }
 
     // 6. DRAW OTHER PLAYERS (Multiplayer Ghosts)

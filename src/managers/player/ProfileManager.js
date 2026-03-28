@@ -20,7 +20,35 @@ export class ProfileManager {
     // [CRITICAL FIX] Run integrity check immediately on load to fix Save Data
     this.fixDataIntegrity();
   }
+  /**
+   * [NEW] Dynamic Visual Sync: Updates the global hero video source based on player race.
+   * Follows the GDD Race naming convention for file paths.
+   */
+  syncHeroVideo() {
+    const p = this.state.player;
+    if (!p || !p.race) return;
 
+    const video = document.getElementById('game-player-video');
+    if (!video) return;
+
+    // Path Pattern: /Visual-Effects/Animations/Races/[Race]/Female_[Race]_Idle_Walk.mp4
+    const raceFolder = p.race.charAt(0).toUpperCase() + p.race.slice(1).toLowerCase();
+    const raceFile = `Female_${raceFolder}_Idle_Walk.mp4`;
+    const fullPath = `/Visual-Effects/Animations/Races/${raceFolder}/${raceFile}`;
+
+    // Only update the source if it actually changes to prevent reset flickers
+    if (video.getAttribute('src') !== fullPath) {
+        console.log(`🎬 Visual Engine: Materializing ${raceFolder} Avatar...`);
+        video.src = fullPath;
+        video.load();
+        
+        // Ensure the video starts playing immediately so the Canvas can 
+        // capture movement, not just a static frame.
+        video.play().catch(err => {
+            console.warn("🎬 Visual Engine: Autoplay blocked. Interaction required.", err);
+        });
+    }
+  }
   /**
    * [NEW] Self-Healing Routine
    * 1. Grants "Birthright" stats to fresh characters (Fixes NaN bug).
@@ -194,11 +222,39 @@ export class ProfileManager {
 
     return true;
   }
+  /**
+   * [NEW] Combat Animation Trigger: Seeks to the specific action timestamp.
+   * Based on the 8-second Action Video: 
+   * 0.0s: Attack (Bite) | 3.1s: Cast (Vortex) | 6.1s: Emote (Laugh)
+   */
+  triggerCombatAnimation(actionType) {
+    const video = document.getElementById('game-player-video');
+    if (!video) return;
+
+    // Switch path to the Action video
+    const raceFolder = this.state.player.race.charAt(0).toUpperCase() + this.state.player.race.slice(1).toLowerCase();
+    video.src = `/Visual-Effects/Animations/Races/${raceFolder}/Female_${raceFolder}_Actions.mp4`;
+    video.load();
+
+    // Seek to the timestamp
+    video.onloadeddata = () => {
+        if (actionType === 'attack') video.currentTime = 0.0;
+        if (actionType === 'cast') video.currentTime = 3.1;
+        if (actionType === 'emote') video.currentTime = 6.1;
+        video.play();
+    };
+
+    // Return to Idle/Walk after 3 seconds
+    setTimeout(() => this.syncHeroVideo(), 3000);
+  }
 
   /**
    * Refreshes all UI components that depend on player profile data
    */
   updateAllProfileUI() {
+    // --- SURGICAL UPDATE: Dynamic Visual Avatar Sync ---
+    this.syncHeroVideo();
+
     if (this.UIManager) {
       this.UIManager.updatePlayerStatusUI();
     }
@@ -211,4 +267,5 @@ export class ProfileManager {
       this.StatsManager.render();
     }
   }
+
 }

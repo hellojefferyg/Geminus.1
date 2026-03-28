@@ -80,7 +80,7 @@ export class DataManager {
   }
 
   getBestiary() {
-    return bestiary || {};
+    return bestiaryData || {};
   }
 
   showConfigNeededModal() {
