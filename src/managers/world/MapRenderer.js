@@ -115,28 +115,43 @@ export class MapRenderer {
     });
   }
 
+  /**
+   * Preloads assets with a staggered delay to prevent 429 "Too Many Requests" errors.
+   */
   async preloadAssets(assetLibrary) {
     if (!assetLibrary) return;
-    const promises = [];
-    for (const id in assetLibrary) {
-      const asset = assetLibrary[id];
+    const entries = Object.entries(assetLibrary);
+
+    for (const [id, asset] of entries) {
       if (asset.imageUrl && !this.assetImageCache[asset.imageUrl]) {
-        promises.push(new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'Anonymous';
-          img.onload = () => { this.assetImageCache[asset.imageUrl] = img; resolve(); };
-          img.onerror = () => { console.warn('Asset Load Fail:', id); resolve(); };
+        // SURGICAL FIX: 50ms stagger prevents the server from blocking your IP
+        await new Promise(r => setTimeout(r, 50)); 
+        
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        
+        // Wrap the image loading in a promise to ensure it finishes
+        await new Promise((resolve) => {
+          img.onload = () => { 
+            this.assetImageCache[asset.imageUrl] = img; 
+            resolve(); 
+          };
+          img.onerror = () => { 
+            console.warn('Asset Load Fail:', id); 
+            resolve(); 
+          };
           
-          // GitHub Raw Fix
+          // Maintain your existing GitHub Raw Fix logic
           let src = asset.imageUrl;
           if (src.includes('github.com') && !src.includes('raw.githubusercontent.com')) {
-            src = src.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').replace('/refs/heads/', '/');
+            src = src.replace('github.com', 'raw.githubusercontent.com')
+                     .replace('/blob/', '/')
+                     .replace('/refs/heads/', '/');
           }
           img.src = src;
-        }));
+        });
       }
     }
-    await Promise.all(promises);
   }
 
   /**
@@ -341,36 +356,43 @@ export class MapRenderer {
         }
     });
 
-    // 5. DRAW PLAYER (Surgical Update: Video Avatar Integration)
+    // 5. DRAW PLAYER (Hybrid Engine: Video > Static WebP > Fallback)
     if (playerPos) {
         const pc = this.getTileCenter(playerPos.x, playerPos.y, mapSize, tileType, view);
-        
-        // 1. Identify the Video Element for the Player's Race
-        // We use a single video element in player.html that we swap the 'src' on.
         const video = document.getElementById('game-player-video');
+        const img = document.getElementById('game-player-avatar');
         
-        if (video && video.readyState >= 2) { 
-            ctx.save();
-            
-            // Scaled to 2.5x TILE_SIZE to match the visual weight of Crystal Cave assets
-            const vidWidth = TILE_SIZE * 0.75; 
-            const vidHeight = vidWidth * (video.videoHeight / video.videoWidth);
-            
-            // 'multiply' blend mode removes the white background box
-            ctx.globalCompositeOperation = 'multiply';
-            
+        ctx.save();
+        // Standardized scale for 24-race parity
+        const drawWidth = TILE_SIZE * 1.1; 
+
+        // PRIORITY 1: Animated Video (e.g., Vampire)
+        if (video && video.readyState >= 2 && !video.paused) {
+            const vHeight = drawWidth * (video.videoHeight / video.videoWidth);
+            ctx.globalCompositeOperation = 'multiply'; // Removes white background
             ctx.drawImage(
                 video, 
-                pc.x - vidWidth / 2, 
-                pc.y - vidHeight + (TILE_SIZE / 2), 
-                vidWidth, 
-                vidHeight
+                pc.x - drawWidth / 2, 
+                pc.y - vHeight + (TILE_SIZE / 2), 
+                drawWidth, 
+                vHeight
             );
-            ctx.restore();
-        } else {
-            // FALLBACK: Original Cyan Hero Icon (Restoring Intricacy if Video buffers)
+        } 
+        // PRIORITY 2: Static WebP Avatar (e.g., Aasimar, Angel, etc.)
+        else if (img && img.complete && img.naturalWidth !== 0) {
+            const aspect = img.naturalHeight / img.naturalWidth;
+            const iHeight = drawWidth * aspect;
+            ctx.drawImage(
+                img, 
+                pc.x - drawWidth / 2, 
+                pc.y - iHeight + (TILE_SIZE / 2), 
+                drawWidth, 
+                iHeight
+            );
+        } 
+        // PRIORITY 3: Manual Fallback Icon (Cyan Bolt)
+        else {
             const pRad = tileType === 'hex' ? TILE_SIZE / 2.5 : TILE_SIZE / 3;
-            ctx.save();
             ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
             ctx.shadowBlur = 15;
             ctx.beginPath();
@@ -386,8 +408,8 @@ export class MapRenderer {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('⚡', pc.x, pc.y + 1);
-            ctx.restore();
         }
+        ctx.restore();
     }
 
     // 6. DRAW OTHER PLAYERS (Multiplayer Ghosts)

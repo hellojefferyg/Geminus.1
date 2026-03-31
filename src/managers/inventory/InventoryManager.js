@@ -79,7 +79,23 @@ export class InventoryManager {
         document.body.appendChild(el);
         this.tooltipEl = el;
     }
-
+    /**
+   * [NEW] Deep searches the imported items configuration for base item data.
+   * Bypasses DataManager failures for nested categories (like weapons.Sword).
+   */
+  findItemBaseData(baseItemId) {
+      if (!baseItemId || !items) return null;
+      for (const category of Object.values(items)) {
+          if (!category || typeof category !== 'object') continue;
+          if (category[baseItemId]) return category[baseItemId]; // Flat check
+          for (const subCategory of Object.values(category)) { // Nested check
+              if (subCategory && typeof subCategory === 'object' && subCategory[baseItemId]) {
+                  return subCategory[baseItemId];
+              }
+          }
+      }
+      return null;
+  }
     /**
      * [ARCHITECT FIX] Renders Inventory with Search (w/ Clear Button), Sub-Filters & Smart Sorting.
      */
@@ -212,7 +228,23 @@ export class InventoryManager {
 
         this.renderGrid();
     }
-
+    /**
+     * [NEW] Deep Search Helper
+     * Scans through nested item categories (like weapons.Sword) to find base data.
+     */
+    findItemBaseData(baseItemId) {
+        if (!baseItemId || !items) return {};
+        for (const category of Object.values(items)) {
+            if (!category || typeof category !== 'object') continue;
+            if (category[baseItemId]) return category[baseItemId]; // Flat check
+            for (const subCategory of Object.values(category)) { // Nested check
+                if (subCategory && typeof subCategory === 'object' && subCategory[baseItemId]) {
+                    return subCategory[baseItemId];
+                }
+            }
+        }
+        return {};
+    }
     /**
      * [ARCHITECT FIX] Render Grid with Forced Categorization
      * Fixes: Store items (Droppers) appearing in the wrong tabs.
@@ -258,7 +290,9 @@ export class InventoryManager {
         
         // --- 1. FILTER LOGIC ---
         const filteredItems = rawInventory.filter(item => {
-            const base = items[item.id] || items[item.baseItemId] || {};
+            // SURGICAL FIX: Use deep search to find base item data
+            const targetId = item.id || item.baseItemId;
+            const base = this.findItemBaseData(targetId);
             const full = { ...base, ...item };
             
             // Normalize Data
@@ -331,7 +365,9 @@ export class InventoryManager {
         const playerFocus = raceData.weaponFocus || ""; 
 
         const itemsHTML = filteredItems.map(item => {
-            const baseItem = items[item.id] || items[item.baseItemId] || {};
+            // SURGICAL FIX: Use deep search before rendering the card
+            const targetId = item.id || item.baseItemId;
+            const baseItem = this.findItemBaseData(targetId);
             const fullItem = { ...baseItem, ...item };
             return this.generateItemCardHTML(fullItem, playerRace, playerFocus);
         }).join('');

@@ -3,6 +3,7 @@ Volume serial number is A26F-CE19
 C:.
 |   .gitignore
 |   eslint.config.js
+|   GDD March.27.26.docx
 |   GEMINUS FILE TREE.txt
 |   generateManifest.js
 |   index.html
@@ -11006,6 +11007,7 @@ C:.
 |       |   |   
 |       |   \---Races
 |       |       \---Vampire
+|       |               Female_Vampire_Action.mp4
 |       |               Female_Vampire_Idle_Walk.mp4
 |       |               
 |       +---Estate
@@ -11018,53 +11020,123 @@ C:.
 |       |   |       
 |       |   \---Nodes
 |       +---Images
-|       |       Portal.png
-|       |       
+|       |   |   Portal.png
+|       |   |   
+|       |   \---Races
+|       |       +---Aasimar
+|       |       |       Aasimar_Female.heic
+|       |       |       Aasimar_Female.webp
+|       |       |       Aasimar_Male.heic
+|       |       |       Aasimar_Male.webp
+|       |       |       
+|       |       +---Angel
+|       |       |       Angel_Female.heic
+|       |       |       Angel_Female.webp
+|       |       |       Angel_Male.heic
+|       |       |       Angel_Male.webp
+|       |       |       
+|       |       +---Baba_Yaga
+|       |       |       Baba_Yaga_Female.heic
+|       |       |       Baba_Yaga_Female.webp
+|       |       |       Baba_Yaga_Male.heic
+|       |       |       Baba_Yaga_Male.webp
+|       |       |       
+|       |       +---Banshee
+|       |       |       Banshee_Female.heic
+|       |       |       Banshee_Female.webp
+|       |       |       Banshee_Male.heic
+|       |       |       Banshee_Male.webp
+|       |       |       
+|       |       +---Centaur
+|       |       |       Centaur_Female.heic
+|       |       |       Centaur_Female.webp
+|       |       |       Centaur_Male.heic
+|       |       |       Centaur_Male.webp
+|       |       |       
+|       |       +---Dragonborn
+|       |       |       Dragonborn_Female.heic
+|       |       |       Dragonborn_Female.webp
+|       |       |       Dragonborn_Male.heic
+|       |       |       Dragonborn_Male.webp
+|       |       |       
+|       |       +---Draugr
+|       |       |       Draugr_Female.heic
+|       |       |       Draugr_Female.webp
+|       |       |       Draugr_Male.heic
+|       |       |       Draugr_Male.webp
+|       |       |       
+|       |       +---Dwarf
+|       |       |       Dwarf_Female.heic
+|       |       |       Dwarf_Female.webp
+|       |       |       Dwarf_Male.heic
+|       |       |       Dwarf_Male.webp
+|       |       |       
+|       |       +---Elf
+|       |       |       Elf_Female.heic
+|       |       |       Elf_Female.webp
+|       |       |       Elf_Male.heic
+|       |       |       Elf_Male.webp
+|       |       |       
+|       |       +---Gnome
+|       |       |       Gnome_Female.heic
+|       |       |       Gnome_Male.heic
+|       |       |       Gnome_Male.webp
+|       |       |       
+|       |       +---Griffin
+|       |       |       Griffin_Female.heic
+|       |       |       Griffin_Male.heic
+|       |       |       
+|       |       +---Halfling
+|       |       |       Halfling_Female.heic
+|       |       |       Halfling_Female.webp
+|       |       |       Halfling_Male.heic
+|       |       |       Halfling_Male.webp
+|       |       |       
+|       |       +---Hobbit
+|       |       |       Hobbit_Female.heic
+|       |       |       Hobbit_Male.heic
+|       |       |       
+|       |       +---Human
+|       |       |       Human _Male.heic
+|       |       |       Human _Male.webp
+|       |       |       Human_Female.heic
+|       |       |       Human_Female.webp
+|       |       |       
+|       |       +---Minotaur
+|       |       |       Minotaur_Female.heic
+|       |       |       Minotaur_Male.heic
+|       |       |       
+|       |       +---Orc
+|       |       |       Orc_Female.heic
+|       |       |       Orc_Male.heic
+|       |       |       
+|       |       +---Tiefling
+|       |       |       Tiefling_Female.heic
+|       |       |       Tiefling_Male.heic
+|       |       |       
+|       |       +---Troll
+|       |       |       Troll_Female.heic
+|       |       |       Troll_Male.heic
+|       |       |       
+|       |       +---Unicorn
+|       |       |       Unicorn_Female.heic
+|       |       |       Unicorn_Female.webp
+|       |       |       Unicorn_Male.heic
+|       |       |       
+|       |       +---Vampire
+|       |       |       Vampire_Female.heic
+|       |       |       Vampire_Female.webp
+|       |       |       Vampire_Male.heic
+|       |       |       Vampire_Male.webp
+|       |       |       
+|       |       \---Werewolf
+|       |               Werewolf_Female.heic
+|       |               Werewolf_Male.heic
+|       |               
 |       \---Visuals-20260327T155907Z-3-001
 |           \---Visuals
 |               \---Races
 |                   +---Avatars
-|                   |   |   Aasimar_Female.heic
-|                   |   |   Aasimar_Male .heic
-|                   |   |   Angel_Female.heic
-|                   |   |   Angel_Male.heic
-|                   |   |   Baba _Yaga_Female.heic
-|                   |   |   Baba _Yaga_Male .heic
-|                   |   |   Banshee_Female.heic
-|                   |   |   Banshee_Male.heic
-|                   |   |   Centaur_Female.heic
-|                   |   |   Centaur_Male.heic
-|                   |   |   Dragonborn_Female.heic
-|                   |   |   Dragonborn_Male .heic
-|                   |   |   Draugr_Female.heic
-|                   |   |   Draugr_Male .heic
-|                   |   |   Dwarf_Female.heic
-|                   |   |   Dwarf_Male .heic
-|                   |   |   Elf_Female.heic
-|                   |   |   Elf_Male .heic
-|                   |   |   Gnome_Female.heic
-|                   |   |   Gnome_Male .heic
-|                   |   |   Griffin_Male .heic
-|                   |   |   Halfling_Female.heic
-|                   |   |   Halfling_Male .heic
-|                   |   |   Hobbit_Female.heic
-|                   |   |   Hobbit_Male.heic
-|                   |   |   Human _Male.heic
-|                   |   |   Human_Female.heic
-|                   |   |   Minotaur_Female.heic
-|                   |   |   Minotaur_Male.heic
-|                   |   |   Orc_Female.heic
-|                   |   |   Orc_Male.heic
-|                   |   |   Tiefling_Female.heic
-|                   |   |   Tiefling_Male.heic
-|                   |   |   Troll_Female.heic
-|                   |   |   Troll_Male.heic
-|                   |   |   Unicorn_Female.heic
-|                   |   |   Unicorn_Male .heic
-|                   |   |   Vampire_Female.heic
-|                   |   |   Vampire_Male .heic
-|                   |   |   Werewolf_Female.heic
-|                   |   |   
 |                   |   \---Vampire
 |                   |       \---Vampire-Female
 |                   |               Vampire-Female-Front-Walking.mp4

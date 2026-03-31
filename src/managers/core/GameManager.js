@@ -90,29 +90,35 @@ export class GameManager {
     console.log("🚀 Geminus Engine: Systems fully resonated. Player:", this.state.player?.name);
   }
 
-  /**
+/**
    * Loads the initial zone - same mechanism as MapEditor
-   * Fetches manifest, then loads the first zone (or player's current zone)
+   * Fetches manifest, then loads the requested zone, saved zone, or fallback.
    */
-  async loadInitialZone() {
+  async loadInitialZone(requestedZoneId) {
     try {
-      // Try to load from manifest first (like MapEditor does)
       console.log("📂 GameManager: Fetching manifest from ./data/zones/manifest.json");
       const manifestRes = await fetch('./data/zones/manifest.json');
       
-      let targetZid = this.state.player?.currentZoneId || 'Z01';
+      // SURGICAL FIX: Priority 1: Requested Zone. Priority 2: Game State. Priority 3: Player State.
+      let targetZid = requestedZoneId || this.state.game?.currentZoneId || this.state.player?.currentZoneId;
       
       if (manifestRes.ok) {
         const zoneIds = await manifestRes.json();
         console.log("📝 GameManager: Found zones in manifest:", zoneIds.length);
         
-        // Use first zone from manifest if player doesn't have a current zone
-        if (!this.state.player?.currentZoneId && zoneIds.length > 0) {
-          // Skip ZMW00 (world map) and Z00, use first actual zone
+        // Only use the manifest fallback if we TRULY have no zone target
+        if (!targetZid && zoneIds.length > 0) {
           const firstZone = zoneIds.find(zid => zid !== 'ZMW00' && zid !== 'Z00') || zoneIds[0];
           targetZid = firstZone;
         }
       }
+      
+      // Absolute fallback just in case
+      if (!targetZid) targetZid = 'Z01';
+
+      // Ensure global state matches our final decision
+      if (!this.state.game) this.state.game = {};
+      this.state.game.currentZoneId = targetZid;
       
       console.log(`🗺️ GameManager: Materializing world from /data/zones/${targetZid}.json`);
       
@@ -128,15 +134,14 @@ export class GameManager {
       await this.MapDataStore.load(zoneData);
       
       // Populate global state so UIManager can see the zone name
-      // Support zid (MapEditor format), zoneId (GDD format), and id (legacy format)
       this.state.zone = {
           id: zoneData.zid || zoneData.zoneId || zoneData.id || targetZid,
           name: zoneData.zoneName || zoneData.name || "Unknown Zone"
       };
 
-          if (this.ZoneManager) {
-              await this.ZoneManager.loadZone(this.MapDataStore.data);
-          }
+      if (this.ZoneManager) {
+          await this.ZoneManager.loadZone(this.MapDataStore.data);
+      }
 
       // Successfully materialized. Transition to Equipment view.
       this.switchTab('equipment');

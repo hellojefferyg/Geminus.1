@@ -10,8 +10,14 @@ import {
 
 // --- App State & Config ---
 let state = {
-player: null,
-ui: {
+  // Initialized as null; populated with race and gender during Creation
+  player: null, 
+  
+  // NEW: Global defaults for asset pathing logic
+  settings: {
+      defaultGender: 'female' 
+  },
+  ui: {
 isFocused: false,
 isLayoutEditMode: false,
 selectedInventoryId: null,
@@ -22,7 +28,7 @@ selectedGemForSocketing: null,
 itemFilter: { category: 'All', subType: 'All', tier: 'All' },
 gemFilter: { type: 'All', grade: 'All' }
 },
-game: { combatActive: false, currentZoneId: 'Z01', globalJackpot: 0},
+game: { combatActive: false, currentZoneId: null, globalJackpot: 0},
 zone: {
 name: "No Zone Loaded",
 },

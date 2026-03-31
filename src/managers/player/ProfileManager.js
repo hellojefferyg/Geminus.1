@@ -247,13 +247,56 @@ export class ProfileManager {
     // Return to Idle/Walk after 3 seconds
     setTimeout(() => this.syncHeroVideo(), 3000);
   }
-
   /**
-   * Refreshes all UI components that depend on player profile data
+   * [FIXED] Standardized Avatar Sync: 
+   * Handles multi-word capitalization and prevents path mismatches.
+   */
+  syncHeroAvatar() {
+    const p = this.state.player;
+    if (!p || !p.race) return;
+
+    const avatarImg = document.getElementById('game-player-avatar');
+    if (!avatarImg) return;
+
+    // 1. Handle Race: 'baba_yaga' -> 'Baba_Yaga'
+    const formattedRace = p.race.split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('_');
+    
+    // 2. Handle Gender: 'male' -> 'Male'
+    const gender = p.gender || 'female';
+    const genderPrefix = gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+    
+    // 3. Final Path Construction
+    const fullPath = `/Visual-Effects/Images/Races/${formattedRace}/${formattedRace}_${genderPrefix}.webp`;
+
+    if (avatarImg.getAttribute('src') !== fullPath) {
+        console.log(`🖼️ Avatar Engine: Loading /Races/${formattedRace}/${formattedRace}_${genderPrefix}.webp`);
+        avatarImg.src = fullPath;
+    }
+  }
+  /**
+   * Refreshes all UI components and syncs the 2D Avatar Image
    */
   updateAllProfileUI() {
-    // --- SURGICAL UPDATE: Dynamic Visual Avatar Sync ---
-    this.syncHeroVideo();
+    // 1. We are defaulting to the Static Image system for all 24 races.
+    // This ensures Gender parity (Male/Female) is respected immediately.
+    this.syncHeroAvatar(); 
+
+    // 2. Ensure the video element is hidden and paused to save resources
+    const video = document.getElementById('game-player-video');
+    if (video) {
+        video.style.display = 'none';
+        video.pause();
+    }
+    
+    // 3. Keep the image hidden; MapRenderer draws it to the canvas manually.
+    const img = document.getElementById('game-player-avatar');
+    if (img) img.style.display = 'none';
+
+    if (this.UIManager) {
+      this.UIManager.updatePlayerStatusUI();
+    }
 
     if (this.UIManager) {
       this.UIManager.updatePlayerStatusUI();
