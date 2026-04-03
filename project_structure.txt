@@ -16,6 +16,7 @@ C:.
 |   style.css
 |   tailwind.config.js
 |   vite.config.js
+|   window.DevManager.forgeEntireBestiary()
 |   
 +---.vite
 |   \---deps
@@ -11023,6 +11024,9 @@ C:.
 |       |   |   Portal.png
 |       |   |   
 |       |   \---Races
+|       |       |   drive-download-20260403T145047Z-3-001.zip
+|       |       |   Phoenix_Male.webp
+|       |       |   
 |       |       +---Aasimar
 |       |       |       Aasimar_Female.heic
 |       |       |       Aasimar_Female.webp
@@ -11053,6 +11057,12 @@ C:.
 |       |       |       Centaur_Male.heic
 |       |       |       Centaur_Male.webp
 |       |       |       
+|       |       +---Demon
+|       |       |       Demon_Female.heic
+|       |       |       Demon_Female.webp
+|       |       |       Demon_Male .heic
+|       |       |       Demon_Male.webp
+|       |       |       
 |       |       +---Dragonborn
 |       |       |       Dragonborn_Female.heic
 |       |       |       Dragonborn_Female.webp
@@ -11079,12 +11089,15 @@ C:.
 |       |       |       
 |       |       +---Gnome
 |       |       |       Gnome_Female.heic
+|       |       |       Gnome_Female.webp
 |       |       |       Gnome_Male.heic
 |       |       |       Gnome_Male.webp
 |       |       |       
 |       |       +---Griffin
 |       |       |       Griffin_Female.heic
+|       |       |       Griffin_Female.webp
 |       |       |       Griffin_Male.heic
+|       |       |       Griffin_Male.webp
 |       |       |       
 |       |       +---Halfling
 |       |       |       Halfling_Female.heic
@@ -11094,34 +11107,53 @@ C:.
 |       |       |       
 |       |       +---Hobbit
 |       |       |       Hobbit_Female.heic
+|       |       |       Hobbit_Female.webp
 |       |       |       Hobbit_Male.heic
+|       |       |       Hobbit_Male.webp
 |       |       |       
 |       |       +---Human
-|       |       |       Human _Male.heic
-|       |       |       Human _Male.webp
 |       |       |       Human_Female.heic
 |       |       |       Human_Female.webp
+|       |       |       Human_Male.heic
+|       |       |       Human_Male.webp
+|       |       |       
+|       |       +---Mermaid
+|       |       |       Mermaid_Female.heic
+|       |       |       Mermaid_Female.webp
+|       |       |       Mermaid_Male.heic
+|       |       |       Mermaid_Male.webp
 |       |       |       
 |       |       +---Minotaur
 |       |       |       Minotaur_Female.heic
+|       |       |       Minotaur_Female.webp
 |       |       |       Minotaur_Male.heic
+|       |       |       Minotaur_Male.webp
 |       |       |       
 |       |       +---Orc
 |       |       |       Orc_Female.heic
 |       |       |       Orc_Male.heic
 |       |       |       
+|       |       +---Pheonix
+|       |       |       Phoenix_Female.heic
+|       |       |       Phoenix_Male .heic
+|       |       |       
 |       |       +---Tiefling
 |       |       |       Tiefling_Female.heic
+|       |       |       Tiefling_Female.webp
 |       |       |       Tiefling_Male.heic
+|       |       |       Tiefling_Male.webp
 |       |       |       
 |       |       +---Troll
 |       |       |       Troll_Female.heic
+|       |       |       Troll_Female.webp
 |       |       |       Troll_Male.heic
+|       |       |       Troll_Male.webp
 |       |       |       
 |       |       +---Unicorn
 |       |       |       Unicorn_Female.heic
 |       |       |       Unicorn_Female.webp
 |       |       |       Unicorn_Male.heic
+|       |       |       Unicorn_Male.webp
 |       |       |       
 |       |       +---Vampire
 |       |       |       Vampire_Female.heic
@@ -11131,7 +11163,9 @@ C:.
 |       |       |       
 |       |       \---Werewolf
 |       |               Werewolf_Female.heic
+|       |               Werewolf_Female.webp
 |       |               Werewolf_Male.heic
+|       |               Werewolf_Male.webp
 |       |               
 |       \---Visuals-20260327T155907Z-3-001
 |           \---Visuals

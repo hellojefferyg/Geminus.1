@@ -1,7 +1,7 @@
 // src/managers/player/CreationManager.js
 
 // 1. Corrected path: Step out of 'managers' and 'player' to reach 'config'
-import { races, items, gddConstants } from '../../config/gdd.js';
+import { races, armory, jewelry, arcanum, gddConstants } from '../../config/gdd.js';
 
 /**
  * @file src/managers/core/CreationManager.js
@@ -194,25 +194,30 @@ const isTarget = btn.innerText.trim().toLowerCase() === gender.toLowerCase();
     let spellElement = 'arcane';
     
     if (raceData.masteryAptitudes) {
-        if (raceData.masteryAptitudes.Staff === 1 || isCaster) weaponType = 'staff';
-        else if (raceData.masteryAptitudes.Axe === 1) weaponType = 'axe';
-        else if (raceData.masteryAptitudes.Mace === 1) weaponType = 'mace';
-        else if (raceData.masteryAptitudes.Dagger === 1) weaponType = 'dagger';
-        else if (raceData.masteryAptitudes.Bow === 1) weaponType = 'bow';
+        // [FIX] By removing "=== 1", this now correctly catches Hybrids who have a mastery of 2!
+        if (raceData.masteryAptitudes.Staff || isCaster) weaponType = 'staff';
+        else if (raceData.masteryAptitudes.Axe) weaponType = 'axe';
+        else if (raceData.masteryAptitudes.Mace) weaponType = 'mace';
+        else if (raceData.masteryAptitudes.Dagger) weaponType = 'dagger';
+        else if (raceData.masteryAptitudes.Bow) weaponType = 'bow';
+        else if (raceData.masteryAptitudes.Claw) weaponType = 'claw'; // Added Werewolf
+        else if (raceData.masteryAptitudes.Sword) weaponType = 'sword'; // Explicit Sword check
         
-        if (raceData.masteryAptitudes.Fire === 1) spellElement = 'fire';
-        else if (raceData.masteryAptitudes.Cold === 1) spellElement = 'cold';
-        else if (raceData.masteryAptitudes.Earth === 1) spellElement = 'earth';
-        else if (raceData.masteryAptitudes.Air === 1) spellElement = 'air';
-        else if (raceData.masteryAptitudes.Death === 1) spellElement = 'death';
+        if (raceData.masteryAptitudes.Fire) spellElement = 'fire';
+        else if (raceData.masteryAptitudes.Cold) spellElement = 'cold';
+        else if (raceData.masteryAptitudes.Earth) spellElement = 'earth';
+        else if (raceData.masteryAptitudes.Air) spellElement = 'air';
+        else if (raceData.masteryAptitudes.Death) spellElement = 'death';
+        else if (raceData.masteryAptitudes.Drain) spellElement = 'drain'; 
+        else if (raceData.masteryAptitudes.Arcane) spellElement = 'arcane';
     }
 
-    // [SECRET FIX 1] Build a flat array and INJECT the category type, exactly like DevManager!
+    // [SECRET FIX 1] Build a flat array using the EXACT SAME imports as DevManager!
     let allItems = [];
     try {
-        if (items?.weapons) Object.entries(items.weapons).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
-        if (items?.armor) Object.entries(items.armor).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
-        if (items?.spells) Object.entries(items.spells).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+        if (armory?.weapons) Object.entries(armory.weapons).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+        if (armory?.armor) Object.entries(armory.armor).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
+        if (arcanum?.spells) Object.entries(arcanum.spells).forEach(([k, cat]) => Object.values(cat).forEach(i => allItems.push({...i, type: k})));
     } catch (e) {
         console.warn("CreationManager: Could not flatten items database.", e);
     }
