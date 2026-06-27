@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { enrichObjectWithInteraction } from "../../utils/InteractionFactory";
 import { create } from 'zustand';
 import { useStudioStore } from '../../stores/StudioStore';
-import CombatScreen from './CombatScreen';
 import {
   User, Square, Hexagon, Eye, RefreshCcw, Download, Upload,
   ChevronDown, ChevronRight, LayoutGrid, Route, Torus,
