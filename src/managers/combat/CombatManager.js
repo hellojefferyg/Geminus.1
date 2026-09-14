@@ -429,19 +429,42 @@ export class CombatManager {
 
     const result = this.Systems.resolveCombatTurn(this.state.player, this.currentMonster, actionType);
 
-    if (result.damageDealt) {
-      const isCrit = result.isCrit;
-      const type = isCrit ? 'crit' : 'damage';
+    if (result.strike1 || result.strike2) {
+      const pStats = this.state.player.derivedStats;
       
-      if (this.UIManager) {
-          const monsterEl = document.querySelector('#combat-info-panel');
-          this.UIManager.showFloatingText(Math.floor(result.damageDealt), type, monsterEl);
+      // Determine if slots are active based on the split stats
+      let hasMain = false, hasOff = false;
+      if (actionType === 'cast') { 
+          hasMain = pStats.SC_1 > 0; 
+          hasOff = pStats.SC_2 > 0; 
+      } else if (actionType === 'spellstrike') { 
+          hasMain = (pStats.WC_1 > 0 || pStats.SC_1 > 0); 
+          hasOff = (pStats.WC_2 > 0 || pStats.SC_2 > 0); 
+      } else { 
+          hasMain = pStats.WC_1 > 0; 
+          hasOff = pStats.WC_2 > 0; 
       }
 
-      let msg = `You hit ${this.currentMonster.name} for <span class="log-player">${Math.floor(result.damageDealt)}</span>.`;
-      if (isCrit) msg += ` <span class="text-yellow-400 font-bold">CRIT!</span>`;
-      if (result.isDoubleHit) msg += ` <span class="text-cyan-400 font-bold">DOUBLE!</span>`;
-      this.logToGame(msg);
+      const logStrike = (strike, handName, isActive) => {
+          if (!isActive) return;
+          if (strike.hit) {
+              let msg = `${handName} hits for <span class="log-player">${Math.floor(strike.dmg)}</span>.`;
+              if (strike.crit) msg += ` <span class="text-yellow-400 font-bold">CRIT!</span>`;
+              if (strike.double) msg += ` <span class="text-cyan-400 font-bold">DOUBLE!</span>`;
+              this.logToGame(msg);
+          } else {
+              this.logToGame(`${handName} <span class="text-gray-500">MISSED</span> ${this.currentMonster.name}.`);
+          }
+      };
+
+      logStrike(result.strike1, "1st Strike", hasMain);
+      logStrike(result.strike2, "2nd Strike", hasOff);
+
+      if (this.UIManager && result.damageDealt > 0) {
+          const monsterEl = document.querySelector('#combat-info-panel');
+          const type = result.isCrit ? 'crit' : 'damage';
+          this.UIManager.showFloatingText(Math.floor(result.damageDealt), type, monsterEl);
+      }
     }
 
     if (result.status === 'VICTORY') {

@@ -16,8 +16,10 @@ export class StatsManager {
       VIT: { name: 'Vitality', icon: '❤️', description: 'Primary survivability stat. Governs Max HP and AC scaling.' },
       NTL: { name: 'Intellect', icon: '🧠', description: 'A gatekeeper stat for spells.' },
       WIS: { name: 'Wisdom', icon: '🔮', description: 'Primary stat for Casters & Mystic Hybrids. Governs Hit/Crit Chance and SC scaling.' },
-      finalWC: { name: 'Weapon Class', icon: '⚔️', description: 'Your total effectiveness with physical weapons.' },
-      finalSC: { name: 'Spell Class', icon: '✨', description: 'Your total effectiveness with magic.' },
+      WC_1: { name: 'Weapon Class (Main)', icon: '⚔️', description: 'Effectiveness of your primary physical weapon.' },
+      WC_2: { name: 'Weapon Class (Off)', icon: '🗡️', description: 'Effectiveness of your secondary physical weapon.' },
+      SC_1: { name: 'Spell Class (Main)', icon: '✨', description: 'Effectiveness of your primary magic spell.' },
+      SC_2: { name: 'Spell Class (Off)', icon: '🪄', description: 'Effectiveness of your secondary magic spell.' },
       finalAC: { name: 'Armor Class', icon: '🛡️', description: 'Your total damage reduction.' },
       maxHp: { name: 'Health Points', icon: '❤️', description: 'Your life force. If it reaches zero, you are defeated.' },
       hitChance: { name: 'Hit Chance', icon: '🎯', description: 'The probability of successfully landing an attack on an enemy.' },
@@ -102,9 +104,11 @@ export class StatsManager {
             </svg>
           </button>
           <div class="stat-accordion-content">
-            ${createStatLine('finalWC', p.derivedStats.WC.toFixed(2))}
-            ${createStatLine('finalSC', p.derivedStats.SC.toFixed(2))}
-            ${createStatLine('finalAC', p.derivedStats.AC.toFixed(2))}
+            ${createStatLine('WC_1', (p.derivedStats.WC_1 || 0).toFixed(2))}
+            ${createStatLine('WC_2', (p.derivedStats.WC_2 || 0).toFixed(2))}
+            ${createStatLine('SC_1', (p.derivedStats.SC_1 || 0).toFixed(2))}
+            ${createStatLine('SC_2', (p.derivedStats.SC_2 || 0).toFixed(2))}
+            ${createStatLine('finalAC', (p.derivedStats.AC || 0).toFixed(2))}
           </div>
         </div>
         <div class="stat-accordion-item">

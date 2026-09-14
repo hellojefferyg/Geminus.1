@@ -51,7 +51,9 @@ const Systems = {
         return player;
     }
 
-    let totalGearAC = 0, totalGearWC = 0, totalGearSC = 0;
+    let totalGearAC = 0;
+    let gearWcMain = 0, gearWcOff = 0;
+    let gearScMain = 0, gearScOff = 0;
     let bonusHitChance = 0;
     let bonusWcScMultiplier = 1.0;
     let bonusAcMultiplier = 1.0; // [NEW] Support for 'Guard' buff % bonus
@@ -61,7 +63,7 @@ const Systems = {
     // 1. Process Equipment Stats (ARCHITECT FIX)
     const equipmentSource = player.equipped || player.equipment || {};
 
-    Object.values(equipmentSource).forEach(entry => {
+    Object.entries(equipmentSource).forEach(([slotKey, entry]) => {
         let item = entry;
         if (typeof item === 'string') {
              item = player.inventory ? player.inventory.find(i => i.instanceId === item || i.uuid === item) : null;
@@ -74,9 +76,18 @@ const Systems = {
         const qm = safeVal(item.qualityMultiplier) || 1.0; 
         
         // Accumulate Base Stats * Quality
-        totalGearWC += safeMult(baseItem.wc || item.wc || 0, qm);
+        const itemWc = safeMult(baseItem.wc || item.wc || 0, qm);
+        const itemSc = safeMult(baseItem.sc || item.sc || 0, qm);
+        
+        if (slotKey === 'MAIN_HAND') gearWcMain += itemWc;
+        else if (slotKey === 'OFF_HAND') gearWcOff += itemWc;
+        else { gearWcMain += itemWc; gearWcOff += itemWc; } // Flat WC from armor applies to both
+
+        if (slotKey === 'SPELL_1') gearScMain += itemSc;
+        else if (slotKey === 'SPELL_2') gearScOff += itemSc;
+        else { gearScMain += itemSc; gearScOff += itemSc; } // Flat SC from armor applies to both
+
         totalGearAC += safeMult(baseItem.ac || item.ac || 0, qm);
-        totalGearSC += safeMult(baseItem.sc || item.sc || 0, qm);
         
         // [NEW] Accumulate % Bonuses from Buff Spells (Might/Guard/Swiftness)
         if (statsItem.wc_bonus) bonusWcScMultiplier += safeVal(statsItem.wc_bonus);
@@ -99,10 +110,11 @@ const Systems = {
     const STR = safeVal(player.baseStats?.STR); 
     const NTL = safeVal(player.baseStats?.NTL);
 
-    let finalWC = 0, finalSC = 0;
+    let finalWcMain = 0, finalWcOff = 0, finalScMain = 0, finalScOff = 0;
     const isTroll = player.race === 'Troll';
     const isVampire = player.race === 'Vampire';
-    const basePower = 5 + (player.level * 2);
+    // [ARCHITECT FIX] Flattened biological scaling. Gear is King.
+    const basePower = 5;
 
     // [ARCHITECT FIX] Stat Decoupling & Damage DR (The Gear Wall)
     let primaryRating = 0;   // Used for Hit Contest & Precision Overflow
@@ -114,30 +126,47 @@ const Systems = {
     else if (racialData.archetype === 'True Caster' || racialData.subArchetype === 'Mystic Hybrid') { primaryRating = WIS; secondaryRating = NTL; }
     else { primaryRating = Math.max(DEX, WIS); secondaryRating = Math.max(STR, NTL); }
 
-    // Diminishing Returns Damage Multiplier based on Secondary Stat
-    // Formula: 1 + ((Secondary_Stat ^ 0.75) * 0.005)
-    const dmgMultiplier = 1 + (Math.pow(secondaryRating, 0.75) * 0.005);
+    // [ARCHITECT FIX] Diminishing Returns Damage Multiplier based on Secondary Stat
+    // Formula: 1 + ((Secondary_Stat ^ 0.5) * 0.005) - Hard square root curve
+    const dmgMultiplier = 1 + (Math.pow(secondaryRating, 0.5) * 0.005);
 
     if (racialData.archetype === 'True Fighter' || isTroll) {
-        finalWC = (totalGearWC + basePower) * dmgMultiplier;
-        finalSC = totalGearSC + (basePower * 0.5); 
+        finalWcMain = (gearWcMain + basePower) * dmgMultiplier;
+        finalWcOff = gearWcOff > 0 ? (gearWcOff + basePower) * dmgMultiplier : 0;
+        finalScMain = gearScMain + (basePower * 0.5); 
+        finalScOff = gearScOff > 0 ? gearScOff + (basePower * 0.5) : 0;
     } else if (racialData.archetype === 'True Caster' || isVampire) {
-        finalSC = (totalGearSC + basePower) * dmgMultiplier;
-        finalWC = totalGearWC + (basePower * 0.5);
+        finalScMain = (gearScMain + basePower) * dmgMultiplier;
+        finalScOff = gearScOff > 0 ? (gearScOff + basePower) * dmgMultiplier : 0;
+        finalWcMain = gearWcMain + (basePower * 0.5);
+        finalWcOff = gearWcOff > 0 ? gearWcOff + (basePower * 0.5) : 0;
     } else {
-        finalWC = (totalGearWC + basePower) * dmgMultiplier;
-        finalSC = (totalGearSC + basePower) * dmgMultiplier;
+        finalWcMain = (gearWcMain + basePower) * dmgMultiplier;
+        finalWcOff = gearWcOff > 0 ? (gearWcOff + basePower) * dmgMultiplier : 0;
+        finalScMain = (gearScMain + basePower) * dmgMultiplier;
+        finalScOff = gearScOff > 0 ? (gearScOff + basePower) * dmgMultiplier : 0;
     }
 
     // Apply Buff Multipliers
-    finalWC = Math.max(1, finalWC * bonusWcScMultiplier);
-    finalSC = Math.max(1, finalSC * bonusWcScMultiplier);
+    finalWcMain = Math.max(1, finalWcMain * bonusWcScMultiplier);
+    finalWcOff = gearWcOff > 0 ? Math.max(1, finalWcOff * bonusWcScMultiplier) : 0;
+    finalScMain = Math.max(1, finalScMain * bonusWcScMultiplier);
+    finalScOff = gearScOff > 0 ? Math.max(1, finalScOff * bonusWcScMultiplier) : 0;
 
     // 3. Derived Combat Values
     player.derivedStats.maxHp = 100 + (VIT * 10);
-    player.derivedStats.AC = totalGearAC * (1 + (VIT * 0.0075)) * bonusAcMultiplier;
-    player.derivedStats.WC = Math.floor(finalWC);
-    player.derivedStats.SC = Math.floor(finalSC);
+    // [ARCHITECT FIX] Defensive multiplier shifted to square root curve matching offense
+    player.derivedStats.AC = totalGearAC * (1 + (Math.pow(VIT, 0.5) * 0.005)) * bonusAcMultiplier;
+    
+    // [ARCHITECT FIX] Split hand stats for Dual-Strike engine
+    player.derivedStats.WC_1 = Math.floor(finalWcMain);
+    player.derivedStats.WC_2 = Math.floor(finalWcOff);
+    player.derivedStats.SC_1 = Math.floor(finalScMain);
+    player.derivedStats.SC_2 = Math.floor(finalScOff);
+    
+    // UI Visual Aggregation (Legacy UI Mapping)
+    player.derivedStats.WC = Math.floor(finalWcMain + finalWcOff);
+    player.derivedStats.SC = Math.floor(finalScMain + finalScOff);
     
     // Export Primary Stat for dynamic combat calculations
     player.derivedStats.accuracyRating = primaryRating; 
@@ -252,61 +281,72 @@ const Systems = {
     const pStats = player.derivedStats || player.stats; 
     const monsterAC = Math.max(1, monster.def || 1);
     
-    // [FIXED] Robust Stat Selection
-    let stat = 0;
+    // [ARCHITECT FIX] Dual-Strike Stat Splitting
+    let stat1 = 0, stat2 = 0;
     if (actionType === 'cast') {
-        stat = safeVal(pStats.SC);
+        stat1 = safeVal(pStats.SC_1);
+        stat2 = safeVal(pStats.SC_2);
     } else if (actionType === 'spellstrike') {
-        const wc = safeVal(pStats.WC);
-        const sc = safeVal(pStats.SC);
-        stat = Math.max(wc, sc) * 1.1; 
+        stat1 = Math.max(safeVal(pStats.WC_1), safeVal(pStats.SC_1)) * 1.1; 
+        stat2 = Math.max(safeVal(pStats.WC_2), safeVal(pStats.SC_2)) * 1.1; 
     } else {
         // Default / Attack
-        stat = safeVal(pStats.WC);
+        stat1 = safeVal(pStats.WC_1);
+        stat2 = safeVal(pStats.WC_2);
     }
 
-    // [FIXED] Prevent Divide by Zero / NaN
     const DAMAGE_CONST = gddConstants?.PLAYER_DAMAGE_CONSTANT || 25;
-    playerDamage = (DAMAGE_CONST * stat) / monsterAC;
-    playerDamage = Math.max(1, playerDamage); // Minimum 1 damage
-
-    // --- [ARCHITECT FIX] HIT CONTEST & PRECISION OVERFLOW ---
-    // Uses monster.evasion if manually set in Zone Data, else falls back to monster.def
     const monsterEvasion = Math.max(1, monster.evasion || monster.def || 10); 
     const playerAccuracy = safeVal(pStats.accuracyRating);
     
-    // Calculate Hit Score (75 Base + Ratio + Gear Hit Bonuses)
+    // Global Hit Score & Precision Overflow
     const gearHitBonus = Math.max(0, (pStats.hitChance || 75) - 75);
     const hitScore = 75 + ((playerAccuracy / monsterEvasion) * 15) + gearHitBonus;
     
-    let finalHitChance = hitScore;
-    let precisionBonus = 0;
-
-    // Route Overflow into Precision Damage
-    if (hitScore > 100) {
-        finalHitChance = 100;
-        precisionBonus = hitScore - 100; 
-    }
-
-    const isHit = (Math.random() * 100) <= finalHitChance;
-    if (!isHit) playerDamage = 0; // The attack missed
-
-    // --- CRIT & DOUBLE HIT LOGIC ---
-    const isCrit = isHit && (Math.random() * 100 < (pStats.critChance || 5));
-    
-    // Precision Overflow adds directly to the Crit Multiplier (e.g., 50 overflow = +50% Crit Dmg)
+    let finalHitChance = Math.min(100, hitScore);
+    let precisionBonus = hitScore > 100 ? hitScore - 100 : 0;
     const baseCritMult = pStats.critDamage || 2.0;
-    const critMultiplier = isCrit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0; 
-    
-    playerDamage *= critMultiplier;
 
-    const isDoubleHit = isHit && (Math.random() * 100 < (pStats.doubleHitChance || 0));
-    if (isDoubleHit) playerDamage *= 2; 
+    // Helper function to resolve an independent strike
+    const processStrike = (strikeStat) => {
+        if (strikeStat <= 0) return { dmg: 0, hit: false, crit: false, double: false };
+        
+        let dmg = (DAMAGE_CONST * strikeStat) / monsterAC;
+        dmg = Math.max(1, dmg);
+
+        const hit = (Math.random() * 100) <= finalHitChance;
+        if (!hit) return { dmg: 0, hit: false, crit: false, double: false };
+
+        const crit = (Math.random() * 100 < (pStats.critChance || 5));
+        const critMultiplier = crit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0;
+        dmg *= critMultiplier;
+
+        const double = (Math.random() * 100 < (pStats.doubleHitChance || 0));
+        if (double) dmg *= 2;
+
+        return { dmg, hit, crit, double };
+    };
+
+    // Execute independent Dual Strikes
+    const strike1 = processStrike(stat1);
+    const strike2 = processStrike(stat2);
+
+    playerDamage = strike1.dmg + strike2.dmg;
+
+    // [DEV TRACKING] Log the isolated hits to the F12 Console
+    console.log(`[Dual-Strike] Hand 1 DMG: ${Math.floor(strike1.dmg)} | Hand 2 DMG: ${Math.floor(strike2.dmg)}`);
 
     // Apply to monster
     monster.currentHP = Math.max(0, monster.currentHP - playerDamage);
 
-    if (monster.currentHP <= 0) return { status: 'VICTORY', player, monster, damageDealt: playerDamage };
+    if (monster.currentHP <= 0) return { 
+        status: 'VICTORY', 
+        player, 
+        monster, 
+        damageDealt: playerDamage,
+        strike1,
+        strike2
+    };
 
     // --- [ARCHITECT FIX] MONSTER COUNTER-ATTACK (DIVISION CURVE) ---
     // Mirrors player damage math to prevent 0-damage invincibility loops
@@ -338,8 +378,10 @@ const Systems = {
         damageTaken: monsterDamage,
         monsterCurrentHP: monster.currentHP,
         playerCurrentHP: player.hp,
-        isCrit: isCrit,
-        isDoubleHit: isDoubleHit
+        isCrit: strike1.crit || strike2.crit,
+        isDoubleHit: strike1.double || strike2.double,
+        strike1,
+        strike2
     };
   },
 

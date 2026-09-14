@@ -101,30 +101,31 @@
                     </header>
                 </div>
 
-                <div id="main-content-container" class="flex-grow flex flex-col overflow-hidden">
-                    <main id="main-content" class="flex-grow flex flex-col overflow-hidden glass-panel rounded-lg relative">
-                        <div id="main-tabs-container" class="flex border-b border-cyan-500/30 overflow-x-auto">
+                <div id="main-content-container" class="flex-grow flex flex-col min-h-0 overflow-hidden">
+                    <main id="main-content" class="flex-grow flex flex-col min-h-0 overflow-hidden glass-panel rounded-lg relative">
+                        <div id="main-tabs-container" class="flex border-b border-cyan-500/30 overflow-x-auto shrink-0">
                             <button class="main-tab-button active flex-shrink-0" data-tab="equipment">Equipment</button>
                             <button class="main-tab-button flex-shrink-0" data-tab="inventory">Inventory</button>
                             <button class="main-tab-button flex-shrink-0" data-tab="stats">Stats</button>
                             <button class="main-tab-button flex-shrink-0" data-tab="combat">Combat</button>
                         </div>
-                        <div id="main-tab-content" class="flex-grow p-4 overflow-y-auto custom-scrollbar relative">
-    
-                        <div id="tab-content-equipment" class="main-tab-panel active">
+                        <div id="main-tab-content" class="flex-grow p-4 overflow-y-auto custom-scrollbar relative min-h-0">
+                            
+                            <div id="tab-content-equipment" class="main-tab-panel active h-full flex flex-col min-h-0">
                             </div>
-                        
-                        <div id="tab-content-inventory" class="main-tab-panel h-full flex flex-col">
-                            <div id="inventory-grid" class="inventory-grid grid grid-cols-5 gap-2 p-2 overflow-y-auto content-start"></div>
-                        </div>
+                            
+                            <div id="tab-content-inventory" class="main-tab-panel h-full flex flex-col min-h-0">
+                                <div id="inventory-grid" class="inventory-grid grid grid-cols-5 gap-2 p-2 overflow-y-auto content-start"></div>
+                            </div>
 
-                        <div id="tab-content-stats" class="main-tab-panel">
+                            <div id="tab-content-stats" class="main-tab-panel h-full flex flex-col min-h-0">
                             </div>
-                        
-                        <div id="tab-content-combat" class="main-tab-panel h-full flex flex-col">
-                            <div id="combat-module-root" class="h-full flex flex-col w-full"></div>
+                            
+                            <div id="tab-content-combat" class="main-tab-panel h-full flex flex-col min-h-0">
+                                <div id="combat-module-root" class="h-full flex flex-col w-full min-h-0"></div>
+                            </div>
+                            
                         </div>
-                    </div>
                     </main>
                 </div>
                 
@@ -162,7 +163,7 @@
         </div>
     </div>
 
-    <div id="chat-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2000] p-2 md:p-6">
+    <div id="chat-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2060] p-2 md:p-6">
         <div class="relative w-full h-full max-w-7xl md:h-[95vh] md:max-h-[900px] flex glass-panel overflow-hidden bg-[#050f14]/95 rounded-xl">
             <button id="close-chat-modal-btn" class="absolute top-2 right-4 text-gray-400 hover:text-cyan-400 text-3xl font-bold z-[60] transition-colors">&times;</button>
             

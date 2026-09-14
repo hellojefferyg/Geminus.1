@@ -159,29 +159,29 @@ const isTarget = btn.innerText.trim().toLowerCase() === gender.toLowerCase();
     if (!raceData.apWeights) console.error(`CreationManager: Missing apWeights for race ${raceId}`);
 
     this.state.player = {
-      name: playerName,
-      // SURGICAL FIX: Persisting the gender selected in the UI
-      gender: this.tempPlayer?.gender || this.state.settings?.defaultGender || 'female',
-      level: 1,
-      xp: 0,
-      gold: 1000,
-      xpToNextLevel: gddConstants.XP_BASE || 200,
-      attributePoints: 0, 
-      race: raceId,
-      archetype: raceData.archetype,
-      cci: raceData.coreCombatIdentity,
-      baseStats: { ...startingStats },
-      derivedStats: {},
-      inventory: [],
-      equipment: {},
-      gems: [],
-      lastItemDrop: null,
-      lastGemDrop: null,
-      defeatedBosses: [],
-      // SURGICAL UPDATE: Set position from Spawn Map
-      pos: { x: spawnData.x, y: spawnData.y },
-      icon: '👤'
-    };
+        name: playerName,
+        // SURGICAL FIX: Persisting the gender selected in the UI
+        gender: this.tempPlayer?.gender || this.state.settings?.defaultGender || 'female',
+        level: 1,
+        xp: 0,
+        gold: 1000,
+        xpToNextLevel: gddConstants.XP_BASE || 200,
+        attributePoints: 0, 
+        race: raceId,
+        archetype: raceData.archetype,
+        cci: raceData.coreCombatIdentity,
+        baseStats: { ...startingStats },
+        derivedStats: {},
+        inventory: [],
+        equipped: {}, // [ARCHITECT FIX] Standardized to 'equipped' to match UI Manager
+        gems: [],
+        lastItemDrop: null,
+        lastGemDrop: null,
+        defeatedBosses: [],
+        // SURGICAL UPDATE: Set position from Spawn Map
+        pos: { x: spawnData.x, y: spawnData.y },
+        icon: '👤'
+      };
 
     // 2. Update Global Game State for Zone Loading
     this.state.game.currentZoneId = spawnData.zone;
@@ -258,7 +258,8 @@ const isTarget = btn.innerText.trim().toLowerCase() === gender.toLowerCase();
             socketedGems: []
         };
         this.state.player.inventory.push(newWeapon);
-        this.state.player.equipment['Weapon'] = newWeapon.instanceId;
+        // [ARCHITECT FIX] Use standard 'equipped' object and correct UI slot key 'MAIN_HAND'
+        this.state.player.equipped['MAIN_HAND'] = newWeapon.instanceId;
     }
 
     if (starterArmor) {
@@ -270,7 +271,8 @@ const isTarget = btn.innerText.trim().toLowerCase() === gender.toLowerCase();
             socketedGems: []
         };
         this.state.player.inventory.push(newArmor);
-        this.state.player.equipment['Chest'] = newArmor.instanceId;
+        // [ARCHITECT FIX] Use standard 'equipped' object and correct UI slot key 'BODY'
+        this.state.player.equipped['BODY'] = newArmor.instanceId;
     }
 
     if (starterSpell) {
@@ -282,7 +284,8 @@ const isTarget = btn.innerText.trim().toLowerCase() === gender.toLowerCase();
             socketedGems: []
         };
         this.state.player.inventory.push(newSpell);
-        this.state.player.equipment['Spell 1'] = newSpell.instanceId;
+        // [ARCHITECT FIX] Use standard 'equipped' object and correct UI slot key 'SPELL_1'
+        this.state.player.equipped['SPELL_1'] = newSpell.instanceId;
     }
 
     // 5. Final Calculations
