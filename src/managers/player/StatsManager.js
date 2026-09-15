@@ -22,8 +22,11 @@ export class StatsManager {
       SC_2: { name: 'Spell Class (Off)', icon: '🪄', description: 'Effectiveness of your secondary magic spell.' },
       finalAC: { name: 'Armor Class', icon: '🛡️', description: 'Your total damage reduction.' },
       maxHp: { name: 'Health Points', icon: '❤️', description: 'Your life force. If it reaches zero, you are defeated.' },
-      hitChance: { name: 'Hit Chance', icon: '🎯', description: 'The probability of successfully landing an attack on an enemy.' },
+      hitChance: { name: 'Hit Chance', icon: '🎯', description: 'Calculated hit probability against your most recently targeted or engaged monster.' },
       critChance: { name: 'Crit Chance', icon: '💥', description: 'The probability of an attack dealing bonus critical damage.' },
+      critDamage: { name: 'Crit Damage', icon: '⚔️', description: 'Damage multiplier applied when landing a critical strike.' },
+      doubleHitChance: { name: 'Double Hit', icon: '⚡', description: 'Chance to trigger a secondary rapid strike upon landing a hit.' },
+      tripleHitChance: { name: 'Triple Hit', icon: '🌪️', description: 'Chance to trigger a tertiary rapid strike following a successful Double Hit.' },
     };
   }
 
@@ -120,8 +123,11 @@ export class StatsManager {
           </button>
           <div class="stat-accordion-content">
             ${createHpLine()}
-            ${createStatLine('hitChance', `${p.derivedStats.hitChance.toFixed(2)}%`)}
-            ${createStatLine('critChance', `${p.derivedStats.critChance.toFixed(2)}%`)}
+            ${createStatLine('hitChance', `${(p.derivedStats.lastHitChance || 0).toFixed(2)}%`)}
+            ${createStatLine('critChance', `${(p.derivedStats.critChance || 0).toFixed(2)}%`)}
+            ${createStatLine('critDamage', `${((p.derivedStats.critDamage || 2.0) * 100).toFixed(0)}%`)}
+            ${createStatLine('doubleHitChance', `${(p.derivedStats.doubleHitChance || 0).toFixed(2)}%`)}
+            ${createStatLine('tripleHitChance', `${(p.derivedStats.tripleHitChance || 0).toFixed(2)}%`)}
           </div>
         </div>
       </div>`;

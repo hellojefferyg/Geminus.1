@@ -445,26 +445,53 @@ export class CombatManager {
           hasOff = pStats.WC_2 > 0; 
       }
 
-      const logStrike = (strike, handName, isActive) => {
-          if (!isActive) return;
-          if (strike.hit) {
-              let msg = `${handName} hits for <span class="log-player">${Math.floor(strike.dmg)}</span>.`;
-              if (strike.crit) msg += ` <span class="text-yellow-400 font-bold">CRIT!</span>`;
-              if (strike.double) msg += ` <span class="text-cyan-400 font-bold">DOUBLE!</span>`;
-              this.logToGame(msg);
-          } else {
-              this.logToGame(`${handName} <span class="text-gray-500">MISSED</span> ${this.currentMonster.name}.`);
-          }
+      let totalDmgDelay = 0; // Used to stagger floating text popups
+
+      const logStrikeChain = (strikeArray, handName, isActive) => {
+          if (!isActive || !strikeArray) return;
+          
+          strikeArray.forEach((strike) => {
+              if (strike.hit) {
+                  let logClass = "log-player";
+                  let visualTag = "";
+                  
+                  // Dynamic Formatting based on proc type
+                  if (strike.type === 'double') {
+                      logClass = "text-cyan-300 font-bold";
+                      visualTag = " <span class='text-cyan-400 font-bold'>DOUBLE!</span>";
+                  } else if (strike.type === 'triple') {
+                      logClass = "text-fuchsia-400 font-bold tracking-wider";
+                      visualTag = " <span class='text-fuchsia-500 font-bold uppercase'>TRIPLE!</span>";
+                  }
+
+                  let msg = `${handName} hits for <span class="${logClass}">${Math.floor(strike.dmg)}</span>.`;
+                  if (strike.crit) msg += ` <span class="text-yellow-400 font-bold">CRIT!</span>`;
+                  msg += visualTag;
+                  
+                  this.logToGame(msg);
+
+                  // Trigger Floating Text with a slight stagger for visual clarity
+                  if (this.UIManager) {
+                      setTimeout(() => {
+                          const monsterEl = document.querySelector('#combat-info-panel');
+                          const floatType = strike.crit ? 'crit' : 'damage'; 
+                          this.UIManager.showFloatingText(Math.floor(strike.dmg), floatType, monsterEl);
+                          
+                          // Optional: Throw up a secondary word popup alongside the number
+                          if (strike.type === 'double') this.UIManager.showFloatingText("DOUBLE", 'shadow', monsterEl);
+                          if (strike.type === 'triple') this.UIManager.showFloatingText("TRIPLE", 'gem', monsterEl);
+                      }, totalDmgDelay);
+                      
+                      totalDmgDelay += 150; // Delay next number by 150ms
+                  }
+              } else {
+                  this.logToGame(`${handName} <span class="text-gray-500">MISSED</span> ${this.currentMonster.name}.`);
+              }
+          });
       };
 
-      logStrike(result.strike1, "1st Strike", hasMain);
-      logStrike(result.strike2, "2nd Strike", hasOff);
-
-      if (this.UIManager && result.damageDealt > 0) {
-          const monsterEl = document.querySelector('#combat-info-panel');
-          const type = result.isCrit ? 'crit' : 'damage';
-          this.UIManager.showFloatingText(Math.floor(result.damageDealt), type, monsterEl);
-      }
+      logStrikeChain(result.strike1, "1st Strike", hasMain);
+      logStrikeChain(result.strike2, "2nd Strike", hasOff);
     }
 
     if (result.status === 'VICTORY') {
@@ -515,7 +542,10 @@ export class CombatManager {
       return;
     }
 
-    this.ProfileManager.updateAllProfileUI();
+    // Ensure the character sheet updates with the live hit chance from this turn
+    if (this.ProfileManager && this.ProfileManager.updateAllProfileUI) {
+        this.ProfileManager.updateAllProfileUI();
+    }
     this.updateCombatInfoPanel();
   }
 

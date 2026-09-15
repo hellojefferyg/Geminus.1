@@ -59,6 +59,7 @@ const Systems = {
     let bonusAcMultiplier = 1.0; // [NEW] Support for 'Guard' buff % bonus
     let totalHpRegenPercent = 0;
     let gearVit = 0, gearDex = 0, gearWis = 0; // [NEW] Gear-based attribute bonuses
+    let bonusDoubleHit = 0, bonusTripleHit = 0;
 
     // 1. Process Equipment Stats (ARCHITECT FIX)
     const equipmentSource = player.equipped || player.equipment || {};
@@ -94,6 +95,8 @@ const Systems = {
         if (statsItem.sc_bonus) bonusWcScMultiplier += safeVal(statsItem.sc_bonus);
         if (statsItem.ac_bonus) bonusAcMultiplier += safeVal(statsItem.ac_bonus);
         if (statsItem.hit_chance_bonus) bonusHitChance += safeVal(statsItem.hit_chance_bonus);
+        if (statsItem.double_hit_chance) bonusDoubleHit += safeVal(statsItem.double_hit_chance);
+        if (statsItem.triple_hit_chance) bonusTripleHit += safeVal(statsItem.triple_hit_chance);
 
         // [NEW] Accumulate Flat Attribute Bonuses from Gear
         if (statsItem.vit) gearVit += safeVal(statsItem.vit) * qm;
@@ -172,8 +175,10 @@ const Systems = {
     player.derivedStats.accuracyRating = primaryRating; 
 
     // UI Baselines (Dynamic calculation occurs per-swing in resolveCombatTurn)
-    player.derivedStats.hitChance = 75 + (bonusHitChance * 100); 
-    player.derivedStats.critChance = 5;
+    player.derivedStats.hitChance = (bonusHitChance * 100); // Starts at 0%, grows with gear
+    player.derivedStats.critChance = 5; // Base 5% for all players
+    player.derivedStats.doubleHitChance = bonusDoubleHit;
+    player.derivedStats.tripleHitChance = bonusTripleHit;
 
     // --- HP REGEN CALCULATION ---
     const baseRegen = Math.floor(5 + ((player.level || 1) * 1.5));
@@ -200,9 +205,15 @@ const Systems = {
     baseMonster.xp = safeVal(baseMonster.xp) || 10;
     baseMonster.gold = safeVal(baseMonster.gold) || 5;
 
-    // [ARCHITECT FIX] Base Evasion Injection
-    // Serves as the mathematical floor before Tier multipliers are applied
-    baseMonster.evasion = safeVal(baseMonster.evasion) || 50;
+    // =====================================================================
+    // [FUTURE AI INSTRUCTION: EVASION PROFILES (PHYSICAL VS MAGICAL)]
+    // To add custom Evasion to specific mobs, add 'physEvasion: X' or 
+    // 'magEvasion: Y' to their JSON object in bestiary.js. 
+    // This engine will automatically detect and apply them here. 
+    // If they are missing, it falls back to the generic 'evasion', or 50.
+    // =====================================================================
+    baseMonster.physEvasion = safeVal(baseMonster.physEvasion) || safeVal(baseMonster.evasion) || 50;
+    baseMonster.magEvasion = safeVal(baseMonster.magEvasion) || safeVal(baseMonster.evasion) || 50;
 
     // --- 1. SUPER EASY MECHANIC ---
     if (zoneId && zones) {
@@ -233,7 +244,10 @@ const Systems = {
     baseMonster.def *= Math.pow(DEF_RATE, tierDiff);
     baseMonster.xp *= Math.pow(REWARD_RATE, tierDiff);
     baseMonster.gold *= Math.pow(REWARD_RATE, tierDiff);
-    baseMonster.evasion *= Math.pow(EVASION_RATE, tierDiff);
+    
+    const evasionMultiplier = Math.pow(EVASION_RATE, tierDiff);
+    baseMonster.physEvasion *= evasionMultiplier;
+    baseMonster.magEvasion *= evasionMultiplier;
 
     // --- 2. MONSTER TITLES  ---
     if (baseMonster.title) {
@@ -296,45 +310,92 @@ const Systems = {
     }
 
     const DAMAGE_CONST = gddConstants?.PLAYER_DAMAGE_CONSTANT || 25;
-    const monsterEvasion = Math.max(1, monster.evasion || monster.def || 10); 
+    
+    // =====================================================================
+    // [FUTURE AI INSTRUCTION: HIT CHANCE ROUTING]
+    // The engine automatically routes player accuracy against the specific 
+    // defense type of the mob. 'attack' targets physEvasion. 'cast' targets 
+    // magEvasion. 'spellstrike' averages the two.
+    // =====================================================================
+    let monsterEvasion = 10;
+    if (actionType === 'cast') {
+        monsterEvasion = Math.max(1, monster.magEvasion || monster.def || 10);
+    } else if (actionType === 'spellstrike') {
+        const avgEvasion = (safeVal(monster.physEvasion) + safeVal(monster.magEvasion)) / 2;
+        monsterEvasion = Math.max(1, avgEvasion || monster.def || 10);
+    } else {
+        monsterEvasion = Math.max(1, monster.physEvasion || monster.def || 10);
+    }
+    
     const playerAccuracy = safeVal(pStats.accuracyRating);
     
-    // Global Hit Score & Precision Overflow
-    const gearHitBonus = Math.max(0, (pStats.hitChance || 75) - 75);
-    const hitScore = 75 + ((playerAccuracy / monsterEvasion) * 15) + gearHitBonus;
+    // Linear Ratio: Equal stats = 100% Hit Chance. 10% stats = 10% Hit Chance.
+    const statHitScore = (playerAccuracy / monsterEvasion) * 100;
+    
+    // Extract gear hit multipliers (e.g., +8% Bonus Hit from gear = 1.08 multiplier)
+    const gearHitBonusRaw = Math.max(0, pStats.hitChance || 0); 
+    const gearHitMultiplier = 1 + (gearHitBonusRaw / 100);
+    
+    // Total Score: Base ratio multiplied by gear bonuses (No guaranteed floor)
+    const hitScore = statHitScore * gearHitMultiplier;
     
     let finalHitChance = Math.min(100, hitScore);
     let precisionBonus = hitScore > 100 ? hitScore - 100 : 0;
     const baseCritMult = pStats.critDamage || 2.0;
 
-    // Helper function to resolve an independent strike
+    // Save live hit chance for the character sheet display and instantly sync UI
+    pStats.lastHitChance = finalHitChance;
+    if (window.gameManager?.ProfileManager?.updateAllProfileUI) {
+        window.gameManager.ProfileManager.updateAllProfileUI();
+    }
+    // [DEV TRACKING] Log the hit chance math to the F12 Console
+    console.log(`\n--- [Combat: ${actionType.toUpperCase()}] ---`);
+    console.log(`Player Accuracy: ${playerAccuracy} | Target Evasion: ${monsterEvasion}`);
+    console.log(`Base Ratio: ${statHitScore.toFixed(2)}% | Gear Multiplier: ${gearHitMultiplier.toFixed(2)}x`);
+    console.log(`Total Hit Score: ${hitScore.toFixed(2)}% (Capped at 100%) | Precision Overflow: ${precisionBonus.toFixed(2)}%`);
+
+    // Helper function to resolve an independent strike chain
     const processStrike = (strikeStat) => {
-        if (strikeStat <= 0) return { dmg: 0, hit: false, crit: false, double: false };
+        if (strikeStat <= 0) return [{ dmg: 0, hit: false, crit: false, type: 'miss' }];
         
-        let dmg = (DAMAGE_CONST * strikeStat) / monsterAC;
-        dmg = Math.max(1, dmg);
-
         const hit = (Math.random() * 100) <= finalHitChance;
-        if (!hit) return { dmg: 0, hit: false, crit: false, double: false };
+        if (!hit) return [{ dmg: 0, hit: false, crit: false, type: 'miss' }];
 
-        const crit = (Math.random() * 100 < (pStats.critChance || 5));
-        const critMultiplier = crit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0;
-        dmg *= critMultiplier;
+        const strikes = [];
+        const baseDmg = Math.max(1, (DAMAGE_CONST * strikeStat) / monsterAC);
 
-        const double = (Math.random() * 100 < (pStats.doubleHitChance || 0));
-        if (double) dmg *= 2;
+        // Helper to roll a single hit's outcome with independent crit
+        const rollHit = (type) => {
+            const crit = (Math.random() * 100 < (pStats.critChance || 5));
+            const critMultiplier = crit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0;
+            return { dmg: baseDmg * critMultiplier, hit: true, crit, type };
+        };
 
-        return { dmg, hit, crit, double };
+        // 1st Strike (Normal)
+        strikes.push(rollHit('normal'));
+
+        // 2nd Strike (Double Proc)
+        if (Math.random() * 100 < (pStats.doubleHitChance || 0)) {
+            strikes.push(rollHit('double'));
+            
+            // 3rd Strike (Triple Proc) - Only rolls if Double succeeded
+            if (Math.random() * 100 < (pStats.tripleHitChance || 0)) {
+                strikes.push(rollHit('triple'));
+            }
+        }
+
+        return strikes;
     };
 
-    // Execute independent Dual Strikes
+    // Execute independent Dual Strikes (Now returning Arrays of strikes)
     const strike1 = processStrike(stat1);
     const strike2 = processStrike(stat2);
 
-    playerDamage = strike1.dmg + strike2.dmg;
-
-    // [DEV TRACKING] Log the isolated hits to the F12 Console
-    console.log(`[Dual-Strike] Hand 1 DMG: ${Math.floor(strike1.dmg)} | Hand 2 DMG: ${Math.floor(strike2.dmg)}`);
+    // Sum up all damage across all strikes in both hands
+    const sumDamage = (strikeArray) => strikeArray.reduce((sum, s) => sum + (s.dmg || 0), 0);
+    const d1 = sumDamage(strike1);
+    const d2 = sumDamage(strike2);
+    playerDamage = d1 + d2;
 
     // Apply to monster
     monster.currentHP = Math.max(0, monster.currentHP - playerDamage);
@@ -378,8 +439,8 @@ const Systems = {
         damageTaken: monsterDamage,
         monsterCurrentHP: monster.currentHP,
         playerCurrentHP: player.hp,
-        isCrit: strike1.crit || strike2.crit,
-        isDoubleHit: strike1.double || strike2.double,
+        isCrit: [...strike1, ...strike2].some(s => s.crit),
+        isDoubleHit: [...strike1, ...strike2].some(s => s.type === 'double' || s.type === 'triple'),
         strike1,
         strike2
     };
