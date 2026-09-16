@@ -395,6 +395,13 @@ body.theme-molten-core #chat-modal .tab.active { animation-name: pulse-main-tab-
     font-size: 1.4rem; 
 }
 
+.float-heal { 
+    color: #4ade80; /* Vibrant Green */
+    font-size: 1.5rem; 
+    text-shadow: 0 0 10px #166534, 2px 2px 0px #000;
+    z-index: 15000; 
+}
+
 /* Rare Drop Visuals */
 .float-shadow { 
     color: #a855f7; /* Purple-500 */

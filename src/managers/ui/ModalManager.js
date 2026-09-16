@@ -98,8 +98,11 @@ export class ModalManager {
     // Calculate Quality Multiplier
     const qm = (typeof fullItem.qualityMultiplier === 'number') ? fullItem.qualityMultiplier : 1.0;
     
-    // Helper: Apply QM to stat and format
-    const getEffStat = (val) => (Number(val) * qm).toFixed(2);
+    // [ARCHITECT FIX] Route through the Universal Engine
+    let trueStats = { wc: fullItem.wc * qm, ac: fullItem.ac * qm, sc: fullItem.sc * qm };
+    if (window.gameManager && window.gameManager.Systems) {
+        trueStats = window.gameManager.Systems.calculateTrueItemStats(fullItem);
+    }
 
     // --- STAT CONFIGURATION ---
     // Maps internal database keys to readable labels and colors
@@ -163,10 +166,11 @@ export class ModalManager {
         if (fullItem[stat.key] !== undefined && Number(fullItem[stat.key]) !== 0) {
             const rawVal = Number(fullItem[stat.key]);
             
-            // Logic: Is this a stat that gets multiplied by Quality?
-            // Usually, EVERYTHING on a Shadow item scales, but percentages (like 0.05) need care.
-            // For now, we apply QM to everything for Shadow consistency.
-            const effVal = rawVal * qm;
+            // [ARCHITECT FIX] Dynamically swap in Universal Math for Primary Stats
+            let effVal = rawVal * qm;
+            if (['wc', 'ac', 'sc'].includes(stat.key)) {
+                effVal = trueStats[stat.key];
+            }
             
             let displayVal = '';
             
@@ -193,7 +197,7 @@ export class ModalManager {
                     <span class="text-gray-400 text-xs">${stat.label}</span>
                     <span class="${stat.color} font-bold font-mono text-sm">
                         ${displayVal} 
-                        ${qm !== 1.0 ? `<span class="text-[9px] text-gray-600">(${rawVal})</span>` : ''}
+                        ${qm !== 1.0 || effVal !== (rawVal * qm) ? `<span class="text-[9px] text-gray-600">(Base: ${rawVal})</span>` : ''}
                     </span>
                 </div>`;
         }
@@ -210,14 +214,29 @@ export class ModalManager {
             if (ench.tier >= 7) color = 'text-yellow-400'; 
             else if (ench.tier >= 4) color = 'text-blue-300'; 
             
-            const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : ench.value;
-            const effectDesc = ench.effect || "Stat";
+            let displayString = "";
+            if (ench.value !== undefined && !isNaN(ench.value)) {
+                const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : ench.value;
+                const effectDesc = ench.effect || "Stat";
+                displayString = `+${val} ${effectDesc}`;
+            } else {
+                // Gracefully handles multi-stat enchantments instead of printing NaN
+                const stats = [];
+                for (const [k, v] of Object.entries(ench)) {
+                    if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                        let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                        if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC'; if (label === 'Vit') label = 'VIT';
+                        stats.push(`+${v} ${label}`);
+                    }
+                }
+                displayString = stats.length > 0 ? stats.join(', ') : (ench.effect || "Stat");
+            }
 
             enchantHTML += `
                 <div class="flex justify-between text-xs items-center mb-1">
                     <span class="${color}">✧ Enchantment</span>
                     <span class="font-mono ${color} text-[10px] bg-black/40 px-1.5 rounded">
-                        +${val} ${effectDesc}
+                        ${displayString}
                     </span>
                 </div>`;
         });

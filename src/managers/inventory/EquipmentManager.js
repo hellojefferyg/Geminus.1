@@ -205,11 +205,12 @@ export class EquipmentManager {
           const tier = item.tier || 1;
           const type = item.type || "Misc";
 
-          // Generate Stats for Equipment Tooltip
+          // Generate Stats for Equipment Tooltip (Reflecting Gems & Quality)
+          const trueStats = window.gameManager?.Systems?.calculateTrueItemStats(item) || { wc: item.wc, ac: item.ac, sc: item.sc };
           let statString = "";
-          if (item.wc) statString = `WC ${item.wc}`;
-          else if (item.ac) statString = `AC ${item.ac}`;
-          else if (item.sc) statString = `SC ${item.sc}`;
+          if (trueStats.wc) statString = `WC ${trueStats.wc.toFixed(1)}`;
+          else if (trueStats.ac) statString = `AC ${trueStats.ac.toFixed(1)}`;
+          else if (trueStats.sc) statString = `SC ${trueStats.sc.toFixed(1)}`;
           else if (item.type === 'Buff') statString = "Passive";
           else statString = item.type;
 

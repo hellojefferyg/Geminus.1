@@ -60,6 +60,7 @@ const Systems = {
     let totalHpRegenPercent = 0;
     let gearVit = 0, gearDex = 0, gearWis = 0; // [NEW] Gear-based attribute bonuses
     let bonusDoubleHit = 0, bonusTripleHit = 0;
+    let bonusCrit = 0; // [NEW] Track crit from gems and enchants
 
     // 1. Process Equipment Stats (ARCHITECT FIX)
     const equipmentSource = player.equipped || player.equipment || {};
@@ -76,33 +77,114 @@ const Systems = {
         const statsItem = { ...baseItem, ...item };
         const qm = safeVal(item.qualityMultiplier) || 1.0; 
         
-        // Accumulate Base Stats * Quality
-        const itemWc = safeMult(baseItem.wc || item.wc || 0, qm);
-        const itemSc = safeMult(baseItem.sc || item.sc || 0, qm);
+        // --- [BUG FIX] PROCESS GEMS & ENCHANTMENTS (GDD 2.1.1) ---
+        let localWcBonus = 0;
+        let localScBonus = 0;
+        let localAcBonus = 0;
+
+        const processAffix = (rawAffix) => {
+            if (!rawAffix) return;
+            let affix = { ...rawAffix };
+            
+            // 1. Hydrate Gems (Fixes save data stripping)
+            if (!affix.wc_bonus && !affix.effect && affix.id && gems && gems.base_gems) {
+                for (const family of Object.values(gems.base_gems)) {
+                    if (family[affix.id]) {
+                        affix = { ...family[affix.id], ...affix };
+                        break;
+                    }
+                }
+            }
+            
+            // 2. Hydrate Broken Enchantments (Fixes old NaN saves)
+            if (affix.effect && affix.value === undefined && !affix.sc_bonus && !affix.wc_bonus && affix.id && enchantments) {
+                let baseEnch = null;
+                if (enchantments.caster && enchantments.caster[affix.id]) baseEnch = enchantments.caster[affix.id];
+                else if (enchantments.fighter && enchantments.fighter[affix.id]) baseEnch = enchantments.fighter[affix.id];
+                else if (enchantments.support && enchantments.support[affix.id]) baseEnch = enchantments.support[affix.id];
+                
+                if (baseEnch) {
+                    const magicTier = affix.tier || 1;
+                    Object.keys(baseEnch).forEach(key => {
+                        if (key.endsWith('_min')) {
+                            const maxKey = key.replace('_min', '_max');
+                            const bonusKey = key.replace('_min', '_bonus');
+                            const minVal = baseEnch[key];
+                            const maxVal = baseEnch[maxKey] || minVal;
+                            const interpolated = minVal + ((maxVal - minVal) / 8) * (magicTier - 1);
+                            affix[bonusKey] = Number(interpolated.toFixed(2));
+                        }
+                    });
+                }
+            }
+            
+            // 3. Process explicit data keys
+            localWcBonus += safeVal(affix.wc_bonus);
+            localScBonus += safeVal(affix.sc_bonus);
+            localAcBonus += safeVal(affix.ac_bonus);
+            
+            gearVit += safeVal(affix.vit_bonus);
+            gearDex += safeVal(affix.dex_bonus);
+            gearWis += safeVal(affix.wis_bonus) + safeVal(affix.ntl_bonus) + safeVal(affix.int_bonus);
+            
+            bonusHitChance += safeVal(affix.hit_chance_bonus) + safeVal(affix.hit_bonus);
+            bonusCrit += safeVal(affix.crit_chance_bonus) + safeVal(affix.crit_bonus);
+            bonusDoubleHit += safeVal(affix.double_hit_bonus);
+            bonusTripleHit += safeVal(affix.triple_hit_bonus);
+            
+            if (affix.regen_pct) totalHpRegenPercent += safeVal(affix.regen_pct);
+            
+            // 4. Process legacy string effects
+            const effect = (affix.effect || affix.name || '').toLowerCase();
+            const val = safeVal(affix.value);
+            
+            if (val > 0) {
+                if (effect.includes('weapon class')) localWcBonus += val;
+                if (effect.includes('spell class')) localScBonus += val;
+                if (effect.includes('armor class')) localAcBonus += val;
+
+                if (effect.includes('vitality')) gearVit += val;
+                if (effect.includes('dexterity')) gearDex += val;
+                if (effect.includes('wisdom') || effect.includes('intellect')) gearWis += val;
+                
+                if (effect.includes('hit chance')) bonusHitChance += val;
+                if (effect.includes('crit')) bonusCrit += val;
+                if (effect.includes('double hit')) bonusDoubleHit += val;
+                if (effect.includes('triple hit')) bonusTripleHit += val;
+                if (effect.includes('hp regen') || effect.includes('health regen')) totalHpRegenPercent += (val / 100);
+            }
+        };
+
+        if (Array.isArray(item.socketedGems)) item.socketedGems.forEach(processAffix);
+        if (Array.isArray(item.enchantments)) item.enchantments.forEach(processAffix);
+
+        // Accumulate Base Stats * Quality * (1 + Local Affix Multipliers)
+        const itemWc = safeMult(baseItem.wc || item.wc || 0, qm) * (1 + (localWcBonus / 100));
+        const itemSc = safeMult(baseItem.sc || item.sc || 0, qm) * (1 + (localScBonus / 100));
+        const itemAc = safeMult(baseItem.ac || item.ac || 0, qm) * (1 + (localAcBonus / 100));
         
         if (slotKey === 'MAIN_HAND') gearWcMain += itemWc;
         else if (slotKey === 'OFF_HAND') gearWcOff += itemWc;
-        else { gearWcMain += itemWc; gearWcOff += itemWc; } // Flat WC from armor applies to both
+        else { gearWcMain += itemWc; gearWcOff += itemWc; }
 
         if (slotKey === 'SPELL_1') gearScMain += itemSc;
         else if (slotKey === 'SPELL_2') gearScOff += itemSc;
-        else { gearScMain += itemSc; gearScOff += itemSc; } // Flat SC from armor applies to both
+        else { gearScMain += itemSc; gearScOff += itemSc; }
 
-        totalGearAC += safeMult(baseItem.ac || item.ac || 0, qm);
+        totalGearAC += itemAc;
         
-        // [NEW] Accumulate % Bonuses from Buff Spells (Might/Guard/Swiftness)
+        // Accumulate % Bonuses from Buff Spells & Jewelry
         if (statsItem.wc_bonus) bonusWcScMultiplier += safeVal(statsItem.wc_bonus);
         if (statsItem.sc_bonus) bonusWcScMultiplier += safeVal(statsItem.sc_bonus);
         if (statsItem.ac_bonus) bonusAcMultiplier += safeVal(statsItem.ac_bonus);
         if (statsItem.hit_chance_bonus) bonusHitChance += safeVal(statsItem.hit_chance_bonus);
         if (statsItem.double_hit_chance) bonusDoubleHit += safeVal(statsItem.double_hit_chance);
         if (statsItem.triple_hit_chance) bonusTripleHit += safeVal(statsItem.triple_hit_chance);
-
-        // [NEW] Accumulate Flat Attribute Bonuses from Gear
+        
+        // Base Attribute Scaling
         if (statsItem.vit) gearVit += safeVal(statsItem.vit) * qm;
         if (statsItem.dex) gearDex += safeVal(statsItem.dex) * qm;
         if (statsItem.ntl || statsItem.wis) gearWis += safeVal(statsItem.ntl || statsItem.wis) * qm;
-        
         if (statsItem.hp_regen_percent) totalHpRegenPercent += safeVal(statsItem.hp_regen_percent);
     });
 
@@ -176,7 +258,7 @@ const Systems = {
 
     // UI Baselines (Dynamic calculation occurs per-swing in resolveCombatTurn)
     player.derivedStats.hitChance = (bonusHitChance * 100); // Starts at 0%, grows with gear
-    player.derivedStats.critChance = 5; // Base 5% for all players
+    player.derivedStats.critChance = 5 + bonusCrit; // Base 5% + gems/enchants
     player.derivedStats.doubleHitChance = bonusDoubleHit;
     player.derivedStats.tripleHitChance = bonusTripleHit;
 
@@ -387,24 +469,44 @@ const Systems = {
         return strikes;
     };
 
-    // Execute independent Dual Strikes (Now returning Arrays of strikes)
+    // Execute independent Dual Strikes sequentially
     const strike1 = processStrike(stat1);
-    const strike2 = processStrike(stat2);
-
-    // Sum up all damage across all strikes in both hands
-    const sumDamage = (strikeArray) => strikeArray.reduce((sum, s) => sum + (s.dmg || 0), 0);
+    
+    // Sum up all damage across all strikes in a chain
+    const sumDamage = (strikeArray) => strikeArray ? strikeArray.reduce((sum, s) => sum + (s.dmg || 0), 0) : 0;
     const d1 = sumDamage(strike1);
-    const d2 = sumDamage(strike2);
+    
+    let strike2 = [];
+    let d2 = 0;
+    
+    // Only swing the off-hand/second spell if the monster survives the first strike
+    if (monster.currentHP - d1 > 0) {
+        strike2 = processStrike(stat2);
+        d2 = sumDamage(strike2);
+    }
+
     playerDamage = d1 + d2;
 
     // Apply to monster
     monster.currentHP = Math.max(0, monster.currentHP - playerDamage);
+
+    // --- IN-COMBAT REGEN (Triggered instantly on every swing to support 60 KPM) ---
+    const combatRegen = Math.floor(safeVal(player.derivedStats.hpRegen) * 0.5);
+    let actualHeal = 0;
+    
+    // Only heal if the player is missing HP to prevent overhealing bugs
+    if (player.hp < player.derivedStats.maxHp) {
+        const missingHp = player.derivedStats.maxHp - player.hp;
+        actualHeal = Math.min(combatRegen, missingHp);
+        player.hp += actualHeal;
+    }
 
     if (monster.currentHP <= 0) return { 
         status: 'VICTORY', 
         player, 
         monster, 
         damageDealt: playerDamage,
+        hpRegained: actualHeal, // Export to UI
         strike1,
         strike2
     };
@@ -423,10 +525,6 @@ const Systems = {
     player.hp = Math.max(0, player.hp - monsterDamage);
     
     if (player.hp <= 0) return { status: 'DEFEAT', player, monster, damageTaken: monsterDamage };
-
-    // --- IN-COMBAT REGEN ---
-    const combatRegen = Math.floor(safeVal(player.derivedStats.hpRegen) * 0.5);
-    player.hp = Math.min(player.derivedStats.maxHp, player.hp + combatRegen);
     
     // Keep HP in sync
     monster.hp = monster.currentHP; 
@@ -437,6 +535,7 @@ const Systems = {
         monster, 
         damageDealt: playerDamage, 
         damageTaken: monsterDamage,
+        hpRegained: actualHeal, // Export to UI
         monsterCurrentHP: monster.currentHP,
         playerCurrentHP: player.hp,
         isCrit: [...strike1, ...strike2].some(s => s.crit),
@@ -449,6 +548,76 @@ const Systems = {
   simulateCombat(player, monster) {
     // Basic simulation logic preserved but not used in manual mode
     return { outcome: 'VICTORY', finalState: { player, monster }, log: [] };
+  },
+
+  // --- [NEW] UNIVERSAL ITEM STAT CALCULATOR ---
+  // Calculates an item's true final stats including Quality Multiplier and all Socket/Enchantment % bonuses.
+  calculateTrueItemStats(item) {
+      if (!item) return { wc: 0, sc: 0, ac: 0 };
+      const baseItem = findItemById(item.baseItemId || item.id) || {};
+      const qm = safeVal(item.qualityMultiplier) || 1.0;
+      
+      let localWcBonus = 0;
+      let localScBonus = 0;
+      let localAcBonus = 0;
+
+      const processAffix = (rawAffix) => {
+          if (!rawAffix) return;
+          let affix = { ...rawAffix };
+          
+          // Hydrate gem if stats are missing
+          if (!affix.wc_bonus && !affix.effect && affix.id && gems && gems.base_gems) {
+              for (const family of Object.values(gems.base_gems)) {
+                  if (family[affix.id]) {
+                      affix = { ...family[affix.id], ...affix };
+                      break;
+                  }
+              }
+          }
+
+          // Hydrate Broken Enchantments
+          if (affix.effect && affix.value === undefined && !affix.sc_bonus && !affix.wc_bonus && affix.id && enchantments) {
+              let baseEnch = null;
+              if (enchantments.caster && enchantments.caster[affix.id]) baseEnch = enchantments.caster[affix.id];
+              else if (enchantments.fighter && enchantments.fighter[affix.id]) baseEnch = enchantments.fighter[affix.id];
+              else if (enchantments.support && enchantments.support[affix.id]) baseEnch = enchantments.support[affix.id];
+              
+              if (baseEnch) {
+                  const magicTier = affix.tier || 1;
+                  Object.keys(baseEnch).forEach(key => {
+                      if (key.endsWith('_min')) {
+                          const maxKey = key.replace('_min', '_max');
+                          const bonusKey = key.replace('_min', '_bonus');
+                          const minVal = baseEnch[key];
+                          const maxVal = baseEnch[maxKey] || minVal;
+                          const interpolated = minVal + ((maxVal - minVal) / 8) * (magicTier - 1);
+                          affix[bonusKey] = Number(interpolated.toFixed(2));
+                      }
+                  });
+              }
+          }
+          
+          localWcBonus += safeVal(affix.wc_bonus);
+          localScBonus += safeVal(affix.sc_bonus);
+          localAcBonus += safeVal(affix.ac_bonus);
+          
+          const effectText = (affix.effect || affix.name || '').toLowerCase();
+          const val = safeVal(affix.value);
+          if (val > 0) {
+              if (effectText.includes('weapon class')) localWcBonus += val;
+              if (effectText.includes('spell class')) localScBonus += val;
+              if (effectText.includes('armor class')) localAcBonus += val;
+          }
+      };
+
+      if (Array.isArray(item.socketedGems)) item.socketedGems.forEach(processAffix);
+      if (Array.isArray(item.enchantments)) item.enchantments.forEach(processAffix);
+
+      return {
+          wc: safeMult(baseItem.wc || item.wc || 0, qm) * (1 + (localWcBonus / 100)),
+          sc: safeMult(baseItem.sc || item.sc || 0, qm) * (1 + (localScBonus / 100)),
+          ac: safeMult(baseItem.ac || item.ac || 0, qm) * (1 + (localAcBonus / 100))
+      };
   },
 
   // --- [ARCHITECT FIX] ENCHANTMENT GENERATOR (GDD 2.4) ---
@@ -486,24 +655,38 @@ const Systems = {
         const randIndex = Math.floor(Math.random() * allEnchants.length);
         const enchData = allEnchants[randIndex];
         
-        let value = 0;
-        // Logic to pull the correct value for the calculated Magic Tier
-        if (enchData.tiers && enchData.tiers.length >= magicTier) {
-            value = enchData.tiers[magicTier - 1]; 
-        } else if (enchData.values) {
-             value = enchData.values[Math.min(magicTier - 1, enchData.values.length - 1)];
-        }
-
-        selected.push({ 
+        let generatedEnch = { 
             id: enchData.id, 
             name: enchData.name, 
-            effect: enchData.effect, // Pass the Effect Name (e.g. "Strength")
-            value: value, 
+            effect: enchData.effect, 
             tier: magicTier 
-        });
-        
-        allEnchants.splice(randIndex, 1);
+        };
+
+        // Handle standard array values
+        if (enchData.tiers && enchData.tiers.length >= magicTier) {
+            generatedEnch.value = enchData.tiers[magicTier - 1]; 
+        } else if (enchData.values) {
+            generatedEnch.value = enchData.values[Math.min(magicTier - 1, enchData.values.length - 1)];
         }
+        
+        // Handle complex dual-stat "_min" and "_max" keys (e.g., vit_min, wc_min)
+        Object.keys(enchData).forEach(key => {
+            if (key.endsWith('_min')) {
+                const maxKey = key.replace('_min', '_max');
+                const bonusKey = key.replace('_min', '_bonus'); // Translates vit_min to vit_bonus
+                
+                const minVal = enchData[key];
+                const maxVal = enchData[maxKey] || minVal;
+                // Linear interpolation across 9 magic tiers
+                const interpolated = minVal + ((maxVal - minVal) / 8) * (magicTier - 1);
+                
+                generatedEnch[bonusKey] = Number(interpolated.toFixed(2));
+            }
+        });
+
+        selected.push(generatedEnch);
+        allEnchants.splice(randIndex, 1);
+    }
         return selected;
   },
 
@@ -832,7 +1015,7 @@ const Systems = {
                 // We assign a unique instanceId so they stack properly in the backend if needed
                 const gemDrop = { ...randomGem, instanceId: `GEM_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
                 player.inventory.push(gemDrop);
-                lootMessages.push(`Loot: ${gemDrop.name}`);
+                lootMessages.push(`<span class="log-loot-gem font-bold" style="font-size: 1.05rem; text-shadow: 0 0 5px currentColor;">💎 Gem Found: ${gemDrop.name}</span>`);
              }
         }
     }
@@ -850,9 +1033,9 @@ const Systems = {
             if (drop.isShadow) {
                 const qmPct = Math.round((drop.qualityMultiplier - 1) * 100);
                 const enchCount = drop.enchantments ? drop.enchantments.length : 0;
-                lootMessages.push(`Shadow Found: ${drop.name} (+${qmPct}%) [${enchCount} Enchants]`);
+                lootMessages.push(`<span class="log-loot-item font-bold" style="font-size: 1.05rem; text-shadow: 0 0 5px currentColor;">🟣 Shadow Found: ${drop.name} (+${qmPct}%) [${enchCount} Enchants]</span>`);
             } else if (drop.isEcho) {
-                lootMessages.push(`Echo of ${drop.name} manifested!`);
+                lootMessages.push(`<span class="log-loot-item font-bold" style="font-size: 1.05rem; text-shadow: 0 0 5px currentColor;">🌑 Echo of ${drop.name} manifested!</span>`);
             }
         }
     }

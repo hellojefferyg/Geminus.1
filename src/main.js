@@ -391,6 +391,11 @@ async function main() {
     if (!state.player && gameManager.CreationManager) {
         console.log("🌑 No Player Echo detected. Triggering Creation Flow...");
         gameManager.CreationManager.init();
+    } else if (state.player && Systems.calculateDerivedStats) {
+        // [BUG FIX] Player found! Force gear math to calculate immediately upon logging in.
+        Systems.calculateDerivedStats(state.player);
+        if (gameManager.ProfileManager) gameManager.ProfileManager.updateAllProfileUI();
+        console.log("⚔️ Player gear and stats successfully synchronized on boot.");
     }
     
     console.log("🚀 Geminus Engine: All systems online and integrated.");

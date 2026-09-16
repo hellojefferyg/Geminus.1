@@ -304,11 +304,17 @@ const isTarget = btn.innerText.trim().toLowerCase() === gender.toLowerCase();
     if (this.GameManager) {
         // Load the ancestral home zone dynamically
         await this.GameManager.loadInitialZone(spawnData.zone);
+        
+        // [BUG FIX] Force gear math to calculate and strictly bind to the UI before allowing interaction
         if (this.Systems) {
             this.Systems.calculateDerivedStats(this.state.player);
         }
         if (this.UIManager) {
             this.UIManager.updatePlayerStatusUI();
+        }
+        if (this.GameManager.ProfileManager) {
+            this.GameManager.ProfileManager.updateAllProfileUI();
+            console.log("⚔️ Creation Complete: Stats and UI synchronized.");
         }
     }
   }

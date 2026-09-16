@@ -494,6 +494,16 @@ export class CombatManager {
       logStrikeChain(result.strike2, "2nd Strike", hasOff);
     }
 
+    // --- [NEW] IN-COMBAT REGEN UI ---
+    if (result.hpRegained > 0) {
+        this.logToGame(`<span class="text-green-400 font-bold">+${Math.floor(result.hpRegained)} HP</span> <span class="text-gray-500 text-xs">(Regen)</span>`);
+        if (this.UIManager) {
+            const statPanel = document.querySelector('#combat-info-panel');
+            // Pop the heal text right after the damage numbers clear
+            setTimeout(() => this.UIManager.showFloatingText(`+${Math.floor(result.hpRegained)}`, 'heal', statPanel), 300);
+        }
+    }
+
     if (result.status === 'VICTORY') {
       this.logToGame(`<span class="log-enemy text-red-500 font-bold">${this.currentMonster.name} slain.</span>`);
       

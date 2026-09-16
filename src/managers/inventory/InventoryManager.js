@@ -412,20 +412,22 @@ export class InventoryManager {
         const tier = fullItem.tier || 1;
         const imageUrl = fullItem.imageUrl || `https://placehold.co/64x64/1f2937/ffffff?text=${(fullItem.name || 'Item').substring(0,2)}`;
 
+        // Calculate true stats including gems/enchants
+        const trueStats = this.Systems ? this.Systems.calculateTrueItemStats(fullItem) : { wc: fullItem.wc * (fullItem.qualityMultiplier || 1), ac: fullItem.ac * (fullItem.qualityMultiplier || 1), sc: fullItem.sc * (fullItem.qualityMultiplier || 1) };
+
         // Prepare Tooltip Data (Passed as string attribute)
         const tooltipData = JSON.stringify({
             name: fullItem.name,
             tier: tier,
             type: fullItem.type || fullItem.category || 'Misc',
-            wc: fullItem.wc,
-            ac: fullItem.ac,
-            sc: fullItem.sc,
+            wc: trueStats.wc,
+            ac: trueStats.ac,
+            sc: trueStats.sc,
             regen: fullItem.hp_regen_percent,
-            qm: fullItem.qualityMultiplier,
+            qm: fullItem.qualityMultiplier, // Keeps the visual percentage text accurate
             isShadow: isShadow,
-            socketedGems: fullItem.socketedGems || [] // [ARCHITECT FIX] Pass gems to tooltip renderer
+            socketedGems: fullItem.socketedGems || [] 
         }).replace(/"/g, '&quot;');
-
         // [UPDATED] Replaced nested Tooltip HTML with mouse events for Global Tooltip
         return `
             <div class="item-card relative aspect-square glass-panel cursor-pointer transition-all hover:scale-105 group ${specializationGlow} ${levelError}" 
@@ -462,7 +464,7 @@ export class InventoryManager {
             let statString = "";
             let statColor = "text-gray-400";
             const qm = data.qm || 1.0;
-            const fmtStat = (val) => (Number(val) * qm).toFixed(1);
+            const fmtStat = (val) => Number(val).toFixed(1); // Removed * qm math because we pre-calculated it via Systems
 
             if (data.wc) { statString = `WC ${fmtStat(data.wc)}`; statColor = "text-red-400"; }
             else if (data.ac) { statString = `AC ${fmtStat(data.ac)}`; statColor = "text-blue-400"; }
