@@ -215,18 +215,22 @@ export class ModalManager {
             else if (ench.tier >= 4) color = 'text-blue-300'; 
             
             let displayString = "";
-            if (ench.value !== undefined && !isNaN(ench.value)) {
-                const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : ench.value;
+            const isValValid = ench.value !== undefined && ench.value !== null && !isNaN(Number(ench.value));
+            
+            if (isValValid) {
+                const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : Number(ench.value);
                 const effectDesc = ench.effect || "Stat";
                 displayString = `+${val} ${effectDesc}`;
             } else {
-                // Gracefully handles multi-stat enchantments instead of printing NaN
+                // Gracefully handles multi-stat enchantments without printing NaN
                 const stats = [];
                 for (const [k, v] of Object.entries(ench)) {
                     if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
-                        let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
-                        if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC'; if (label === 'Vit') label = 'VIT';
-                        stats.push(`+${v} ${label}`);
+                        if (v !== undefined && v !== null && !isNaN(Number(v))) {
+                            let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                            if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC'; if (label === 'Vit') label = 'VIT';
+                            stats.push(`+${v} ${label}`);
+                        }
                     }
                 }
                 displayString = stats.length > 0 ? stats.join(', ') : (ench.effect || "Stat");

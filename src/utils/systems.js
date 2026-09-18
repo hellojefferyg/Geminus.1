@@ -58,9 +58,10 @@ const Systems = {
     let bonusWcScMultiplier = 1.0;
     let bonusAcMultiplier = 1.0; // [NEW] Support for 'Guard' buff % bonus
     let totalHpRegenPercent = 0;
-    let gearVit = 0, gearDex = 0, gearWis = 0; // [NEW] Gear-based attribute bonuses
-    let bonusDoubleHit = 0, bonusTripleHit = 0;
-    let bonusCrit = 0; // [NEW] Track crit from gems and enchants
+    
+    // [ARCHITECT FIX] Centralized Percentage Stat Pools
+    let gearVitPct = 0, gearDexPct = 0, gearIntPct = 0, gearWisPct = 0, gearStrPct = 0;
+    let bonusDoubleHit = 0, bonusTripleHit = 0, bonusCrit = 0;
 
     // 1. Process Equipment Stats (ARCHITECT FIX)
     const equipmentSource = player.equipped || player.equipment || {};
@@ -86,55 +87,80 @@ const Systems = {
             if (!rawAffix) return;
             let affix = { ...rawAffix };
             
-            // 1. Hydrate Gems (Fixes save data stripping)
-            if (!affix.wc_bonus && !affix.effect && affix.id && gems && gems.base_gems) {
+            // 1. Hydrate Gems (Fixes save data stripping & family ID matching)
+            if (!affix.wc_pct && !affix.effect && affix.id && gems && gems.base_gems) {
+                let foundGem = null;
+                // First try direct ID match (e.g. "GEM-VGRT-G2")
                 for (const family of Object.values(gems.base_gems)) {
                     if (family[affix.id]) {
-                        affix = { ...family[affix.id], ...affix };
+                        foundGem = family[affix.id];
                         break;
                     }
+                }
+                // If not found, try matching by family name + grade (e.g. id: "vigorite", grade: 2)
+                if (!foundGem) {
+                    const familyKey = affix.id.toLowerCase();
+                    const family = gems.base_gems[familyKey];
+                    if (family) {
+                        foundGem = Object.values(family).find(g => Number(g.grade) === Number(affix.grade || 1));
+                    }
+                }
+                if (foundGem) {
+                    affix = { ...foundGem, ...affix };
                 }
             }
             
             // 2. Hydrate Broken Enchantments (Fixes old NaN saves)
-            if (affix.effect && affix.value === undefined && !affix.sc_bonus && !affix.wc_bonus && affix.id && enchantments) {
+            if (affix.effect && affix.value === undefined && !affix.sc_pct && !affix.wc_pct && affix.id && enchantments) {
                 let baseEnch = null;
                 if (enchantments.caster && enchantments.caster[affix.id]) baseEnch = enchantments.caster[affix.id];
                 else if (enchantments.fighter && enchantments.fighter[affix.id]) baseEnch = enchantments.fighter[affix.id];
                 else if (enchantments.support && enchantments.support[affix.id]) baseEnch = enchantments.support[affix.id];
                 
                 if (baseEnch) {
-                    const magicTier = affix.tier || 1;
+                    const magicTier = parseInt(affix.tier) || 1;
+                    const safeTierIndex = Math.max(0, Math.min(8, magicTier - 1));
+                    
+                    // Recover missing array values for old saves
+                    if (baseEnch.tiers && baseEnch.tiers.length > 0) {
+                        affix.value = baseEnch.tiers[safeTierIndex];
+                    } else if (baseEnch.values && baseEnch.values.length > 0) {
+                        affix.value = baseEnch.values[safeTierIndex];
+                    }
+
                     Object.keys(baseEnch).forEach(key => {
                         if (key.endsWith('_min')) {
                             const maxKey = key.replace('_min', '_max');
-                            const bonusKey = key.replace('_min', '_bonus');
+                            const bonusKey = key.replace('_min', ''); 
                             const minVal = baseEnch[key];
                             const maxVal = baseEnch[maxKey] || minVal;
-                            const interpolated = minVal + ((maxVal - minVal) / 8) * (magicTier - 1);
+                            const interpolated = minVal + ((maxVal - minVal) / 8) * safeTierIndex;
                             affix[bonusKey] = Number(interpolated.toFixed(2));
                         }
                     });
                 }
             }
             
-            // 3. Process explicit data keys
-            localWcBonus += safeVal(affix.wc_bonus);
-            localScBonus += safeVal(affix.sc_bonus);
-            localAcBonus += safeVal(affix.ac_bonus);
+            // 3. Process direct percentage keys (supports legacy _bonus aliases temporarily)
+            localWcBonus += safeVal(affix.wc_pct) + safeVal(affix.wc_bonus);
+            localScBonus += safeVal(affix.sc_pct) + safeVal(affix.sc_bonus);
+            localAcBonus += safeVal(affix.ac_pct) + safeVal(affix.ac_bonus);
             
-            gearVit += safeVal(affix.vit_bonus);
-            gearDex += safeVal(affix.dex_bonus);
-            gearWis += safeVal(affix.wis_bonus) + safeVal(affix.ntl_bonus) + safeVal(affix.int_bonus);
+            gearVitPct += safeVal(affix.vit_pct) + safeVal(affix.vit_bonus);
+            gearDexPct += safeVal(affix.dex_pct) + safeVal(affix.dex_bonus);
+            gearIntPct += safeVal(affix.int_pct) + safeVal(affix.ntl_pct) + safeVal(affix.int_bonus) + safeVal(affix.ntl_bonus);
+            gearWisPct += safeVal(affix.wis_pct) + safeVal(affix.wis_bonus);
+            gearStrPct += safeVal(affix.str_pct) + safeVal(affix.str_bonus);
             
-            bonusHitChance += safeVal(affix.hit_chance_bonus) + safeVal(affix.hit_bonus);
-            bonusCrit += safeVal(affix.crit_chance_bonus) + safeVal(affix.crit_bonus);
-            bonusDoubleHit += safeVal(affix.double_hit_bonus);
-            bonusTripleHit += safeVal(affix.triple_hit_bonus);
+            // [ARCHITECT FIX] Gems and Enchantments already use true percentages (0.75 = 0.75%). No scaling needed!
+            bonusHitChance += safeVal(affix.hit_pct) + safeVal(affix.hit_chance_bonus);
+            bonusCrit += safeVal(affix.crit_pct) + safeVal(affix.crit_chance_bonus);
+            bonusDoubleHit += safeVal(affix.double_hit_pct) + safeVal(affix.double_hit_bonus);
+            bonusTripleHit += safeVal(affix.triple_hit_pct) + safeVal(affix.triple_hit_bonus);
             
             if (affix.regen_pct) totalHpRegenPercent += safeVal(affix.regen_pct);
             
-            // 4. Process legacy string effects
+            // 4. Process legacy string effects explicitly mapped to the percentage pools
             const effect = (affix.effect || affix.name || '').toLowerCase();
             const val = safeVal(affix.value);
             
@@ -143,9 +169,12 @@ const Systems = {
                 if (effect.includes('spell class')) localScBonus += val;
                 if (effect.includes('armor class')) localAcBonus += val;
 
-                if (effect.includes('vitality')) gearVit += val;
-                if (effect.includes('dexterity')) gearDex += val;
-                if (effect.includes('wisdom') || effect.includes('intellect')) gearWis += val;
+                // [ARCHITECT FIX] Catch both full words and shorthands (dex, vit, int, etc.)
+                if (effect.includes('vitality') || effect.includes(' vit')) gearVitPct += val;
+                if (effect.includes('dexterity') || effect.includes(' dex')) gearDexPct += val;
+                if (effect.includes('wisdom') || effect.includes(' wis')) gearWisPct += val;
+                if (effect.includes('intellect') || effect.includes(' int')) gearIntPct += val;
+                if (effect.includes('strength') || effect.includes(' str')) gearStrPct += val;
                 
                 if (effect.includes('hit chance')) bonusHitChance += val;
                 if (effect.includes('crit')) bonusCrit += val;
@@ -174,26 +203,38 @@ const Systems = {
         totalGearAC += itemAc;
         
         // Accumulate % Bonuses from Buff Spells & Jewelry
+        const normPct = (val) => (Math.abs(val) > 0 && Math.abs(val) <= 1.0) ? val * 100 : val;
+
+        // Base item class multipliers divided by 100 if stored as percentages
+        if (statsItem.wc_pct) bonusWcScMultiplier += (safeVal(statsItem.wc_pct) / 100);
+        if (statsItem.sc_pct) bonusWcScMultiplier += (safeVal(statsItem.sc_pct) / 100);
+        if (statsItem.ac_pct) bonusAcMultiplier += (safeVal(statsItem.ac_pct) / 100);
         if (statsItem.wc_bonus) bonusWcScMultiplier += safeVal(statsItem.wc_bonus);
         if (statsItem.sc_bonus) bonusWcScMultiplier += safeVal(statsItem.sc_bonus);
         if (statsItem.ac_bonus) bonusAcMultiplier += safeVal(statsItem.ac_bonus);
-        if (statsItem.hit_chance_bonus) bonusHitChance += safeVal(statsItem.hit_chance_bonus);
-        if (statsItem.double_hit_chance) bonusDoubleHit += safeVal(statsItem.double_hit_chance);
-        if (statsItem.triple_hit_chance) bonusTripleHit += safeVal(statsItem.triple_hit_chance);
+
+        // Normalize decimals (0.004) vs whole numbers (5.0)
+        if (statsItem.hit_pct) bonusHitChance += normPct(safeVal(statsItem.hit_pct));
+        if (statsItem.hit_chance_bonus) bonusHitChance += normPct(safeVal(statsItem.hit_chance_bonus));
+        if (statsItem.crit_bonus) bonusCrit += normPct(safeVal(statsItem.crit_bonus));
+        if (statsItem.double_hit_pct) bonusDoubleHit += normPct(safeVal(statsItem.double_hit_pct));
+        if (statsItem.double_hit_chance) bonusDoubleHit += normPct(safeVal(statsItem.double_hit_chance));
+        if (statsItem.triple_hit_pct) bonusTripleHit += normPct(safeVal(statsItem.triple_hit_pct));
+        if (statsItem.triple_hit_chance) bonusTripleHit += normPct(safeVal(statsItem.triple_hit_chance));
         
         // Base Attribute Scaling
-        if (statsItem.vit) gearVit += safeVal(statsItem.vit) * qm;
-        if (statsItem.dex) gearDex += safeVal(statsItem.dex) * qm;
-        if (statsItem.ntl || statsItem.wis) gearWis += safeVal(statsItem.ntl || statsItem.wis) * qm;
+        if (statsItem.vit) gearVitPct += safeVal(statsItem.vit) * qm;
+        if (statsItem.dex) gearDexPct += safeVal(statsItem.dex) * qm;
+        if (statsItem.ntl || statsItem.wis) gearWisPct += safeVal(statsItem.ntl || statsItem.wis) * qm;
         if (statsItem.hp_regen_percent) totalHpRegenPercent += safeVal(statsItem.hp_regen_percent);
     });
 
-    // 2. Combined Scaling Logic (Base Stats + Gear Attributes)
-    const VIT = safeVal(player.baseStats?.VIT) + gearVit;
-    const DEX = safeVal(player.baseStats?.DEX) + gearDex;
-    const WIS = safeVal(player.baseStats?.WIS) + gearWis;
-    const STR = safeVal(player.baseStats?.STR); 
-    const NTL = safeVal(player.baseStats?.NTL);
+    // 2. Combined Percentage Scaling Logic
+    const VIT = Math.floor(safeVal(player.baseStats?.VIT) * (1 + (gearVitPct / 100)));
+    const DEX = Math.floor(safeVal(player.baseStats?.DEX) * (1 + (gearDexPct / 100)));
+    const WIS = Math.floor(safeVal(player.baseStats?.WIS) * (1 + (gearWisPct / 100)));
+    const STR = Math.floor(safeVal(player.baseStats?.STR) * (1 + (gearStrPct / 100)));
+    const NTL = Math.floor(safeVal(player.baseStats?.NTL) * (1 + (gearIntPct / 100)));
 
     let finalWcMain = 0, finalWcOff = 0, finalScMain = 0, finalScOff = 0;
     const isTroll = player.race === 'Troll';
@@ -239,6 +280,13 @@ const Systems = {
     finalScOff = gearScOff > 0 ? Math.max(1, finalScOff * bonusWcScMultiplier) : 0;
 
     // 3. Derived Combat Values
+    // [ARCHITECT FIX] Export scaled attributes so the UI Character Sheet can display them
+    player.derivedStats.VIT = VIT;
+    player.derivedStats.DEX = DEX;
+    player.derivedStats.WIS = WIS;
+    player.derivedStats.STR = STR;
+    player.derivedStats.NTL = NTL;
+
     player.derivedStats.maxHp = 100 + (VIT * 10);
     // [ARCHITECT FIX] Defensive multiplier shifted to square root curve matching offense
     player.derivedStats.AC = totalGearAC * (1 + (Math.pow(VIT, 0.5) * 0.005)) * bonusAcMultiplier;
@@ -257,7 +305,7 @@ const Systems = {
     player.derivedStats.accuracyRating = primaryRating; 
 
     // UI Baselines (Dynamic calculation occurs per-swing in resolveCombatTurn)
-    player.derivedStats.hitChance = (bonusHitChance * 100); // Starts at 0%, grows with gear
+    player.derivedStats.hitChance = bonusHitChance; // bonusHitChance is already standardized to a true percentage
     player.derivedStats.critChance = 5 + bonusCrit; // Base 5% + gems/enchants
     player.derivedStats.doubleHitChance = bonusDoubleHit;
     player.derivedStats.tripleHitChance = bonusTripleHit;
@@ -565,41 +613,59 @@ const Systems = {
           if (!rawAffix) return;
           let affix = { ...rawAffix };
           
-          // Hydrate gem if stats are missing
-          if (!affix.wc_bonus && !affix.effect && affix.id && gems && gems.base_gems) {
+          // Hydrate gem if stats are missing (Supports family IDs)
+          if (!affix.wc_pct && !affix.effect && affix.id && gems && gems.base_gems) {
+              let foundGem = null;
               for (const family of Object.values(gems.base_gems)) {
                   if (family[affix.id]) {
-                      affix = { ...family[affix.id], ...affix };
+                      foundGem = family[affix.id];
                       break;
                   }
               }
+              if (!foundGem) {
+                  const familyKey = affix.id.toLowerCase();
+                  const family = gems.base_gems[familyKey];
+                  if (family) {
+                      foundGem = Object.values(family).find(g => Number(g.grade) === Number(affix.grade || 1));
+                  }
+              }
+              if (foundGem) {
+                  affix = { ...foundGem, ...affix };
+              }
           }
 
-          // Hydrate Broken Enchantments
-          if (affix.effect && affix.value === undefined && !affix.sc_bonus && !affix.wc_bonus && affix.id && enchantments) {
+          if (affix.effect && affix.value === undefined && !affix.sc_pct && !affix.wc_pct && affix.id && enchantments) {
               let baseEnch = null;
               if (enchantments.caster && enchantments.caster[affix.id]) baseEnch = enchantments.caster[affix.id];
               else if (enchantments.fighter && enchantments.fighter[affix.id]) baseEnch = enchantments.fighter[affix.id];
               else if (enchantments.support && enchantments.support[affix.id]) baseEnch = enchantments.support[affix.id];
               
               if (baseEnch) {
-                  const magicTier = affix.tier || 1;
+                  const magicTier = parseInt(affix.tier) || 1;
+                  const safeTierIndex = Math.max(0, Math.min(8, magicTier - 1));
+                  
+                  if (baseEnch.tiers && baseEnch.tiers.length > 0) {
+                      affix.value = baseEnch.tiers[safeTierIndex];
+                  } else if (baseEnch.values && baseEnch.values.length > 0) {
+                      affix.value = baseEnch.values[safeTierIndex];
+                  }
+
                   Object.keys(baseEnch).forEach(key => {
                       if (key.endsWith('_min')) {
                           const maxKey = key.replace('_min', '_max');
-                          const bonusKey = key.replace('_min', '_bonus');
+                          const bonusKey = key.replace('_min', ''); 
                           const minVal = baseEnch[key];
                           const maxVal = baseEnch[maxKey] || minVal;
-                          const interpolated = minVal + ((maxVal - minVal) / 8) * (magicTier - 1);
+                          const interpolated = minVal + ((maxVal - minVal) / 8) * safeTierIndex;
                           affix[bonusKey] = Number(interpolated.toFixed(2));
                       }
                   });
               }
           }
           
-          localWcBonus += safeVal(affix.wc_bonus);
-          localScBonus += safeVal(affix.sc_bonus);
-          localAcBonus += safeVal(affix.ac_bonus);
+          localWcBonus += safeVal(affix.wc_pct) + safeVal(affix.wc_bonus);
+          localScBonus += safeVal(affix.sc_pct) + safeVal(affix.sc_bonus);
+          localAcBonus += safeVal(affix.ac_pct) + safeVal(affix.ac_bonus);
           
           const effectText = (affix.effect || affix.name || '').toLowerCase();
           const val = safeVal(affix.value);

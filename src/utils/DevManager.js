@@ -31,11 +31,11 @@ export const DevManager = {
 
         if (level !== undefined && level !== "") {
             const targetLevel = parseInt(level);
-            p.level = targetLevel;
             
-            // Grant 1 point per level as requested (not 5) for manual testing
-            // This triggers the "Select Attribute Focus" UI in combat
-            p.attributePoints = targetLevel; 
+            // [ARCHITECT FIX] Prevent Level Doubling with the new Bank System.
+            // Reset the player to Level 1, then give them the exact points needed to reach the target level.
+            p.level = 1;
+            p.attributePoints = targetLevel > 1 ? targetLevel - 1 : 0; 
             
             // Reset base stats to baseline so you can test the "clean" impact of your manual choices
             p.baseStats = { STR: 10, DEX: 10, VIT: 10, NTL: 10, WIS: 10 }; 
@@ -47,7 +47,7 @@ export const DevManager = {
         
         this.gm.Systems.calculateDerivedStats(p);
         this.sync();
-        console.log(`⚡ Dev: Level ${p.level} applied. Assign your ${p.attributePoints} points in Combat.`);
+        console.log(`⚡ Dev: Target Level ${level} prepared. Assign your ${p.attributePoints} banked points to rank up.`);
     },
 
     /**

@@ -87,11 +87,11 @@ export class StatsManager {
             </svg>
           </button>
           <div class="stat-accordion-content">
-            ${createStatLine('STR', Math.round(p.baseStats.STR), true)}
-            ${createStatLine('DEX', Math.round(p.baseStats.DEX), true)}
-            ${createStatLine('VIT', Math.round(p.baseStats.VIT), true)}
-            ${createStatLine('NTL', Math.round(p.baseStats.NTL), true)}
-            ${createStatLine('WIS', Math.round(p.baseStats.WIS), true)}
+            ${createStatLine('STR', `${Math.round(p.derivedStats?.STR || p.baseStats.STR)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.STR)})</span>`, true)}
+            ${createStatLine('DEX', `${Math.round(p.derivedStats?.DEX || p.baseStats.DEX)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.DEX)})</span>`, true)}
+            ${createStatLine('VIT', `${Math.round(p.derivedStats?.VIT || p.baseStats.VIT)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.VIT)})</span>`, true)}
+            ${createStatLine('NTL', `${Math.round(p.derivedStats?.NTL || p.baseStats.NTL)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.NTL)})</span>`, true)}
+            ${createStatLine('WIS', `${Math.round(p.derivedStats?.WIS || p.baseStats.WIS)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.WIS)})</span>`, true)}
             <div class="stat-line mt-2">
               <span class="stat-icon">💎</span>
               <span class="stat-name text-glow-subtle">Unspent Points</span>
@@ -145,7 +145,8 @@ export class StatsManager {
       if (header) {
         header.parentElement.classList.toggle('open');
       } else if (attrBtn && this.ProfileManager) {
-        this.ProfileManager.spendAttributePoint(attrBtn.dataset.attr);
+        // [ARCHITECT FIX] Calls the correct banking function
+        this.ProfileManager.allocateAllPoints(attrBtn.dataset.attr);
       } else if (infoBtn) {
         this.showStatInfo(infoBtn.dataset.title, infoBtn.dataset.description);
       }
