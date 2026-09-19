@@ -2,8 +2,12 @@
 import { races, progression, items, gddConstants, bestiary, gems, zones, enchantments } from '../config/gdd.js';
 
 // --- SAFETY UTILS ---
-// Prevents "undefined * 5 = NaN" errors
-const safeVal = (val) => (typeof val === 'number' && !isNaN(val)) ? val : 0;
+// Prevents "undefined * 5 = NaN" errors, and safely converts strings to numbers
+const safeVal = (val) => {
+    if (val === undefined || val === null) return 0;
+    const num = Number(val);
+    return !isNaN(num) ? num : 0;
+};
 const safeMult = (val, mult) => safeVal(val) * safeVal(mult);
 
 // [ARCHITECT FIX] Helper to find an item by ID in the FLAT Master Registry
@@ -62,6 +66,11 @@ const Systems = {
     // [ARCHITECT FIX] Centralized Percentage Stat Pools
     let gearVitPct = 0, gearDexPct = 0, gearIntPct = 0, gearWisPct = 0, gearStrPct = 0;
     let bonusDoubleHit = 0, bonusTripleHit = 0, bonusCrit = 0;
+    
+    // [ARCHITECT FIX] Advanced Economy & Combat Effect Pools
+    let bonusGold = 0, bonusExp = 0, bonusShadowDrop = 0, bonusGlobalDrop = 0;
+    let lifeSteal = 0, enemyAtkDebuff = 0;
+    let physEvasionDebuff = 0, magEvasionDebuff = 0, globalEvasionDebuff = 0;
 
     // 1. Process Equipment Stats (ARCHITECT FIX)
     const equipmentSource = player.equipped || player.equipment || {};
@@ -87,21 +96,24 @@ const Systems = {
             if (!rawAffix) return;
             let affix = { ...rawAffix };
             
-            // 1. Hydrate Gems (Fixes save data stripping & family ID matching)
+            // [ARCHITECT FIX] Hydrate Gems (Underscore-Proof Lookup)
             if (!affix.wc_pct && !affix.effect && affix.id && gems && gems.base_gems) {
                 let foundGem = null;
-                // First try direct ID match (e.g. "GEM-VGRT-G2")
+                
                 for (const family of Object.values(gems.base_gems)) {
                     if (family[affix.id]) {
                         foundGem = family[affix.id];
                         break;
                     }
                 }
-                // If not found, try matching by family name + grade (e.g. id: "vigorite", grade: 2)
+                
                 if (!foundGem) {
-                    const familyKey = affix.id.toLowerCase();
-                    const family = gems.base_gems[familyKey];
-                    if (family) {
+                    const rawKey = affix.id.toLowerCase();
+                    const strippedKey = rawKey.replace(/_/g, '');
+                    const matchedKey = Object.keys(gems.base_gems).find(k => k.replace(/_/g, '') === strippedKey);
+                    
+                    if (matchedKey) {
+                        const family = gems.base_gems[matchedKey];
                         foundGem = Object.values(family).find(g => Number(g.grade) === Number(affix.grade || 1));
                     }
                 }
@@ -160,6 +172,22 @@ const Systems = {
             
             if (affix.regen_pct) totalHpRegenPercent += safeVal(affix.regen_pct);
             
+            // [ARCHITECT FIX] Harvest Economy & Advanced Combat keys (Bulletproofed for all schemas)
+            bonusGold += safeVal(affix.gold_pct) + safeVal(affix.gold_bonus);
+            bonusExp += safeVal(affix.exp_pct) + safeVal(affix.exp_bonus);
+            bonusShadowDrop += safeVal(affix.shadow_drop_pct) + safeVal(affix.shadow_drop_bonus);
+            bonusGlobalDrop += safeVal(affix.drop_pct) + safeVal(affix.drop_chance_bonus);
+            
+            lifeSteal += safeVal(affix.health_steal_pct) + safeVal(affix.health_steal);
+            
+            // Group stat steals & debuffs generically to weaken monster ATK and Evasion
+            enemyAtkDebuff += safeVal(affix.enemy_str_debuff_pct) + safeVal(affix.enemy_int_debuff_pct) + safeVal(affix.str_steal_pct) + safeVal(affix.int_steal_pct) + safeVal(affix.enemy_str_debuff) + safeVal(affix.str_steal) + safeVal(affix.enemy_int_debuff) + safeVal(affix.int_steal);
+            
+            // [ARCHITECT FIX] Split Evasion Debuffs by Combat Style
+            physEvasionDebuff += safeVal(affix.enemy_dex_debuff_pct) + safeVal(affix.dex_steal_pct) + safeVal(affix.enemy_dex_debuff) + safeVal(affix.dex_steal);
+            magEvasionDebuff += safeVal(affix.enemy_wis_debuff_pct) + safeVal(affix.wis_steal_pct) + safeVal(affix.enemy_wis_debuff) + safeVal(affix.wis_steal);
+            globalEvasionDebuff += safeVal(affix.enemy_hit_debuff_pct) + safeVal(affix.enemy_hit_debuff);
+
             // 4. Process legacy string effects explicitly mapped to the percentage pools
             const effect = (affix.effect || affix.name || '').toLowerCase();
             const val = safeVal(affix.value);
@@ -181,6 +209,13 @@ const Systems = {
                 if (effect.includes('double hit')) bonusDoubleHit += val;
                 if (effect.includes('triple hit')) bonusTripleHit += val;
                 if (effect.includes('hp regen') || effect.includes('health regen')) totalHpRegenPercent += (val / 100);
+                
+                // [ARCHITECT FIX] Economy & Advanced String Fallbacks
+                if (effect.includes('gold')) bonusGold += val;
+                if (effect.includes('experience') || effect.includes('exp ')) bonusExp += val;
+                if (effect.includes('shadow drop') || effect.includes('shadow luck')) bonusShadowDrop += val;
+                if (effect.includes('drop chance') && !effect.includes('shadow')) bonusGlobalDrop += val;
+                if (effect.includes('health steal') || effect.includes('life steal')) lifeSteal += val;
             }
         };
 
@@ -309,6 +344,17 @@ const Systems = {
     player.derivedStats.critChance = 5 + bonusCrit; // Base 5% + gems/enchants
     player.derivedStats.doubleHitChance = bonusDoubleHit;
     player.derivedStats.tripleHitChance = bonusTripleHit;
+
+    // [ARCHITECT FIX] Export Advanced Stats for Combat and Loot Engines
+    player.derivedStats.goldBonus = bonusGold;
+    player.derivedStats.expBonus = bonusExp;
+    player.derivedStats.shadowDropBonus = bonusShadowDrop;
+    player.derivedStats.globalDropBonus = bonusGlobalDrop;
+    player.derivedStats.lifeSteal = lifeSteal;
+    player.derivedStats.enemyAtkDebuff = enemyAtkDebuff;
+    player.derivedStats.physEvasionDebuff = physEvasionDebuff;
+    player.derivedStats.magEvasionDebuff = magEvasionDebuff;
+    player.derivedStats.globalEvasionDebuff = globalEvasionDebuff;
 
     // --- HP REGEN CALCULATION ---
     const baseRegen = Math.floor(5 + ((player.level || 1) * 1.5));
@@ -448,14 +494,23 @@ const Systems = {
     // magEvasion. 'spellstrike' averages the two.
     // =====================================================================
     let monsterEvasion = 10;
+    let activeEvasionDebuff = safeVal(pStats.globalEvasionDebuff);
+    
     if (actionType === 'cast') {
         monsterEvasion = Math.max(1, monster.magEvasion || monster.def || 10);
+        activeEvasionDebuff += safeVal(pStats.magEvasionDebuff);
     } else if (actionType === 'spellstrike') {
         const avgEvasion = (safeVal(monster.physEvasion) + safeVal(monster.magEvasion)) / 2;
         monsterEvasion = Math.max(1, avgEvasion || monster.def || 10);
+        activeEvasionDebuff += (safeVal(pStats.physEvasionDebuff) + safeVal(pStats.magEvasionDebuff)) / 2;
     } else {
         monsterEvasion = Math.max(1, monster.physEvasion || monster.def || 10);
+        activeEvasionDebuff += safeVal(pStats.physEvasionDebuff);
     }
+    
+    // [ARCHITECT FIX] Apply Target-Specific Evasion Debuffs (Capped at reducing evasion by 90%)
+    const evasionDebuffMultiplier = Math.max(0.1, 1 - (activeEvasionDebuff / 100));
+    monsterEvasion = Math.max(1, monsterEvasion * evasionDebuffMultiplier);
     
     const playerAccuracy = safeVal(pStats.accuracyRating);
     
@@ -480,7 +535,10 @@ const Systems = {
     }
     // [DEV TRACKING] Log the hit chance math to the F12 Console
     console.log(`\n--- [Combat: ${actionType.toUpperCase()}] ---`);
-    console.log(`Player Accuracy: ${playerAccuracy} | Target Evasion: ${monsterEvasion}`);
+    if (activeEvasionDebuff > 0) {
+        console.log(`💢 DEBUFF: Targeted Evasion reduced by ${activeEvasionDebuff.toFixed(2)}%`);
+    }
+    console.log(`Player Accuracy: ${playerAccuracy} | Target Evasion: ${monsterEvasion.toFixed(1)}`);
     console.log(`Base Ratio: ${statHitScore.toFixed(2)}% | Gear Multiplier: ${gearHitMultiplier.toFixed(2)}x`);
     console.log(`Total Hit Score: ${hitScore.toFixed(2)}% (Capped at 100%) | Precision Overflow: ${precisionBonus.toFixed(2)}%`);
 
@@ -542,14 +600,22 @@ const Systems = {
     const combatRegen = Math.floor(safeVal(player.derivedStats.hpRegen) * 0.5);
     let actualHeal = 0;
     
+    // [ARCHITECT FIX] Apply Life Steal based on damage dealt
+    const vampiricHeal = Math.floor(playerDamage * (safeVal(pStats.lifeSteal) / 100));
+    const totalCombatHeal = combatRegen + vampiricHeal;
+    
+    if (vampiricHeal > 0) {
+        console.log(`🩸 LIFE STEAL: Restored ${vampiricHeal} HP from ${playerDamage} damage dealt.`);
+    }
+
     // Only heal if the player is missing HP to prevent overhealing bugs
     if (player.hp < player.derivedStats.maxHp) {
         const missingHp = player.derivedStats.maxHp - player.hp;
-        actualHeal = Math.min(combatRegen, missingHp);
+        actualHeal = Math.min(totalCombatHeal, missingHp);
         player.hp += actualHeal;
     }
 
-    if (monster.currentHP <= 0) return { 
+    if (monster.currentHP <= 0) return {
         status: 'VICTORY', 
         player, 
         monster, 
@@ -564,8 +630,16 @@ const Systems = {
     const AC_FACTOR = gddConstants?.MONSTER_DAMAGE_AC_REDUCTION_FACTOR || 1.0;
     const effectivePlayerAC = Math.max(1, safeVal(pStats.AC) * AC_FACTOR);
     
+    // [ARCHITECT FIX] Apply Monster Attack Debuffs (Capped at 90% reduction)
+    const atkDebuffMultiplier = Math.max(0.1, 1 - (safeVal(pStats.enemyAtkDebuff) / 100));
+    const effectiveMonsterAtk = monster.atk * atkDebuffMultiplier;
+    
+    if (safeVal(pStats.enemyAtkDebuff) > 0) {
+        console.log(`🛡️ DEBUFF: Enemy ATK reduced from ${monster.atk} to ${effectiveMonsterAtk.toFixed(1)} (-${safeVal(pStats.enemyAtkDebuff)}%)`);
+    }
+    
     // Formula: (Constant * Monster_ATK) / Player_AC
-    let monsterDamage = (DAMAGE_CONST * monster.atk) / effectivePlayerAC;
+    let monsterDamage = (DAMAGE_CONST * effectiveMonsterAtk) / effectivePlayerAC;
     
     // Ensure monster damage is a number and minimum 1
     monsterDamage = Math.max(1, isNaN(monsterDamage) ? 1 : monsterDamage);
@@ -986,10 +1060,15 @@ const Systems = {
         : (zones && zones[currentZoneId] ? zones[currentZoneId] : null);
 
     const zoneMult = (zone && typeof zone.goldMultiplier === 'number') ? zone.goldMultiplier : 1.0;
+    
+    const pStats = player.derivedStats || player.stats || {};
 
-    // --- 2. GOLD & XP ---
-    let netGold = Math.floor((typeof monster.gold === 'number' ? monster.gold : 0) * zoneMult);
-    let netXp = Math.floor((typeof monster.xp === 'number' ? monster.xp : 0) * zoneMult);
+    // --- 2. GOLD & XP (WITH ECONOMY MULTIPLIERS) ---
+    const goldMultiplier = zoneMult * (1 + (safeVal(pStats.goldBonus) / 100));
+    const xpMultiplier = zoneMult * (1 + (safeVal(pStats.expBonus) / 100));
+    
+    let netGold = Math.floor((typeof monster.gold === 'number' ? monster.gold : 0) * goldMultiplier);
+    let netXp = Math.floor((typeof monster.xp === 'number' ? monster.xp : 0) * xpMultiplier);
     
     // --- 3. SOUL DEBT TITHE SYSTEM (Refined) ---
     // Per GDD 3.5.2: 50% Tithe on all future Gold and XP gains.
@@ -1034,11 +1113,24 @@ const Systems = {
 
     player.gold = (player.gold || 0) + netGold;
     player.xp = (player.xp || 0) + netXp;
-    lootMessages.push(`Earned ${netXp} XP & ${netGold} Gold.`);
+    
+    // UI Feedback for Economy Boosts
+    let earnMsg = `Earned ${netXp} XP & ${netGold} Gold.`;
+    if (safeVal(pStats.goldBonus) > 0 || safeVal(pStats.expBonus) > 0) {
+        earnMsg = `Earned ${netXp} XP <span class="text-[10px] text-cyan-400 ml-1">(+${safeVal(pStats.expBonus)}%)</span> & ${netGold} Gold <span class="text-[10px] text-yellow-400 ml-1">(+${safeVal(pStats.goldBonus)}%)</span>.`;
+    }
+    lootMessages.push(earnMsg);
 
     // --- 3. GEM DROPS ---
     const rateValGem = (zone && typeof zone.gemDropRate === 'number') ? zone.gemDropRate : 600;
-    const GEM_CHANCE = 1 / rateValGem;
+    // [ARCHITECT FIX] Apply Global Drop Boosts
+    const gemMultiplier = 1 + (safeVal(pStats.globalDropBonus) / 100);
+    const GEM_CHANCE = (1 / rateValGem) * gemMultiplier;
+    
+    // [ARCHITECT FIX] Always log base drop rate upon kill
+    let gemLog = `💎 GEM LUCK: Base 1 in ${rateValGem}`;
+    if (gemMultiplier > 1.0) gemLog += ` | Boosted by +${safeVal(pStats.globalDropBonus)}% | Effective Rate: 1 in ${(1/GEM_CHANCE).toFixed(1)}`;
+    console.log(gemLog);
     
     // [DEV] If isDevMode is true, we skip the RNG check
     if (isDevMode || Math.random() < GEM_CHANCE) {
@@ -1088,7 +1180,17 @@ const Systems = {
 
     // --- 4. SHADOW/ECHO DROPS ---
     const rateValShadow = (zone && typeof zone.shadowDropRate === 'number') ? zone.shadowDropRate : 250;
-    const SHADOW_CHANCE = 1 / rateValShadow;
+    // [ARCHITECT FIX] Apply Shadow & Global Drop Boosts
+    const dropMultiplier = 1 + (safeVal(pStats.shadowDropBonus) / 100) + (safeVal(pStats.globalDropBonus) / 100);
+    const SHADOW_CHANCE = (1 / rateValShadow) * dropMultiplier;
+    
+    // [ARCHITECT FIX] Always log base drop rate upon kill
+    let shadowLog = `🟣 SHADOW LUCK: Base 1 in ${rateValShadow}`;
+    if (dropMultiplier > 1.0) {
+        const totalBonus = safeVal(pStats.shadowDropBonus) + safeVal(pStats.globalDropBonus);
+        shadowLog += ` | Boosted by +${totalBonus}% | Effective Rate: 1 in ${(1/SHADOW_CHANCE).toFixed(1)}`;
+    }
+    console.log(shadowLog);
 
     // [DEV] If isDevMode is true, we skip the RNG check
     if (isDevMode || Math.random() < SHADOW_CHANCE) {

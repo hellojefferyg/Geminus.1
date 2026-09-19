@@ -182,67 +182,31 @@
                 { id: 'base_sword_1', name: 'Sword', type: 'Weapons', subType: 'Sword', imageUrl: 'https://raw.githubusercontent.com/juugboytv/Geminus/Weapons/IMG_1412.png', sockets: 2 },
             ]
         },
-        // --- COMPLETE GEM DATABASE ---
-        GEMS: {
-            // --- BLUE (CASTER) GEMS ---
-            lorestone: { name: 'LoreStone', type: 'Caster', effects: [{desc: 'Increase Base Spell Class', values: [1.5, 2.5, 3.5, 5, 7, 9, 11, 13, 15]}]},
-            mindrite: { name: 'Mindrite', type: 'Caster', effects: [{desc: 'Increase Wisdom', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
-            dullrite: { name: 'Dullrite', type: 'Caster', effects: [{desc: 'Decrease Enemy Wisdom', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
-            drainrite: { name: 'Drainrite', type: 'Caster', effects: [{desc: 'Steal Enemy Wisdom', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
-            mindstone: { name: 'MindStone', type: 'Caster', effects: [{desc: 'Increase Intelligence', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
-            dullstone: { name: 'DullStone', type: 'Caster', effects: [{desc: 'Decrease Enemy Intelligence', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
-            drawstone: { name: 'DrawStone', type: 'Caster', effects: [{desc: 'Steal Enemy Intelligence', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
-            
-            // --- RED (FIGHTER) GEMS ---
-            warstone: { name: 'WarStone', type: 'Fighter', effects: [{desc: 'Increase Base Weapon Class', values: [1.5, 2.5, 3.5, 5, 7, 9, 11, 13, 15]}]},
-            mightrite: { name: 'Mightrite', type: 'Fighter', effects: [{desc: 'Increase Dexterity', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
-            cripplite: { name: 'Cripplite', type: 'Fighter', effects: [{desc: 'Decrease Enemy Dexterity', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
-            siphilite: { name: 'Siphilite', type: 'Fighter', effects: [{desc: 'Steal Enemy Dexterity', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
-            mightstone: { name: 'MightStone', type: 'Fighter', effects: [{desc: 'Increase Strength', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
-            weakstone: { name: 'WeakStone', type: 'Fighter', effects: [{desc: 'Decrease Enemy Strength', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
-            sapstone: { name: 'SapStone', type: 'Fighter', effects: [{desc: 'Steal Enemy Strength', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
-
-            // --- GREEN (MISC) GEMS ---
-            obsidian_heart: { name: 'Obsidian Heart', type: 'Misc', effects: [{desc: 'Increase Base Armor Class', values: [1.5, 2.5, 3.5, 5, 7, 9, 11, 13, 15]}]},
-            spike_core: { name: 'Spike-Core', type: 'Misc', effects: [{desc: 'Increase Critical Hit Chance', values: [1, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]}]},
-            true_core: { name: 'True-Core', type: 'Misc', effects: [{desc: 'Increase Hit Chance', values: [3, 6, 9, 12, 15, 18, 21, 25, 30]}]},
-            veil_core: { name: 'Veil-Core', type: 'Misc', effects: [{desc: 'Decrease Enemy Hit Chance', values: [2.7, 5.4, 8.1, 10.8, 13.5, 16.2, 18.9, 22.5, 27]}]},
-            vital_core: { name: 'Vital-Core', type: 'Misc', effects: [{desc: 'Heals', values: [5, 7.5, 10, 12.5, 15, 20, 30, 40, 50]}]},
-            blood_core: { name: 'Blood-Core', type: 'Misc', effects: [{desc: 'Steal Enemy Health', values: [4, 6, 9, 15, 25, 40, 50, 60, 75]}]},
-            shadow_core: { name: 'Shadow-Core', type: 'Misc', effects: [{desc: 'Increase Shadow Drop Chance', values: [8, 10, 12, 14, 16, 19, 22, 26, 30]}]},
-            treasure_core: { name: 'Treasure-Core', type: 'Misc', effects: [{desc: 'Increase Drop Chance', values: [2, 3, 4, 5, 6, 7, 8, 9, 10]}]},
-            ascend_core: { name: 'Ascend-Core', type: 'Misc', effects: [{desc: 'Increase Experience Gain', values: [2, 4, 6, 9, 12, 15, 19, 24, 30]}]},
-            midas_core: { name: 'Midas’s-Core', type: 'Misc', effects: [{desc: 'Increase Gold Earned', values: [2, 4, 6, 9, 12, 15, 19, 24, 30]}]},
-            masterwork_core: { name: 'Masterwork-Core', type: 'Misc', effects: [{desc: 'Increase Mastery Chance', values: [5, 10, 15, 20, 25, 30, 35, 40, 50]}]},
-            echoing_core: { name: 'Echoing-Core', type: 'Misc', effects: [{desc: 'Increase Double Hit Chance', values: [2, 3, 4, 5, 6, 7, 8, 10, 12]}]},
-            harvester_core: { name: 'Harvester-Core', type: 'Misc', effects: [{desc: 'Increase Resource Drop Chance', values: [5, 10, 15, 20, 30, 50, 55, 60, 75]}]},
-
-            // --- FUSION GEMS ---
-            warheart: { name: 'WarHeart', type: 'Fighter', recipe: ['warstone', 'obsidian_heart'], dustCost: 50 },
-            loreheart: { name: 'LoreHeart', type: 'Caster', recipe: ['lorestone', 'obsidian_heart'], dustCost: 50 },
-            true_rite: { name: 'True-Rite', type: 'Caster', recipe: ['true_core', 'dullrite'], dustCost: 60 },
-            true_lite: { name: 'True-Lite', type: 'Fighter', recipe: ['true_core', 'cripplite'], dustCost: 60 },
-            shadow_treasure: { name: 'Shadow Treasure', type: 'Misc', recipe: ['shadow_core', 'treasure_core'], dustCost: 80 },
-            ascend_treasure: { name: 'Ascend-Treasure', type: 'Misc', recipe: ['ascend_core', 'treasure_core'], dustCost: 80 },
-            ascend_midas: { name: 'Ascend-Midas', type: 'Misc', recipe: ['ascend_core', 'midas_core'], dustCost: 100 },
-            midas_treasure: { name: 'Midas-Treasure', type: 'Misc', recipe: ['midas_core', 'treasure_core'], dustCost: 80 },
-            mastery_echoing: { name: 'Mastery-Echoing', type: 'Misc', recipe: ['masterwork_core', 'echoing_core'], dustCost: 120 },
-            sagerite: { name: 'Sagerite', type: 'Caster', recipe: ['mindstone', 'mindrite'], dustCost: 75 },
-            drowseite: { name: 'Drowseite', type: 'Caster', recipe: ['dullrite', 'dullstone'], dustCost: 75 },
-            leechrite: { name: 'Leechrite', type: 'Caster', recipe: ['drawstone', 'drainrite'], dustCost: 90 },
-            vigorite: { name: 'Vigorite', type: 'Fighter', recipe: ['mightstone', 'mightrite'], dustCost: 75 },
-            debilitate: { name: 'Debilitate', type: 'Fighter', recipe: ['cripplite', 'weakstone'], dustCost: 75 },
-            syphonite: { name: 'Syphonite', type: 'Fighter', recipe: ['sapstone', 'siphilite'], dustCost: 90 },
-
-            // --- PRIMAL FUSION GEMS ---
-            lorerite: { name: 'LoreRite', type: 'Caster', recipe: ['loreheart', 'true_rite'], dustCost: 200 },
-            warlite: { name: 'WarLite', type: 'Fighter', recipe: ['warheart', 'true_lite'], dustCost: 200 },
-            shadowlore: { name: 'ShadowLore', type: 'Caster', recipe: ['lorestone', 'shadow_treasure'], dustCost: 250 },
-            shadowwar: { name: 'ShadowWar', type: 'Fighter', recipe: ['warstone', 'shadow_treasure'], dustCost: 250 },
-            ascendlore: { name: 'AscendLore', type: 'Caster', recipe: ['lorestone', 'ascend_treasure'], dustCost: 250 },
-            ascendwar: { name: 'AscendWar', type: 'Fighter', recipe: ['warstone', 'ascend_treasure'], dustCost: 250 },
-            loremidas: { name: 'LoreMidas', type: 'Caster', recipe: ['loreheart', 'ascend_midas'], dustCost: 300 },
-            warmidas: { name: 'WarMidas', type: 'Fighter', recipe: ['warheart', 'ascend_midas'], dustCost: 300 },
+        // [ARCHITECT FIX] Restored ONLY the crafting recipes and dust costs needed for the Crucible. Stats still pull natively from the Engine.
+        FUSION_RECIPES: {
+            warheart: { recipe: ['warstone', 'obsidian_heart'], dustCost: 50 },
+            loreheart: { recipe: ['lorestone', 'obsidian_heart'], dustCost: 50 },
+            true_rite: { recipe: ['true_core', 'dullrite'], dustCost: 60 },
+            true_lite: { recipe: ['true_core', 'cripplite'], dustCost: 60 },
+            shadow_treasure: { recipe: ['shadow_core', 'treasure_core'], dustCost: 80 },
+            ascend_treasure: { recipe: ['ascend_core', 'treasure_core'], dustCost: 80 },
+            ascend_midas: { recipe: ['ascend_core', 'midas_core'], dustCost: 100 },
+            midas_treasure: { recipe: ['midas_core', 'treasure_core'], dustCost: 80 },
+            mastery_echoing: { recipe: ['masterwork_core', 'echoing_core'], dustCost: 120 },
+            sagerite: { recipe: ['mindstone', 'mindrite'], dustCost: 75 },
+            drowseite: { recipe: ['dullrite', 'dullstone'], dustCost: 75 },
+            leechrite: { recipe: ['drawstone', 'drainrite'], dustCost: 90 },
+            vigorite: { recipe: ['mightstone', 'mightrite'], dustCost: 75 },
+            debilitate: { recipe: ['cripplite', 'weakstone'], dustCost: 75 },
+            syphonite: { recipe: ['sapstone', 'siphilite'], dustCost: 90 },
+            lorerite: { recipe: ['loreheart', 'true_rite'], dustCost: 200 },
+            warlite: { recipe: ['warheart', 'true_lite'], dustCost: 200 },
+            shadowlore: { recipe: ['lorestone', 'shadow_treasure'], dustCost: 250 },
+            shadowwar: { recipe: ['warstone', 'shadow_treasure'], dustCost: 250 },
+            ascendlore: { recipe: ['lorestone', 'ascend_treasure'], dustCost: 250 },
+            ascendwar: { recipe: ['warstone', 'ascend_treasure'], dustCost: 250 },
+            loremidas: { recipe: ['loreheart', 'ascend_midas'], dustCost: 300 },
+            warmidas: { recipe: ['warheart', 'ascend_midas'], dustCost: 300 }
         }
     };
 
@@ -271,13 +235,16 @@
             p.inventory.forEach(item => {
                 // 1. IS IT A GEM? (Check IDs or Names)
                 if ((item.id && String(item.id).startsWith('GEM-')) || (item.name && item.name.includes('Grade'))) {
-                    // Extract family name by stripping 'Grade X'
                     const normalizedName = item.name.toLowerCase().replace(/grade \d+\s*/i, '').trim().replace(/ /g, '_').replace(/'/g, '').replace(/-/g, '_');
                     
                     let familyId = null;
-                    for (const key in GDD.GEMS) {
-                        const gddName = GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_').replace(/'/g, '').replace(/-/g, '_');
-                        if (gddName === normalizedName || key === normalizedName) {
+                    const engineGems = this.gm.gems?.base_gems || {};
+                    
+                    // Cross-reference against the live engine database
+                    for (const key in engineGems) {
+                        const strippedKey = key.replace(/_/g, '');
+                        const strippedNormalized = normalizedName.replace(/_/g, '');
+                        if (strippedKey === strippedNormalized) {
                             familyId = key;
                             break;
                         }
@@ -324,15 +291,16 @@
             
             this._state.player.gems.forEach(gemStack => {
                 const baseGem = State.findGemBase(gemStack.id) || { name: 'Unknown Gem' };
+                const safeName = baseGem.name || 'UNK';
                 for (let i = 0; i < gemStack.count; i++) {
                     mergedInventory.push({
-                        id: `GEM-${gemStack.id.substring(0,4).toUpperCase()}-G${gemStack.grade}`,
+                        id: `GEM-${String(gemStack.id).substring(0,4).toUpperCase()}-G${gemStack.grade}`,
                         uuid: `gem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                        name: `Grade ${gemStack.grade} ${baseGem.name}`,
+                        name: `Grade ${gemStack.grade} ${safeName}`,
                         type: 'Gem',
                         grade: gemStack.grade,
                         tier: gemStack.grade,
-                        icon: `https://placehold.co/40x40/1f2937/ffffff?text=${baseGem.name.substring(0,3).toUpperCase()}`
+                        icon: `https://placehold.co/40x40/1f2937/ffffff?text=${safeName.substring(0,3).toUpperCase()}`
                     });
                 }
             });
@@ -368,40 +336,49 @@
         },
         findGem(gemId, grade) { return this._state.player.gems.find(g => g.id === gemId && g.grade === grade); },
         findGemBase(gemId) { 
-            const gem = GDD.GEMS[gemId];
-            if (gem) return gem;
-            for (const key in GDD.GEMS) {
-                if (GDD.GEMS[key].name.toLowerCase().replace(/ /g, '_') === gemId) return GDD.GEMS[key];
+            if (!this.gm || !this.gm.gems || !this.gm.gems.base_gems) return null;
+            const engineGems = this.gm.gems.base_gems;
+            
+            let family = engineGems[gemId];
+            
+            if (!family) {
+                const rawKey = gemId.toLowerCase();
+                const strippedKey = rawKey.replace(/_/g, '');
+                const matchedKey = Object.keys(engineGems).find(k => k.replace(/_/g, '') === strippedKey);
+                if (matchedKey) family = engineGems[matchedKey];
+            }
+            
+            // [ARCHITECT FIX] Return a mock base item for the UI, keeping rawFamily for stat parsing
+            if (family) {
+                const firstGem = Object.values(family)[0];
+                if (firstGem) {
+                    const baseName = (firstGem.name || gemId).replace(/Grade \d+\s*/i, '').trim();
+                    return { ...firstGem, name: baseName, type: firstGem.type || 'Misc', rawFamily: family };
+                }
             }
             return null;
         },
         
-        // [ARCHITECT FIX] Bulletproof Recursive Evaluator
+        // [ARCHITECT FIX] Live Engine Evaluator (Reads true percentages from gdd.js)
         getCalculatedGemStats(gemId, grade) {
-            const gemBase = State.findGemBase(gemId);
-            if (!gemBase) return 'Stat Boost';
+            const gemBase = this.findGemBase(gemId);
+            if (!gemBase || !gemBase.rawFamily) return 'Stat Boost';
             
-            const stats = [];
             const parsedGrade = Number(grade) || 1;
+            const specificGem = Object.values(gemBase.rawFamily).find(g => Number(g.grade) === parsedGrade);
             
-            const extract = (base) => {
-                if (base.effects) {
-                    base.effects.forEach(eff => {
-                        const val = eff.values[parsedGrade - 1] || eff.values[eff.values.length - 1];
-                        let desc = eff.desc.replace('Increase ', '').replace('Base ', '');
-                        if (desc.includes('Decrease')) desc = desc.replace('Decrease ', '-');
-                        stats.push(`${Number(val) > 0 && !desc.includes('-') ? '+' : ''}${val} ${desc}`);
-                    });
+            if (specificGem) {
+                const stats = [];
+                for (const [k, v] of Object.entries(specificGem)) {
+                    if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                        let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                        if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC';
+                        stats.push(`${v > 0 ? '+' : ''}${v} ${label}`);
+                    }
                 }
-                if (base.recipe) {
-                    base.recipe.forEach(ingId => {
-                        const ingBase = State.findGemBase(ingId);
-                        if (ingBase) extract(ingBase);
-                    });
-                }
-            };
-            extract(gemBase);
-            return stats.length > 0 ? stats.join(', ') : 'Stat Boost';
+                return stats.length > 0 ? stats.join(', ') : 'Stat Boost';
+            }
+            return 'Stat Boost';
         },
         
         getPerkRank(perkId) { return this._state.player.artisan.unlockedPerks[perkId] || 0; },
@@ -769,9 +746,27 @@
             if (!item) return '';
             const base = State.findItemBase(item.baseItemId || item.id);
             const enchants = item.enchantments ? item.enchantments.map(ench => {
-                const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : ench.value;
-                const effectDesc = ench.effect || "Stat Boost";
-                return `<div class="text-xs text-purple-400 mb-0.5">✧ ${ench.name} <span class="font-mono text-[10px] text-gray-400">(+${val} ${effectDesc})</span></div>`;
+                let displayString = "";
+                const isValValid = ench.value !== undefined && ench.value !== null && !isNaN(Number(ench.value));
+                
+                if (isValValid) {
+                    const val = Number(ench.value) % 1 !== 0 ? Number(ench.value).toFixed(2) : Number(ench.value);
+                    const effectDesc = ench.effect || "Stat Boost";
+                    displayString = `+${val} ${effectDesc}`;
+                } else {
+                    const stats = [];
+                    for (const [k, v] of Object.entries(ench)) {
+                        if (k.includes('_bonus') || k.includes('_steal') || k.includes('_pct') || k.includes('_debuff')) {
+                            if (v !== undefined && v !== null && !isNaN(Number(v))) {
+                                let label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('Bonus', '').trim();
+                                if (label === 'Wc') label = 'WC'; if (label === 'Ac') label = 'AC'; if (label === 'Sc') label = 'SC'; if (label === 'Vit') label = 'VIT';
+                                stats.push(`+${v} ${label}`);
+                            }
+                        }
+                    }
+                    displayString = stats.length > 0 ? stats.join(', ') : (ench.effect || "Stat Boost");
+                }
+                return `<div class="text-xs text-purple-400 mb-0.5">✧ ${ench.name} <span class="font-mono text-[10px] text-gray-400">(${displayString})</span></div>`;
             }).join('') : '';
             
             const sockets = Array.from({ length: item.sockets || 0 }).map((_, i) => {
@@ -816,8 +811,8 @@
         renderGem(gem, base, count, isSelected) {
             // Use a placeholder if the gem base is not found
             const type = base ? base.type : 'Misc';
-            const name = base ? base.name : 'Unknown Gem';
-            const imageUrl = `https://placehold.co/40x40/1f2937/ffffff?text=${name.substring(0,3).toUpperCase()}`;
+            const name = (base && base.name) ? base.name : 'Unknown Gem';
+            const imageUrl = `https://placehold.co/40x40/1f2937/ffffff?text=${String(name).substring(0,3).toUpperCase()}`;
 
             return `<div class="gem-item gem-type-${type} ${isSelected ? 'selected' : ''}" data-gem-id="${gem.id}" data-gem-grade="${gem.grade}" title="${name} - Grade ${gem.grade}">
                 <img src="${imageUrl}" alt="${name}" class="w-10 h-10 object-contain">
@@ -968,8 +963,8 @@
         },
         findCrucibleRecipe(slot1, slot2) {
             if (!slot1 || !slot2) return null;
-            for (const resultId in GDD.GEMS) {
-                const gemData = GDD.GEMS[resultId];
+            for (const resultId in GDD.FUSION_RECIPES) {
+                const gemData = GDD.FUSION_RECIPES[resultId];
                 if (gemData.recipe) {
                     const [ing1, ing2] = gemData.recipe;
                     if ((ing1 === slot1.id && ing2 === slot2.id) || (ing1 === slot2.id && ing2 === slot1.id)) {

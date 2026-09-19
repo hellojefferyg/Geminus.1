@@ -162,14 +162,14 @@ export class ModalManager {
     let statsHTML = '';
     
     statConfig.forEach(stat => {
-        // Check if item has this property (value > 0)
-        if (fullItem[stat.key] !== undefined && Number(fullItem[stat.key]) !== 0) {
+        // [ARCHITECT FIX] Strict !isNaN check to absolutely prevent NaN from rendering
+        if (fullItem[stat.key] !== undefined && Number(fullItem[stat.key]) !== 0 && !isNaN(Number(fullItem[stat.key]))) {
             const rawVal = Number(fullItem[stat.key]);
             
-            // [ARCHITECT FIX] Dynamically swap in Universal Math for Primary Stats
+            // Dynamically swap in Universal Math for Primary Stats
             let effVal = rawVal * qm;
             if (['wc', 'ac', 'sc'].includes(stat.key)) {
-                effVal = trueStats[stat.key];
+                effVal = trueStats[stat.key] || 0; // Fallback to 0 if trueStats fails
             }
             
             let displayVal = '';
@@ -263,9 +263,14 @@ export class ModalManager {
                   let gBase = items[gem.id];
                   let specificGem = null;
                   
+                  // [ARCHITECT FIX] Underscore-proof gem family lookup
                   if (!gBase && gems && gems.base_gems) {
-                      const family = gems.base_gems[gem.id.toLowerCase()] || gems.base_gems[gem.id];
-                      if (family) {
+                      const rawKey = gem.id.toLowerCase();
+                      const strippedKey = rawKey.replace(/_/g, '');
+                      const matchedKey = Object.keys(gems.base_gems).find(k => k.replace(/_/g, '') === strippedKey);
+                      
+                      if (matchedKey) {
+                          const family = gems.base_gems[matchedKey];
                           specificGem = Object.values(family).find(g => Number(g.grade) === Number(gem.grade || 1));
                           if (specificGem) gBase = items[specificGem.id];
                       }
