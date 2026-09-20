@@ -429,81 +429,95 @@ export class CombatManager {
 
     const result = this.Systems.resolveCombatTurn(this.state.player, this.currentMonster, actionType);
 
-    if (result.strike1 || result.strike2) {
-      const pStats = this.state.player.derivedStats;
-      
-      // Determine if slots are active based on the split stats
-      let hasMain = false, hasOff = false;
-      if (actionType === 'cast') { 
-          hasMain = pStats.SC_1 > 0; 
-          hasOff = pStats.SC_2 > 0; 
-      } else if (actionType === 'spellstrike') { 
-          hasMain = (pStats.WC_1 > 0 || pStats.SC_1 > 0); 
-          hasOff = (pStats.WC_2 > 0 || pStats.SC_2 > 0); 
-      } else { 
-          hasMain = pStats.WC_1 > 0; 
-          hasOff = pStats.WC_2 > 0; 
+    // --- ENCAPSULATED EVENT LOGGERS ---
+    const logPlayerAction = () => {
+      if (result.strike1 || result.strike2) {
+        const pStats = this.state.player.derivedStats;
+        let hasMain = false, hasOff = false;
+        
+        if (actionType === 'cast') { 
+            hasMain = pStats.SC_1 > 0; 
+            hasOff = pStats.SC_2 > 0; 
+        } else if (actionType === 'spellstrike') { 
+            hasMain = (pStats.WC_1 > 0 || pStats.SC_1 > 0); 
+            hasOff = (pStats.WC_2 > 0 || pStats.SC_2 > 0); 
+        } else { 
+            hasMain = pStats.WC_1 > 0; 
+            hasOff = pStats.WC_2 > 0; 
+        }
+
+        let totalDmgDelay = 0;
+
+        const logStrikeChain = (strikeArray, handName, isActive) => {
+            if (!isActive || !strikeArray) return;
+            strikeArray.forEach((strike) => {
+                if (strike.hit) {
+                    let logClass = "log-player";
+                    let visualTag = "";
+                    
+                    if (strike.type === 'double') {
+                        logClass = "text-cyan-300 font-bold";
+                        visualTag = " <span class='text-cyan-400 font-bold'>DOUBLE!</span>";
+                    } else if (strike.type === 'triple') {
+                        logClass = "text-fuchsia-400 font-bold tracking-wider";
+                        visualTag = " <span class='text-fuchsia-500 font-bold uppercase'>TRIPLE!</span>";
+                    }
+
+                    let msg = `${handName} hits for <span class="${logClass}">${Math.floor(strike.dmg)}</span>.`;
+                    if (strike.crit) msg += ` <span class="text-yellow-400 font-bold">CRIT!</span>`;
+                    msg += visualTag;
+                    
+                    this.logToGame(msg);
+
+                    if (this.UIManager) {
+                        setTimeout(() => {
+                            const monsterEl = document.querySelector('#combat-info-panel');
+                            const floatType = strike.crit ? 'crit' : 'damage'; 
+                            this.UIManager.showFloatingText(Math.floor(strike.dmg), floatType, monsterEl);
+                            
+                            if (strike.type === 'double') this.UIManager.showFloatingText("DOUBLE", 'shadow', monsterEl);
+                            if (strike.type === 'triple') this.UIManager.showFloatingText("TRIPLE", 'gem', monsterEl);
+                        }, totalDmgDelay);
+                        
+                        totalDmgDelay += 150; 
+                    }
+                } else {
+                    this.logToGame(`${handName} <span class="text-gray-500">MISSED</span> ${this.currentMonster.name}.`);
+                }
+            });
+        };
+
+        logStrikeChain(result.strike1, "1st Strike", hasMain);
+        logStrikeChain(result.strike2, "2nd Strike", hasOff);
       }
 
-      let totalDmgDelay = 0; // Used to stagger floating text popups
+      if (result.hpRegained > 0) {
+          this.logToGame(`<span class="text-green-400 font-bold">+${Math.floor(result.hpRegained)} HP</span> <span class="text-gray-500 text-xs">(Regen)</span>`);
+          if (this.UIManager) {
+              const statPanel = document.querySelector('#combat-info-panel');
+              setTimeout(() => this.UIManager.showFloatingText(`+${Math.floor(result.hpRegained)}`, 'heal', statPanel), 300);
+          }
+      }
+    };
 
-      const logStrikeChain = (strikeArray, handName, isActive) => {
-          if (!isActive || !strikeArray) return;
-          
-          strikeArray.forEach((strike) => {
-              if (strike.hit) {
-                  let logClass = "log-player";
-                  let visualTag = "";
-                  
-                  // Dynamic Formatting based on proc type
-                  if (strike.type === 'double') {
-                      logClass = "text-cyan-300 font-bold";
-                      visualTag = " <span class='text-cyan-400 font-bold'>DOUBLE!</span>";
-                  } else if (strike.type === 'triple') {
-                      logClass = "text-fuchsia-400 font-bold tracking-wider";
-                      visualTag = " <span class='text-fuchsia-500 font-bold uppercase'>TRIPLE!</span>";
-                  }
+    const logMonsterAction = () => {
+      if (result.damageTaken) {
+        this.logToGame(`${this.currentMonster.name} hits you for <span class="log-enemy">${Math.floor(result.damageTaken)}</span>.`);
+      }
+    };
 
-                  let msg = `${handName} hits for <span class="${logClass}">${Math.floor(strike.dmg)}</span>.`;
-                  if (strike.crit) msg += ` <span class="text-yellow-400 font-bold">CRIT!</span>`;
-                  msg += visualTag;
-                  
-                  this.logToGame(msg);
-
-                  // Trigger Floating Text with a slight stagger for visual clarity
-                  if (this.UIManager) {
-                      setTimeout(() => {
-                          const monsterEl = document.querySelector('#combat-info-panel');
-                          const floatType = strike.crit ? 'crit' : 'damage'; 
-                          this.UIManager.showFloatingText(Math.floor(strike.dmg), floatType, monsterEl);
-                          
-                          // Optional: Throw up a secondary word popup alongside the number
-                          if (strike.type === 'double') this.UIManager.showFloatingText("DOUBLE", 'shadow', monsterEl);
-                          if (strike.type === 'triple') this.UIManager.showFloatingText("TRIPLE", 'gem', monsterEl);
-                      }, totalDmgDelay);
-                      
-                      totalDmgDelay += 150; // Delay next number by 150ms
-                  }
-              } else {
-                  this.logToGame(`${handName} <span class="text-gray-500">MISSED</span> ${this.currentMonster.name}.`);
-              }
-          });
-      };
-
-      logStrikeChain(result.strike1, "1st Strike", hasMain);
-      logStrikeChain(result.strike2, "2nd Strike", hasOff);
+    // --- DYNAMIC SEQUENCE EXECUTION ---
+    if (result.firstAttacker === 'monster') {
+        logMonsterAction();
+        // Prevent player from visibly attacking if the monster's first strike was fatal
+        if (result.status !== 'DEFEAT') logPlayerAction();
+    } else {
+        logPlayerAction();
+        // Prevent monster from visibly attacking if the player's first strike was fatal
+        if (result.status !== 'VICTORY') logMonsterAction();
     }
 
-    // --- [NEW] IN-COMBAT REGEN UI ---
-    if (result.hpRegained > 0) {
-        this.logToGame(`<span class="text-green-400 font-bold">+${Math.floor(result.hpRegained)} HP</span> <span class="text-gray-500 text-xs">(Regen)</span>`);
-        if (this.UIManager) {
-            const statPanel = document.querySelector('#combat-info-panel');
-            // Pop the heal text right after the damage numbers clear
-            setTimeout(() => this.UIManager.showFloatingText(`+${Math.floor(result.hpRegained)}`, 'heal', statPanel), 300);
-        }
-    }
-
+    // --- ENDGAME STATES ---
     if (result.status === 'VICTORY') {
       this.logToGame(`<span class="log-enemy text-red-500 font-bold">${this.currentMonster.name} slain.</span>`);
       
@@ -537,10 +551,6 @@ export class CombatManager {
       
       this.endCombat();
       return; 
-    }
-
-    if (result.damageTaken) {
-      this.logToGame(`${this.currentMonster.name} hits you for <span class="log-enemy">${Math.floor(result.damageTaken)}</span>.`);
     }
 
     if (result.status === 'DEFEAT') {

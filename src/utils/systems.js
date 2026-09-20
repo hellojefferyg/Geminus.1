@@ -222,10 +222,20 @@ const Systems = {
         if (Array.isArray(item.socketedGems)) item.socketedGems.forEach(processAffix);
         if (Array.isArray(item.enchantments)) item.enchantments.forEach(processAffix);
 
-        // Accumulate Base Stats * Quality * (1 + Local Affix Multipliers)
-        const itemWc = safeMult(baseItem.wc || item.wc || 0, qm) * (1 + (localWcBonus / 100));
-        const itemSc = safeMult(baseItem.sc || item.sc || 0, qm) * (1 + (localScBonus / 100));
-        const itemAc = safeMult(baseItem.ac || item.ac || 0, qm) * (1 + (localAcBonus / 100));
+        // --- [ARCHITECT FIX] Bulletproof Stat Extraction ---
+        // Scans all possible schema variations (ac, AC, ArmorClass) and nested dev-tool objects
+        const extractStat = (base, inst, keys) => {
+            for (const key of keys) {
+                if (base && base[key] !== undefined) return safeVal(base[key]);
+                if (inst && inst[key] !== undefined) return safeVal(inst[key]);
+                if (inst && inst.stats && inst.stats[key] !== undefined) return safeVal(inst.stats[key]);
+            }
+            return 0;
+        };
+
+        const itemWc = safeMult(extractStat(baseItem, item, ['wc', 'WC', 'WeaponClass', 'atk']), qm) * (1 + (localWcBonus / 100));
+        const itemSc = safeMult(extractStat(baseItem, item, ['sc', 'SC', 'SpellClass', 'magic']), qm) * (1 + (localScBonus / 100));
+        const itemAc = safeMult(extractStat(baseItem, item, ['ac', 'AC', 'ArmorClass', 'armor', 'def']), qm) * (1 + (localAcBonus / 100));
         
         if (slotKey === 'MAIN_HAND') gearWcMain += itemWc;
         else if (slotKey === 'OFF_HAND') gearWcOff += itemWc;
@@ -314,6 +324,9 @@ const Systems = {
     finalScMain = Math.max(1, finalScMain * bonusWcScMultiplier);
     finalScOff = gearScOff > 0 ? Math.max(1, finalScOff * bonusWcScMultiplier) : 0;
 
+    // [ARCHITECT FIX] Calculate Final Armor Class (VIT Scaling * Buffs)
+    const finalAC = totalGearAC * (1 + (VIT * 0.0075)) * bonusAcMultiplier;
+
     // 3. Derived Combat Values
     // [ARCHITECT FIX] Export scaled attributes so the UI Character Sheet can display them
     player.derivedStats.VIT = VIT;
@@ -321,10 +334,9 @@ const Systems = {
     player.derivedStats.WIS = WIS;
     player.derivedStats.STR = STR;
     player.derivedStats.NTL = NTL;
-
-    player.derivedStats.maxHp = 100 + (VIT * 10);
-    // [ARCHITECT FIX] Defensive multiplier shifted to square root curve matching offense
-    player.derivedStats.AC = totalGearAC * (1 + (Math.pow(VIT, 0.5) * 0.005)) * bonusAcMultiplier;
+    
+    // Export Final AC
+    player.derivedStats.AC = Math.max(0, finalAC);
     
     // [ARCHITECT FIX] Split hand stats for Dual-Strike engine
     player.derivedStats.WC_1 = Math.floor(finalWcMain);
@@ -338,6 +350,7 @@ const Systems = {
     
     // Export Primary Stat for dynamic combat calculations
     player.derivedStats.accuracyRating = primaryRating; 
+    player.derivedStats.initiativeRating = primaryRating;
 
     // UI Baselines (Dynamic calculation occurs per-swing in resolveCombatTurn)
     player.derivedStats.hitChance = bonusHitChance; // bonusHitChance is already standardized to a true percentage
@@ -404,7 +417,10 @@ const Systems = {
     }
     
     const safeTier = Math.max(1, safeVal(targetGearTier));
-    if (safeTier <= 1 && !baseMonster.title) return baseMonster;
+    if (safeTier <= 1 && !baseMonster.title) {
+        baseMonster.initiativeRating = Math.max(baseMonster.physEvasion, baseMonster.magEvasion);
+        return baseMonster;
+    }
 
     const tierDiff = safeTier - 1;
     // [FIXED] Check constants exist, fallback if not
@@ -457,6 +473,9 @@ const Systems = {
     baseMonster.def = Math.floor(baseMonster.def);
     baseMonster.xp = Math.floor(baseMonster.xp);
     baseMonster.gold = Math.floor(baseMonster.gold);
+    
+    // [NEW] Set Monster Initiative based on their highest evasion stat
+    baseMonster.initiativeRating = Math.max(baseMonster.physEvasion, baseMonster.magEvasion);
 
     return baseMonster;
   },
@@ -468,6 +487,11 @@ const Systems = {
     if (monster.currentHP === undefined) monster.currentHP = monster.hp || 25;
 
     let playerDamage = 0;
+    let monsterDamage = 0;
+    let actualHeal = 0;
+    let strike1 = [];
+    let strike2 = [];
+
     const pStats = player.derivedStats || player.stats; 
     const monsterAC = Math.max(1, monster.def || 1);
     
@@ -487,12 +511,6 @@ const Systems = {
 
     const DAMAGE_CONST = gddConstants?.PLAYER_DAMAGE_CONSTANT || 25;
     
-    // =====================================================================
-    // [FUTURE AI INSTRUCTION: HIT CHANCE ROUTING]
-    // The engine automatically routes player accuracy against the specific 
-    // defense type of the mob. 'attack' targets physEvasion. 'cast' targets 
-    // magEvasion. 'spellstrike' averages the two.
-    // =====================================================================
     let monsterEvasion = 10;
     let activeEvasionDebuff = safeVal(pStats.globalEvasionDebuff);
     
@@ -508,32 +526,25 @@ const Systems = {
         activeEvasionDebuff += safeVal(pStats.physEvasionDebuff);
     }
     
-    // [ARCHITECT FIX] Apply Target-Specific Evasion Debuffs (Capped at reducing evasion by 90%)
     const evasionDebuffMultiplier = Math.max(0.1, 1 - (activeEvasionDebuff / 100));
     monsterEvasion = Math.max(1, monsterEvasion * evasionDebuffMultiplier);
     
     const playerAccuracy = safeVal(pStats.accuracyRating);
     
-    // Linear Ratio: Equal stats = 100% Hit Chance. 10% stats = 10% Hit Chance.
     const statHitScore = (playerAccuracy / monsterEvasion) * 100;
-    
-    // Extract gear hit multipliers (e.g., +8% Bonus Hit from gear = 1.08 multiplier)
     const gearHitBonusRaw = Math.max(0, pStats.hitChance || 0); 
     const gearHitMultiplier = 1 + (gearHitBonusRaw / 100);
-    
-    // Total Score: Base ratio multiplied by gear bonuses (No guaranteed floor)
     const hitScore = statHitScore * gearHitMultiplier;
     
     let finalHitChance = Math.min(100, hitScore);
     let precisionBonus = hitScore > 100 ? hitScore - 100 : 0;
     const baseCritMult = pStats.critDamage || 2.0;
 
-    // Save live hit chance for the character sheet display and instantly sync UI
     pStats.lastHitChance = finalHitChance;
     if (window.gameManager?.ProfileManager?.updateAllProfileUI) {
         window.gameManager.ProfileManager.updateAllProfileUI();
     }
-    // [DEV TRACKING] Log the hit chance math to the F12 Console
+
     console.log(`\n--- [Combat: ${actionType.toUpperCase()}] ---`);
     if (activeEvasionDebuff > 0) {
         console.log(`💢 DEBUFF: Targeted Evasion reduced by ${activeEvasionDebuff.toFixed(2)}%`);
@@ -542,112 +553,138 @@ const Systems = {
     console.log(`Base Ratio: ${statHitScore.toFixed(2)}% | Gear Multiplier: ${gearHitMultiplier.toFixed(2)}x`);
     console.log(`Total Hit Score: ${hitScore.toFixed(2)}% (Capped at 100%) | Precision Overflow: ${precisionBonus.toFixed(2)}%`);
 
-    // Helper function to resolve an independent strike chain
-    const processStrike = (strikeStat) => {
-        if (strikeStat <= 0) return [{ dmg: 0, hit: false, crit: false, type: 'miss' }];
-        
-        const hit = (Math.random() * 100) <= finalHitChance;
-        if (!hit) return [{ dmg: 0, hit: false, crit: false, type: 'miss' }];
+    // --- CLOSURE: PLAYER STRIKE ---
+    const executePlayerTurn = () => {
+        const processStrike = (strikeStat) => {
+            if (strikeStat <= 0) return [{ dmg: 0, hit: false, crit: false, type: 'miss' }];
+            
+            const hit = (Math.random() * 100) <= finalHitChance;
+            if (!hit) return [{ dmg: 0, hit: false, crit: false, type: 'miss' }];
 
-        const strikes = [];
-        const baseDmg = Math.max(1, (DAMAGE_CONST * strikeStat) / monsterAC);
+            const strikes = [];
+            const baseDmg = Math.max(1, (DAMAGE_CONST * strikeStat) / monsterAC);
 
-        // Helper to roll a single hit's outcome with independent crit
-        const rollHit = (type) => {
-            const crit = (Math.random() * 100 < (pStats.critChance || 5));
-            const critMultiplier = crit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0;
-            return { dmg: baseDmg * critMultiplier, hit: true, crit, type };
+            const rollHit = (type) => {
+                const crit = (Math.random() * 100 < (pStats.critChance || 5));
+                const critMultiplier = crit ? (baseCritMult + (precisionBonus * 0.01)) : 1.0;
+                return { dmg: baseDmg * critMultiplier, hit: true, crit, type };
+            };
+
+            strikes.push(rollHit('normal'));
+
+            if (Math.random() * 100 < (pStats.doubleHitChance || 0)) {
+                strikes.push(rollHit('double'));
+                if (Math.random() * 100 < (pStats.tripleHitChance || 0)) {
+                    strikes.push(rollHit('triple'));
+                }
+            }
+
+            return strikes;
         };
 
-        // 1st Strike (Normal)
-        strikes.push(rollHit('normal'));
-
-        // 2nd Strike (Double Proc)
-        if (Math.random() * 100 < (pStats.doubleHitChance || 0)) {
-            strikes.push(rollHit('double'));
-            
-            // 3rd Strike (Triple Proc) - Only rolls if Double succeeded
-            if (Math.random() * 100 < (pStats.tripleHitChance || 0)) {
-                strikes.push(rollHit('triple'));
-            }
+        strike1 = processStrike(stat1);
+        
+        const sumDamage = (strikeArray) => strikeArray ? strikeArray.reduce((sum, s) => sum + (s.dmg || 0), 0) : 0;
+        const d1 = sumDamage(strike1);
+        
+        let d2 = 0;
+        if (monster.currentHP - d1 > 0) {
+            strike2 = processStrike(stat2);
+            d2 = sumDamage(strike2);
         }
 
-        return strikes;
+        playerDamage = d1 + d2;
+        monster.currentHP = Math.max(0, monster.currentHP - playerDamage);
+
+        const combatRegen = Math.floor(safeVal(player.derivedStats.hpRegen) * 0.5);
+        const vampiricHeal = Math.floor(playerDamage * (safeVal(pStats.lifeSteal) / 100));
+        const totalCombatHeal = combatRegen + vampiricHeal;
+        
+        if (vampiricHeal > 0) {
+            console.log(`🩸 LIFE STEAL: Restored ${vampiricHeal} HP from ${playerDamage} damage dealt.`);
+        }
+
+        if (player.hp < player.derivedStats.maxHp) {
+            const missingHp = player.derivedStats.maxHp - player.hp;
+            actualHeal = Math.min(totalCombatHeal, missingHp);
+            player.hp += actualHeal;
+        }
+
+        if (monster.currentHP <= 0) return {
+            status: 'VICTORY', 
+            player, 
+            monster, 
+            damageDealt: playerDamage,
+            hpRegained: actualHeal,
+            strike1,
+            strike2
+        };
+
+        return null; 
     };
 
-    // Execute independent Dual Strikes sequentially
-    const strike1 = processStrike(stat1);
-    
-    // Sum up all damage across all strikes in a chain
-    const sumDamage = (strikeArray) => strikeArray ? strikeArray.reduce((sum, s) => sum + (s.dmg || 0), 0) : 0;
-    const d1 = sumDamage(strike1);
-    
-    let strike2 = [];
-    let d2 = 0;
-    
-    // Only swing the off-hand/second spell if the monster survives the first strike
-    if (monster.currentHP - d1 > 0) {
-        strike2 = processStrike(stat2);
-        d2 = sumDamage(strike2);
-    }
+    // --- CLOSURE: MONSTER STRIKE ---
+    const executeMonsterTurn = () => {
+        const monsterHitAccuracy = safeVal(monster.atk) * 15; 
+        const playerEvasionScore = safeVal(pStats.physEvasion) || 50; 
+        
+        const monsterHitChance = Math.min(95, Math.max(5, (monsterHitAccuracy / playerEvasionScore) * 50));
+        const monsterMissed = (Math.random() * 100) > monsterHitChance;
 
-    playerDamage = d1 + d2;
+        if (monsterMissed) {
+            console.log(`💨 EVASION: Monster missed! (Chance to hit: ${monsterHitChance.toFixed(1)}%)`);
+        } else {
+            const AC_FACTOR = gddConstants?.MONSTER_DAMAGE_AC_REDUCTION_FACTOR || 1.0;
+            const effectivePlayerAC = Math.max(1, safeVal(pStats.AC) * AC_FACTOR);
+            
+            const atkDebuffMultiplier = Math.max(0.1, 1 - (safeVal(pStats.enemyAtkDebuff) / 100));
+            const effectiveMonsterAtk = monster.atk * atkDebuffMultiplier;
+            
+            if (safeVal(pStats.enemyAtkDebuff) > 0) {
+                console.log(`🛡️ DEBUFF: Enemy ATK reduced from ${monster.atk} to ${effectiveMonsterAtk.toFixed(1)} (-${safeVal(pStats.enemyAtkDebuff)}%)`);
+            }
+            
+            monsterDamage = (DAMAGE_CONST * effectiveMonsterAtk) / effectivePlayerAC;
+            monsterDamage = Math.max(1, isNaN(monsterDamage) ? 1 : monsterDamage);
 
-    // Apply to monster
-    monster.currentHP = Math.max(0, monster.currentHP - playerDamage);
+            player.hp = Math.max(0, player.hp - monsterDamage);
+            if (player.hp <= 0) return { status: 'DEFEAT', player, monster, damageTaken: monsterDamage };
+        }
 
-    // --- IN-COMBAT REGEN (Triggered instantly on every swing to support 60 KPM) ---
-    const combatRegen = Math.floor(safeVal(player.derivedStats.hpRegen) * 0.5);
-    let actualHeal = 0;
-    
-    // [ARCHITECT FIX] Apply Life Steal based on damage dealt
-    const vampiricHeal = Math.floor(playerDamage * (safeVal(pStats.lifeSteal) / 100));
-    const totalCombatHeal = combatRegen + vampiricHeal;
-    
-    if (vampiricHeal > 0) {
-        console.log(`🩸 LIFE STEAL: Restored ${vampiricHeal} HP from ${playerDamage} damage dealt.`);
-    }
-
-    // Only heal if the player is missing HP to prevent overhealing bugs
-    if (player.hp < player.derivedStats.maxHp) {
-        const missingHp = player.derivedStats.maxHp - player.hp;
-        actualHeal = Math.min(totalCombatHeal, missingHp);
-        player.hp += actualHeal;
-    }
-
-    if (monster.currentHP <= 0) return {
-        status: 'VICTORY', 
-        player, 
-        monster, 
-        damageDealt: playerDamage,
-        hpRegained: actualHeal, // Export to UI
-        strike1,
-        strike2
+        return null; 
     };
 
-    // --- [ARCHITECT FIX] MONSTER COUNTER-ATTACK (DIVISION CURVE) ---
-    // Mirrors player damage math to prevent 0-damage invincibility loops
-    const AC_FACTOR = gddConstants?.MONSTER_DAMAGE_AC_REDUCTION_FACTOR || 1.0;
-    const effectivePlayerAC = Math.max(1, safeVal(pStats.AC) * AC_FACTOR);
+    // --- [ARCHITECT FIX] DYNAMIC TURN SORTER (STAT CONTEST) ---
+    const playerInit = safeVal(pStats.initiativeRating);
     
-    // [ARCHITECT FIX] Apply Monster Attack Debuffs (Capped at 90% reduction)
-    const atkDebuffMultiplier = Math.max(0.1, 1 - (safeVal(pStats.enemyAtkDebuff) / 100));
-    const effectiveMonsterAtk = monster.atk * atkDebuffMultiplier;
-    
-    if (safeVal(pStats.enemyAtkDebuff) > 0) {
-        console.log(`🛡️ DEBUFF: Enemy ATK reduced from ${monster.atk} to ${effectiveMonsterAtk.toFixed(1)} (-${safeVal(pStats.enemyAtkDebuff)}%)`);
-    }
-    
-    // Formula: (Constant * Monster_ATK) / Player_AC
-    let monsterDamage = (DAMAGE_CONST * effectiveMonsterAtk) / effectivePlayerAC;
-    
-    // Ensure monster damage is a number and minimum 1
-    monsterDamage = Math.max(1, isNaN(monsterDamage) ? 1 : monsterDamage);
+    // Bulletproof Extractor: If the mob lacks explicit Evasion, fall back to their DEF or a baseline of 10.
+    const mPhys = safeVal(monster.physEvasion) || safeVal(monster.def) || 10;
+    const mMag = safeVal(monster.magEvasion) || safeVal(monster.def) || 10;
+    const monsterInit = safeVal(monster.initiativeRating) || Math.max(mPhys, mMag);
 
-    player.hp = Math.max(0, player.hp - monsterDamage);
-    
-    if (player.hp <= 0) return { status: 'DEFEAT', player, monster, damageTaken: monsterDamage };
-    
+    const playerFirst = playerInit >= monsterInit;
+    const firstAttacker = playerFirst ? 'player' : 'monster';
+
+    // Tiebreaker heavily favors Player
+    if (playerFirst) {
+        console.log(`⚡ INITIATIVE: Player (${playerInit}) strikes first against Target (${monsterInit})`);
+        
+        let pResult = executePlayerTurn();
+        if (pResult) return { ...pResult, firstAttacker }; 
+        
+        let mResult = executeMonsterTurn();
+        if (mResult) return { ...mResult, firstAttacker };
+        
+    } else {
+        console.log(`⚡ INITIATIVE: Target (${monsterInit}) strikes first against Player (${playerInit})`);
+        
+        let mResult = executeMonsterTurn();
+        if (mResult) return { ...mResult, firstAttacker };
+        
+        let pResult = executePlayerTurn();
+        if (pResult) return { ...pResult, firstAttacker };
+    }
+
     // Keep HP in sync
     monster.hp = monster.currentHP; 
 
@@ -655,9 +692,10 @@ const Systems = {
         status: 'CONTINUE', 
         player, 
         monster, 
+        firstAttacker,
         damageDealt: playerDamage, 
         damageTaken: monsterDamage,
-        hpRegained: actualHeal, // Export to UI
+        hpRegained: actualHeal, 
         monsterCurrentHP: monster.currentHP,
         playerCurrentHP: player.hp,
         isCrit: [...strike1, ...strike2].some(s => s.crit),

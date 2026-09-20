@@ -27,6 +27,7 @@ export class StatsManager {
       critDamage: { name: 'Crit Damage', icon: '⚔️', description: 'Damage multiplier applied when landing a critical strike.' },
       doubleHitChance: { name: 'Double Hit', icon: '⚡', description: 'Chance to trigger a secondary rapid strike upon landing a hit.' },
       tripleHitChance: { name: 'Triple Hit', icon: '🌪️', description: 'Chance to trigger a tertiary rapid strike following a successful Double Hit.' },
+      initiativeRating: { name: 'Initiative Rating', icon: '⏱️', description: 'Determines who strikes first in combat. Scales directly with your primary offensive attribute.' },
     };
   }
 
@@ -112,6 +113,7 @@ export class StatsManager {
             ${createStatLine('SC_1', (p.derivedStats.SC_1 || 0).toFixed(2))}
             ${createStatLine('SC_2', (p.derivedStats.SC_2 || 0).toFixed(2))}
             ${createStatLine('finalAC', (p.derivedStats.AC || 0).toFixed(2))}
+            ${createStatLine('initiativeRating', Math.floor(p.derivedStats.initiativeRating || p.baseStats?.DEX || p.baseStats?.WIS || 0))}
           </div>
         </div>
         <div class="stat-accordion-item">
