@@ -335,6 +335,9 @@ const Systems = {
     player.derivedStats.STR = STR;
     player.derivedStats.NTL = NTL;
     
+    // [ARCHITECT FIX] Calculate and Export Final Max HP
+    player.derivedStats.maxHp = 100 + (VIT * 10);
+    
     // Export Final AC
     player.derivedStats.AC = Math.max(0, finalAC);
     
