@@ -11,24 +11,23 @@ export class StatsManager {
     this.isInitialized = false;
 
     this.statMetadata = {
-      STR: { name: 'Strength', icon: '💪', description: 'A gatekeeper stat for physical weapons.' },
-      DEX: { name: 'Dexterity', icon: '🏹', description: 'Primary stat for Fighters & Martial Hybrids. Governs Hit/Crit Chance and WC scaling.' },
-      VIT: { name: 'Vitality', icon: '❤️', description: 'Primary survivability stat. Governs Max HP and AC scaling.' },
-      NTL: { name: 'Intellect', icon: '🧠', description: 'A gatekeeper stat for spells.' },
-      WIS: { name: 'Wisdom', icon: '🔮', description: 'Primary stat for Casters & Mystic Hybrids. Governs Hit/Crit Chance and SC scaling.' },
-      WC_1: { name: 'Weapon Class (Main)', icon: '⚔️', description: 'Effectiveness of your primary physical weapon.' },
-      WC_2: { name: 'Weapon Class (Off)', icon: '🗡️', description: 'Effectiveness of your secondary physical weapon.' },
-      SC_1: { name: 'Spell Class (Main)', icon: '✨', description: 'Effectiveness of your primary magic spell.' },
-      SC_2: { name: 'Spell Class (Off)', icon: '🪄', description: 'Effectiveness of your secondary magic spell.' },
-      finalAC: { name: 'Armor Class', icon: '🛡️', description: 'Your total damage reduction.' },
-      maxHp: { name: 'Health Points', icon: '❤️', description: 'Your life force. If it reaches zero, you are defeated.' },
-      hitChance: { name: 'Hit Chance', icon: '🎯', description: 'Calculated hit probability against your most recently targeted or engaged monster.' },
-      critChance: { name: 'Crit Chance', icon: '💥', description: 'The probability of an attack dealing bonus critical damage.' },
-      critDamage: { name: 'Crit Damage', icon: '⚔️', description: 'Damage multiplier applied when landing a critical strike.' },
-      doubleHitChance: { name: 'Double Hit', icon: '⚡', description: 'Chance to trigger a secondary rapid strike upon landing a hit.' },
-      tripleHitChance: { name: 'Triple Hit', icon: '🌪️', description: 'Chance to trigger a tertiary rapid strike following a successful Double Hit.' },
-      initiativeRating: { name: 'Initiative Rating', icon: '⏱️', description: 'Determines who strikes first in combat. Scales directly with your primary offensive attribute.' },
-    };
+        STR: { name: 'Strength', icon: '💪', description: 'A gatekeeper stat for physical weapons.' },
+        DEX: { name: 'Dexterity', icon: '🏹', description: 'Primary stat for Fighters & Martial Hybrids. Governs Hit/Crit Chance, WC scaling, and Turn Initiative.' },
+        VIT: { name: 'Vitality', icon: '❤️', description: 'Primary survivability stat. Governs Max HP and AC scaling.' },
+        NTL: { name: 'Intellect', icon: '🧠', description: 'A gatekeeper stat for spells.' },
+        WIS: { name: 'Wisdom', icon: '🔮', description: 'Primary stat for Casters & Mystic Hybrids. Governs Hit/Crit Chance, SC scaling, and Turn Initiative.' },
+        WC_1: { name: 'Weapon Class (Main)', icon: '⚔️', description: 'Effectiveness of your primary physical weapon.' },
+        WC_2: { name: 'Weapon Class (Off)', icon: '🗡️', description: 'Effectiveness of your secondary physical weapon.' },
+        SC_1: { name: 'Spell Class (Main)', icon: '✨', description: 'Effectiveness of your primary magic spell.' },
+        SC_2: { name: 'Spell Class (Off)', icon: '🪄', description: 'Effectiveness of your secondary magic spell.' },
+        finalAC: { name: 'Armor Class', icon: '🛡️', description: 'Your total damage reduction.' },
+        maxHp: { name: 'Health Points', icon: '❤️', description: 'Your life force. If it reaches zero, you are defeated.' },
+        hitChance: { name: 'Hit Chance', icon: '🎯', description: 'Calculated hit probability against your most recently targeted or engaged monster.' },
+        critChance: { name: 'Crit Chance', icon: '💥', description: 'The probability of an attack dealing bonus critical damage.' },
+        critDamage: { name: 'Crit Damage', icon: '⚔️', description: 'Damage multiplier applied when landing a critical strike.' },
+        doubleHitChance: { name: 'Double Hit', icon: '⚡', description: 'Chance to trigger a secondary rapid strike upon landing a hit.' },
+        tripleHitChance: { name: 'Triple Hit', icon: '🌪️', description: 'Chance to trigger a tertiary rapid strike following a successful Double Hit.' }
+      };
   }
 
   init() {
@@ -88,11 +87,11 @@ export class StatsManager {
             </svg>
           </button>
           <div class="stat-accordion-content">
-            ${createStatLine('STR', `${Math.round(p.derivedStats?.STR || p.baseStats.STR)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.STR)})</span>`, true)}
-            ${createStatLine('DEX', `${Math.round(p.derivedStats?.DEX || p.baseStats.DEX)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.DEX)})</span>`, true)}
-            ${createStatLine('VIT', `${Math.round(p.derivedStats?.VIT || p.baseStats.VIT)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.VIT)})</span>`, true)}
-            ${createStatLine('NTL', `${Math.round(p.derivedStats?.NTL || p.baseStats.NTL)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.NTL)})</span>`, true)}
-            ${createStatLine('WIS', `${Math.round(p.derivedStats?.WIS || p.baseStats.WIS)} <span class="text-gray-500 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.WIS)})</span>`, true)}
+            ${createStatLine('STR', `${Math.round(p.derivedStats?.STR || p.baseStats.STR)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.STR)})</span>`, true)}
+            ${createStatLine('DEX', `${Math.round(p.derivedStats?.DEX || p.baseStats.DEX)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.DEX)})</span>`, true)}
+            ${createStatLine('VIT', `${Math.round(p.derivedStats?.VIT || p.baseStats.VIT)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.VIT)})</span>`, true)}
+            ${createStatLine('NTL', `${Math.round(p.derivedStats?.NTL || p.baseStats.NTL)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.NTL)})</span>`, true)}
+            ${createStatLine('WIS', `${Math.round(p.derivedStats?.WIS || p.baseStats.WIS)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.round(p.baseStats.WIS)})</span>`, true)}
             <div class="stat-line mt-2">
               <span class="stat-icon">💎</span>
               <span class="stat-name text-glow-subtle">Unspent Points</span>
@@ -108,12 +107,11 @@ export class StatsManager {
             </svg>
           </button>
           <div class="stat-accordion-content">
-            ${createStatLine('WC_1', (p.derivedStats.WC_1 || 0).toFixed(2))}
-            ${createStatLine('WC_2', (p.derivedStats.WC_2 || 0).toFixed(2))}
-            ${createStatLine('SC_1', (p.derivedStats.SC_1 || 0).toFixed(2))}
-            ${createStatLine('SC_2', (p.derivedStats.SC_2 || 0).toFixed(2))}
-            ${createStatLine('finalAC', (p.derivedStats.AC || 0).toFixed(2))}
-            ${createStatLine('initiativeRating', Math.floor(p.derivedStats.initiativeRating || p.baseStats?.DEX || p.baseStats?.WIS || 0))}
+            ${createStatLine('WC_1', `${(p.derivedStats.WC_1 || 0).toFixed(2)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.floor(p.derivedStats.rawGearWC_1 || 0)})</span>`)}
+            ${createStatLine('WC_2', `${(p.derivedStats.WC_2 || 0).toFixed(2)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.floor(p.derivedStats.rawGearWC_2 || 0)})</span>`)}
+            ${createStatLine('SC_1', `${(p.derivedStats.SC_1 || 0).toFixed(2)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.floor(p.derivedStats.rawGearSC_1 || 0)})</span>`)}
+            ${createStatLine('SC_2', `${(p.derivedStats.SC_2 || 0).toFixed(2)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.floor(p.derivedStats.rawGearSC_2 || 0)})</span>`)}
+            ${createStatLine('finalAC', `${(p.derivedStats.AC || 0).toFixed(2)} <span class="text-cyan-400 text-[10px] font-mono ml-1">(${Math.floor(p.derivedStats.rawGearAC || 0)})</span>`)}
           </div>
         </div>
         <div class="stat-accordion-item">

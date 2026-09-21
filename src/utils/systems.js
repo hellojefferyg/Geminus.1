@@ -328,6 +328,17 @@ const Systems = {
     const finalAC = totalGearAC * (1 + (VIT * 0.0075)) * bonusAcMultiplier;
 
     // 3. Derived Combat Values
+    // [ARCHITECT FIX] Export raw gear baselines for UI transparency
+    player.derivedStats.rawGearWC = Math.floor(gearWcMain + gearWcOff);
+    player.derivedStats.rawGearSC = Math.floor(gearScMain + gearScOff);
+    player.derivedStats.rawGearAC = Math.floor(totalGearAC);
+    
+    // Split hand raw stats for accurate UI rendering
+    player.derivedStats.rawGearWC_1 = Math.floor(gearWcMain);
+    player.derivedStats.rawGearWC_2 = Math.floor(gearWcOff);
+    player.derivedStats.rawGearSC_1 = Math.floor(gearScMain);
+    player.derivedStats.rawGearSC_2 = Math.floor(gearScOff);
+
     // [ARCHITECT FIX] Export scaled attributes so the UI Character Sheet can display them
     player.derivedStats.VIT = VIT;
     player.derivedStats.DEX = DEX;
