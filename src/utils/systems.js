@@ -1202,6 +1202,9 @@ const Systems = {
                 const weightsStr = (zone && zone.gemGradeWeights) ? zone.gemGradeWeights : "100";
                 const weights = weightsStr.split(',').map(Number);
                 
+                // [ARCHITECT FIX] Direct Integer Reading for Gem Grades
+                const baseNumericGrade = (zone && typeof zone.gemGradeMin === 'number') ? zone.gemGradeMin : 1;
+
                 // 2. Roll for Grade
                 const totalWeight = weights.reduce((a,b) => a+b, 0);
                 let randomWeight = Math.random() * totalWeight;
@@ -1211,12 +1214,12 @@ const Systems = {
                     if (randomWeight <= 0) { selectedGradeIndex = i; break; }
                 }
                 
-                // 3. Filter Pool by Grade (e.g., only Grade 1 gems)
-                const targetGrade = selectedGradeIndex + 1;
-                const gradeGems = allGems.filter(g => g.grade === targetGrade);
+                // 3. Filter Pool by Grade (Offset by Base Zone Grade)
+                const targetGrade = baseNumericGrade + selectedGradeIndex;
+                const gradeGems = allGems.filter(g => Number(g.grade) === targetGrade);
                 
                 // Fallback: If no gems of that grade exist, pick from full pool
-                const pool = gradeGems.length > 0 ? gradeGems : allGems; 
+                const pool = gradeGems.length > 0 ? gradeGems : allGems;
                 
                 // 4. Select Final Gem
                 const randomGem = pool[Math.floor(Math.random() * pool.length)];
