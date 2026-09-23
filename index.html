@@ -1,13 +1,391 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>geminus-map-editor</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+    <title>Geminus - Aetherial Shard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-black text-gray-200 theme-aetherial-shard overflow-hidden">
+    <script src="/src/utils/ReceiverBridge.js"></script>
+    <script type="module" src="/src/main.js"></script>
+
+    <canvas id="smoke-canvas"></canvas>
+
+    <video 
+        id="game-player-video" 
+        style="display: none;" 
+        autoplay loop muted playsinline
+    ></video>
+
+    <img id="game-player-avatar" style="display: none; width: 0; height: 0;" src="" />
+
+    <div id="interaction-tooltip" class="hidden fixed left-1/2 -translate-x-1/2 bottom-[35%] z-[100] pointer-events-none">
+        <div class="bg-black/85 border border-cyan-400 text-cyan-400 px-6 py-2 rounded shadow-[0_0_15px_rgba(0,255,255,0.3)] uppercase tracking-widest font-cinzel text-sm animate-pulse">
+            Click Hero to Enter <span id="tooltip-target-name" class="font-bold text-white"></span>
+        </div>
+    </div>
+    <div id="loading-screen" class="fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-center transition-opacity duration-1000">
+    <div class="relative">
+        <div class="w-24 h-24 border-2 border-cyan-900/30 border-t-cyan-400 rounded-full animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-cyan-400 font-orbitron text-xs animate-pulse">⚛️</span>
+        </div>
+    </div>
+    <h1 class="mt-8 font-cinzel text-2xl text-cyan-100 tracking-[0.4em] uppercase">Geminus</h1>
+    <p id="loading-status" class="mt-2 font-orbitron text-[10px] text-cyan-700 tracking-widest uppercase">Materializing World...</p>
+</div>
+    <div id="game-container" class="h-full">
+        <div id="game-hud-screen" class="relative z-10 h-full">
+            <div id="dev-tools-panel" class="absolute top-2 left-2 z-[100] flex flex-col gap-1 items-start pointer-events-auto">
+                <button id="dev-toggle-btn" class="glass-button px-2 py-1 text-[10px] font-orbitron text-red-400 border border-red-500/30 rounded bg-black/80 hover:bg-red-900/50 transition-colors shadow-[0_0_10px_rgba(255,0,0,0.2)]">
+                    ⚡ DEV TOOLS
+                </button>
+                <div id="dev-menu" class="hidden flex flex-col gap-2 bg-black/95 border border-red-900 p-2 rounded shadow-2xl w-48 mt-1">
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Stats & Gold</p>
+                    <div class="flex flex-col gap-1">
+                        <input type="number" id="dev-set-level" placeholder="Set Level" oninput="DevManager.updatePreview()" class="bg-gray-900 text-[10px] p-1 border border-gray-700 rounded outline-none text-cyan-400">
+                        <input type="number" id="dev-set-gold" placeholder="Set Gold" class="bg-gray-900 text-[10px] p-1 border border-gray-700 rounded outline-none text-yellow-400">
+                        <button onclick="DevManager.setPlayerStats(document.getElementById('dev-set-level').value, document.getElementById('dev-set-gold').value)" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-1 rounded">Apply Stats</button>
+                    </div>
+
+                    <div id="dev-preview-box" class="bg-black/50 border border-red-500/20 p-1 rounded text-[8px] font-mono flex flex-col gap-0.5">
+                        <div class="flex justify-between"><span>Est. HP:</span> <span id="prev-hp" class="text-green-400">--</span></div>
+                        <div class="flex justify-between"><span>Est. WC:</span> <span id="prev-wc" class="text-red-400">--</span></div>
+                        <div class="flex justify-between"><span>Est. SC:</span> <span id="prev-sc" class="text-blue-400">--</span></div>
+                    </div>
+
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Test Gear</p>
+                    <div class="flex gap-1">
+                        <input type="number" id="dev-set-tier" value="1" min="1" max="20" class="w-12 bg-gray-900 text-[10px] p-1 border border-gray-700 rounded outline-none text-white">
+                        <button onclick="DevManager.injectTierSet(document.getElementById('dev-set-tier').value)" class="flex-1 text-[9px] bg-gray-800 hover:bg-gray-700 p-1 rounded">Inject Tier Set</button>
+                    </div>
+
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Drops</p>
+                    <button id="drop-toggle-btn" onclick="updateDropBtn()" class="text-[9px] text-left text-gray-300 bg-gray-900 hover:bg-gray-800 p-1.5 rounded border border-white/5">Force Drops: OFF</button>
+                    
+                    <p class="text-[8px] text-red-500 font-bold uppercase border-b border-red-900/50">Warp</p>
+                    <select id="dev-zone-select" class="glass-panel bg-black/90 text-cyan-400 text-[10px] p-1 border border-cyan-500/50 outline-none rounded w-full custom-scrollbar">
+                        <option value="">Select Zone...</option>
+                    </select>
+
+                    <button onclick="location.reload()" class="text-[9px] text-center text-white bg-red-800 hover:bg-red-700 p-1.5 rounded mt-1">Hard Reload</button>
+                </div>
+            </div>
+            <div id="layout-container" class="max-w-md mx-auto h-full flex flex-col p-2 gap-2">
+                
+                <div id="hud-container">
+                    <header class="relative glass-panel p-3 rounded-lg flex justify-between items-center gap-2">
+                        <section id="player-status-panel" class="flex-1">
+                            <div id="player-status-container" class="flex flex-col space-y-1">
+                                <p class="font-orbitron text-base name-value text-glow-label" id="player-name-level-value">Initializing...</p>
+                                <p class="text-xs"><span class="text-glow-label font-bold">RACE:</span> <span id="player-race-value">---</span></p>
+                                <p class="text-xs"><span class="text-glow-label font-bold">A-SPEC:</span> <span id="player-aspec-value">---</span></p>
+                                <p class="text-xs"><span class="text-glow-label font-bold">ZONE:</span> <span id="zone-name-value">Unknown</span></p>
+                                <p class="text-xs text-glow-label font-mono" id="player-coords-value">[0, 0]</p>
+                            </div>
+                        </section>
+                        <section id="mini-map-panel" class="w-20 h-20 cursor-pointer group">
+                            <canvas id="mini-map-canvas" class="rounded-full border-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></canvas>
+                        </section>
+                        <div class="flex flex-col gap-1">
+                            <button id="open-estate-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-[0_0_10px_rgba(34,211,238,0.2)] hover:shadow-[0_0_15px_rgba(34,211,238,0.5)]" title="The Estate">🏰</button>
+                            <button id="open-clan-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-[0_0_10px_rgba(245,166,35,0.2)] hover:shadow-[0_0_15px_rgba(245,166,35,0.5)]" title="Clan Bastion">🛡️</button>
+                        </div>
+                        <button id="toggle-controls-btn" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-lg">🎮</button>
+                    </header>
+                </div>
+
+                <div id="main-content-container" class="flex-grow flex flex-col min-h-0 overflow-hidden">
+                    <main id="main-content" class="flex-grow flex flex-col min-h-0 overflow-hidden glass-panel rounded-lg relative">
+                        <div id="main-tabs-container" class="flex border-b border-cyan-500/30 overflow-x-auto shrink-0">
+                            <button class="main-tab-button active flex-shrink-0" data-tab="equipment">Equipment</button>
+                            <button class="main-tab-button flex-shrink-0" data-tab="inventory">Inventory</button>
+                            <button class="main-tab-button flex-shrink-0" data-tab="stats">Stats</button>
+                            <button class="main-tab-button flex-shrink-0" data-tab="combat">Combat</button>
+                        </div>
+                        <div id="main-tab-content" class="flex-grow p-4 overflow-y-auto custom-scrollbar relative min-h-0">
+                            
+                            <div id="tab-content-equipment" class="main-tab-panel active h-full flex flex-col min-h-0">
+                            </div>
+                            
+                            <div id="tab-content-inventory" class="main-tab-panel h-full flex flex-col min-h-0">
+                                <div id="inventory-grid" class="inventory-grid grid grid-cols-5 gap-2 p-2 overflow-y-auto content-start"></div>
+                            </div>
+
+                            <div id="tab-content-stats" class="main-tab-panel h-full flex flex-col min-h-0">
+                            </div>
+                            
+                            <div id="tab-content-combat" class="main-tab-panel h-full flex flex-col min-h-0">
+                                <div id="combat-module-root" class="h-full flex flex-col w-full min-h-0"></div>
+                            </div>
+                            
+                        </div>
+                    </main>
+                </div>
+                
+                <div id="footer-container" class="tappable-section shrink-0" style="flex-basis: 175px;"> 
+                    <footer id="footer-chat-container" class="glass-panel p-2 rounded-lg flex flex-col h-full w-full">
+                        <div class="flex gap-3 border-b border-cyan-500/30 pb-1 mb-1 px-1 overflow-x-auto custom-scrollbar">
+                            <button class="footer-tab-button active text-[10px] uppercase font-orbitron shrink-0" data-channel="main">Global</button>
+                            <button class="footer-tab-button text-[10px] uppercase font-orbitron text-gray-500 hover:text-gray-300 shrink-0" data-channel="clan">Clan</button>
+                            <button class="footer-tab-button text-[10px] uppercase font-orbitron text-gray-500 hover:text-gray-300 shrink-0" data-channel="sales">Sales</button>
+                            <button class="footer-tab-button text-[10px] uppercase font-orbitron text-gray-500 hover:text-gray-300 shrink-0" data-channel="pms">PMs</button>
+                        </div>
+                        <div id="footer-chat-content-wrapper" class="flex-grow overflow-y-auto custom-scrollbar text-[10px] space-y-2 p-1">
+                            </div>
+                        <form id="footer-message-form" class="flex gap-1 mt-1">
+                            <button type="button" id="open-chat-modal-btn" class="glass-button px-2 rounded font-bold text-cyan-400" title="Expand Chat">⛶</button>
+                            <input type="text" id="footer-message-input" class="footer-chat-input flex-grow text-xs p-1.5 rounded outline-none" placeholder="Message..." autocomplete="off">
+                            <button type="submit" class="glass-button px-3 rounded text-[10px]">➤</button>
+                        </form>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="combat-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2050] p-4">
+        <div class="glass-panel relative w-full max-w-md h-[95vh] flex flex-col bg-black/95 rounded-xl border border-red-900/50 shadow-[0_0_30px_rgba(255,0,0,0.15)] overflow-hidden">
+            <header class="p-3 border-b border-red-900/50 flex justify-between items-center bg-red-900/20 shrink-0">
+                <h2 class="text-red-400 font-cinzel font-bold tracking-widest uppercase text-sm">Wild Encounter</h2>
+                <button id="close-combat-modal-btn" class="text-gray-400 hover:text-red-400 text-2xl transition-colors leading-none">&times;</button>
+            </header>
+            <div id="combat-modal-body" class="flex-grow overflow-hidden flex flex-col">
+                </div>
+            <div id="combat-modal-chat-slot" class="shrink-0 border-t border-cyan-500/30 h-[220px] flex flex-col bg-black/80">
+                </div>
+        </div>
+    </div>
+
+    <div id="chat-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2060] p-2 md:p-6">
+        <div class="relative w-full h-full max-w-7xl md:h-[95vh] md:max-h-[900px] flex glass-panel overflow-hidden bg-[#050f14]/95 rounded-xl">
+            <button id="close-chat-modal-btn" class="absolute top-2 right-4 text-gray-400 hover:text-cyan-400 text-3xl font-bold z-[60] transition-colors">&times;</button>
+            
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
+
+            <div id="sidebar" class="absolute md:relative z-40 h-full w-4/5 max-w-xs md:w-1/4 md:min-w-[300px] flex flex-col p-4 transition-transform duration-300 ease-in-out sidebar-closed md:sidebar-open bg-black/40 md:bg-transparent border-r border-cyan-500/30">
+                <button id="close-sidebar-btn" class="md:hidden absolute top-4 right-4 text-gray-300 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                
+                <div id="user-profile-button" class="mt-8 md:mt-0 p-3 glass-panel rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <img id="sidebar-avatar" src="https://placehold.co/64x64/0a282d/00f6ff?text=U" class="avatar w-12 h-12 rounded-full border-2 border-cyan-400">
+                        <div class="text-left overflow-hidden">
+                            <p id="sidebar-username" class="font-bold text-lg truncate text-cyan-400 font-orbitron">Loading...</p>
+                            <p id="sidebar-role" class="text-xs capitalize text-cyan-500 opacity-80">Member</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-300 font-mono">
+                        <div><span class="font-bold text-white">Level:</span> <span id="sidebar-level">1</span></div>
+                        <div><span class="font-bold text-yellow-400">Gold:</span> <span id="sidebar-gold" class="text-yellow-400">0</span></div>
+                        <div><span class="font-bold text-white">KP:</span> <span id="sidebar-kp">0</span></div>
+                        <div><span class="font-bold text-white">Tokens:</span> <span id="sidebar-tokens">0</span></div>
+                    </div>
+                </div>
+
+                <div class="flex-grow flex flex-col min-h-0 pt-4">
+                    <h2 id="online-users-header" class="text-sm font-orbitron text-cyan-500 mb-2 pl-2 uppercase tracking-widest border-b border-cyan-500/30 pb-1">Online</h2>
+                    <div id="online-users-list" class="flex-grow overflow-y-auto custom-scrollbar pr-2 text-sm text-gray-300"></div>
+                </div>
+
+                <div class="flex-shrink-0 pt-4 border-t border-cyan-500/30">
+                    <h2 class="text-sm font-orbitron text-cyan-500 mb-2 pl-2 uppercase tracking-widest border-b border-cyan-500/30 pb-1">Simulation</h2>
+                    <div class="space-y-2 mt-2">
+                        <button id="simulate-kills-btn" class="w-full text-[10px] uppercase font-bold py-2 px-4 rounded transition-colors glass-button">Simulate 100 Kills</button>
+                        <button id="simulate-level-btn" class="w-full text-[10px] uppercase font-bold py-2 px-4 rounded transition-colors glass-button">Gain 10 Levels</button>
+                        <button id="buy-token-btn" class="w-full text-[10px] uppercase font-bold py-2 px-4 rounded glass-button border-cyan-400 text-cyan-400 hover:bg-cyan-900/40">Buy Token (5000 KP)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col w-full md:w-auto">
+                <div class="p-4 border-b border-cyan-500/30 flex items-center justify-between relative bg-black/40 pt-8 md:pt-4">
+                    <button id="open-sidebar-btn" class="md:hidden text-cyan-400"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+                    <div id="tabs-container" class="flex-grow flex justify-center gap-4 md:gap-8 text-sm md:text-base font-orbitron font-bold text-gray-500">
+                        <div class="tab active cursor-pointer hover:text-cyan-400 transition-colors" data-channel="main">Global</div>
+                        <div class="tab cursor-pointer hover:text-cyan-400 transition-colors" data-channel="clan">Clan</div>
+                        <div class="tab cursor-pointer hover:text-cyan-400 transition-colors" data-channel="sales">Sales</div>
+                        <div class="tab cursor-pointer hover:text-cyan-400 transition-colors" data-channel="pms">PMs</div>
+                    </div>
+                    <div class="w-7"></div>
+                </div>
+                <div id="sub-tabs-container" class="px-4 pt-2 pb-2 border-b border-cyan-500/20 hidden bg-black/20"></div>
+                
+                <div id="content-container" class="flex-grow flex flex-col min-h-0 bg-black/20 relative">
+                    <div id="chat-messages" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4"></div>
+                    <div id="sales-view" class="flex-grow p-4 overflow-y-auto custom-scrollbar hidden"></div>
+                    <div id="pm-list" class="flex-grow p-4 overflow-y-auto custom-scrollbar hidden"></div>
+                </div>
+                
+                <div id="typing-indicator" class="px-4 pb-2 text-xs font-mono text-gray-500 h-6"></div>
+                
+                <div id="reply-indicator" class="px-4 pt-2 hidden">
+                    <div class="bg-black/60 border border-cyan-500/30 rounded-t-lg p-2 text-sm">
+                        <div class="flex justify-between items-center">
+                            <div><p class="font-semibold text-cyan-400">Replying to <span id="reply-username"></span></p><p id="reply-text" class="text-gray-300 text-xs truncate"></p></div>
+                            <button id="cancel-reply-btn" class="text-gray-400 hover:text-red-400 text-2xl transition-colors">&times;</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="message-form" class="p-3 md:p-4 flex items-center gap-2 md:gap-3 border-t border-cyan-500/30 bg-black/40">
+                    <label for="image-upload" class="p-2 md:p-3 rounded glass-button cursor-pointer text-cyan-400">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                    </label>
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+                    <input type="text" id="message-input" placeholder="Enter transmission..." autocomplete="off" class="footer-chat-input flex-grow p-2 md:p-3 rounded text-xs md:text-sm outline-none bg-black/40 border border-cyan-500/30 text-white font-mono placeholder-cyan-900">
+                    <button type="submit" id="send-button" class="glass-button px-4 md:px-6 py-2 md:py-3 rounded font-bold text-xs md:text-sm tracking-widest uppercase text-cyan-400">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="modal-backdrop hidden z-[2100]">
+        <div class="glass-panel p-6 w-11/12 max-w-sm text-center bg-black/95">
+            <h2 class="text-2xl font-orbitron mb-4 text-cyan-400">Edit Profile</h2>
+            <img id="modal-avatar-preview" src="https://placehold.co/128x128/0a282d/00f6ff?text=U" class="avatar w-32 h-32 mx-auto mb-4 border-2 border-cyan-400 rounded-full">
+            <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+            <label for="avatar-upload" class="block w-full glass-button font-bold py-2 px-4 mb-4 cursor-pointer text-xs uppercase">Change Avatar</label>
+            <input type="text" id="username-input" placeholder="Enter display name" class="w-full mb-4 footer-chat-input p-2 rounded text-sm outline-none">
+            <div class="flex justify-end gap-4">
+                <button id="cancel-profile-btn" class="glass-button text-gray-400 hover:text-white py-2 px-4 rounded text-xs uppercase">Cancel</button>
+                <button id="save-profile-btn" class="glass-button py-2 px-4 rounded font-bold text-cyan-400 text-xs uppercase">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="auction-modal" class="modal-backdrop hidden z-[2100]">
+        <div class="glass-panel p-6 w-11/12 max-w-md bg-black/95">
+            <h2 class="text-xl font-orbitron mb-4 text-center text-cyan-400">Start an Auction</h2>
+            <div class="space-y-4">
+                <select id="auction-item-select" class="w-full footer-chat-input p-2 rounded text-sm outline-none bg-black"></select>
+                <div>
+                    <label class="block mb-1 text-xs font-bold text-cyan-500 uppercase tracking-wider">Starting Bid</label>
+                    <input type="number" id="auction-start-bid" placeholder="e.g., 1000" class="w-full footer-chat-input p-2 rounded text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block mb-1 text-xs font-bold text-cyan-500 uppercase tracking-wider">Buy Now Price (Optional)</label>
+                    <input type="number" id="auction-buy-now" placeholder="e.g., 10000" class="w-full footer-chat-input p-2 rounded text-sm outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="cancel-auction-btn" class="glass-button py-2 px-4 rounded text-xs uppercase text-gray-400">Cancel</button>
+                <button id="confirm-auction-btn" class="glass-button py-2 px-6 rounded font-bold text-cyan-400 text-xs uppercase border-cyan-400">Confirm (1 Token)</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="bid-modal" class="modal-backdrop hidden z-[2100]">
+        <div class="glass-panel p-6 w-11/12 max-w-sm bg-black/95">
+            <h2 class="text-xl font-orbitron mb-4 text-center text-cyan-400">Place Your Bid</h2>
+            <div id="bid-info" class="text-center mb-4 text-sm font-mono text-gray-300"></div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block mb-1 text-xs font-bold text-cyan-500 uppercase tracking-wider">Your Bid</label>
+                    <input type="number" id="bid-amount-input" class="w-full footer-chat-input p-2 rounded text-sm outline-none">
+                </div>
+                <button id="place-bid-btn" class="w-full py-3 rounded font-bold glass-button text-cyan-400 text-sm uppercase tracking-widest">Place Bid</button>
+                <button id="buy-now-btn" class="w-full py-3 rounded font-bold glass-button text-yellow-400 border-yellow-400 text-sm uppercase tracking-widest">Buy Now</button>
+            </div>
+            <div class="text-center mt-4">
+                <button id="cancel-bid-btn" class="text-gray-500 hover:text-white text-xs uppercase">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container"></div>
+    <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[2000]"></div>
+    <div id="toast-notification"></div>
+
+    <div id="full-screen-map-overlay" class="fixed inset-0 bg-black/80 z-50 hidden flex-col items-center p-4">
+    <div id="react-map-root" class="absolute inset-0 z-0"></div>
+
+    <button id="map-close-btn" class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-cyan-400 transition-colors z-[60]">&times;</button>
+    
+    <div class="absolute inset-0 z-10 overflow-hidden">
+        <canvas id="zone-canvas" class="absolute inset-0 w-full h-full border border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.1)] pointer-events-auto"></canvas>
+        
+        <div id="magi-tech-monitor" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 15, 30, 0.95); border: 2px solid #00f2ff; padding: 15px; border-radius: 12px; color: #00f2ff; font-family: monospace; font-size: 11px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); pointer-events: none;">
+            <div style="font-weight: bold; text-align: center; border-bottom: 1px solid #004444; padding-bottom: 5px; margin-bottom: 5px;">RESONANCE MONITOR</div>
+            <div id="debug-raw">RAW MOUSE: --</div>
+            <div id="debug-world">WORLD SPACE: --</div>
+            <div id="debug-grid">GRID INDEX: --</div>
+            <div id="debug-hero" style="color: #ff9d00; border-top: 1px solid #443300; padding-top: 5px; margin-top: 5px;">HERO INDEX: --</div>
+        </div>
+    </div>
+</div>
+<div id="module-overlay" class="hidden fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="relative w-full max-w-4xl h-[85vh] bg-black border border-cyan-900/50 rounded-lg shadow-2xl overflow-hidden">
+            
+            <button id="module-close-btn" class="absolute top-2 right-2 z-50 w-8 h-8 flex items-center justify-center bg-red-900/80 hover:bg-red-700 text-white rounded-full border border-red-500 transition-colors">
+                ✕
+            </button>
+
+            <iframe id="module-iframe" class="w-full h-full border-none bg-transparent"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Menu Visibility
+        const devBtn = document.getElementById('dev-toggle-btn');
+        const devMenu = document.getElementById('dev-menu');
+        
+        if (devBtn) {
+            devBtn.onclick = () => devMenu.classList.toggle('hidden');
+        }
+
+        // Bridges the HTML toggle button to the DevManager logic
+        window.updateDropBtn = function() {
+            if (!window.DevManager) {
+                console.error("DevManager not initialized. Check GameManager.js");
+                return;
+            }
+            const state = window.DevManager.toggleForceDrops(); //
+            const btn = document.getElementById('drop-toggle-btn');
+            btn.innerText = `Force Drops: ${state ? 'ON' : 'OFF'}`;
+            btn.classList.toggle('text-green-400', state);
+            btn.classList.toggle('text-gray-300', !state);
+        };
+
+        // --- QUICK ACCESS MODULE BRIDGES ---
+        document.getElementById('open-estate-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('module-overlay');
+            const iframe = document.getElementById('module-iframe');
+            if (overlay && iframe) {
+                iframe.src = '/modules/TheEstate.html';
+                overlay.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('open-clan-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('module-overlay');
+            const iframe = document.getElementById('module-iframe');
+            if (overlay && iframe) {
+                // If they aren't in a clan, it will seamlessly prompt them to join/create one!
+                iframe.src = '/modules/TheClanBastion.html';
+                overlay.classList.remove('hidden');
+            }
+        });
+
+        // Ensure the close button works
+        document.getElementById('module-close-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('module-overlay');
+            const iframe = document.getElementById('module-iframe');
+            if (overlay && iframe) {
+                overlay.classList.add('hidden');
+                iframe.src = ''; // Clear source to stop background processing/audio
+                
+                // Refresh main game inventory just in case they spent gold or moved resources
+                if (window.gameManager && window.gameManager.InventoryManager) {
+                    window.gameManager.InventoryManager.refresh();
+                }
+            }
+        });
+    </script>
+</body>
 </html>
