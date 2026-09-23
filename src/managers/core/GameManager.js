@@ -103,7 +103,8 @@ export class GameManager {
       let targetZid = requestedZoneId || this.state.game?.currentZoneId || this.state.player?.currentZoneId;
       
       if (manifestRes.ok) {
-        const zoneIds = await manifestRes.json();
+        const manifestData = await manifestRes.json();
+        const zoneIds = Object.keys(manifestData); // Extract keys since manifest is now an object
         console.log("📝 GameManager: Found zones in manifest:", zoneIds.length);
         
         // Only use the manifest fallback if we TRULY have no zone target
@@ -122,10 +123,10 @@ export class GameManager {
       
       console.log(`🗺️ GameManager: Materializing world from /data/zones/${targetZid}.json`);
       
-      // Fetch the zone JSON
-      const response = await fetch(`./data/zones/${targetZid}.json`);
+      // Fetch the zone JSON (now targeting the lightweight _master files)
+      const response = await fetch(`./data/zones/${targetZid}_master.json`);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status} - Zone file not found: ${targetZid}.json`);
+        throw new Error(`HTTP error! status: ${response.status} - Zone file not found: ${targetZid}_master.json`);
       }
       
       const zoneData = await response.json();
@@ -232,7 +233,8 @@ export class GameManager {
             try {
                 const res = await fetch('./data/zones/manifest.json');
                 if (!res.ok) throw new Error("Manifest not found");
-                const zones = await res.json();
+                const manifestData = await res.json();
+                const zones = Object.keys(manifestData);
                 
                 devSelect.innerHTML = '<option value="">Select Zone...</option>';
                 zones.forEach(id => {

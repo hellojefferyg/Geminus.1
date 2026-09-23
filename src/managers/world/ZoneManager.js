@@ -659,6 +659,9 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
       // MAGI-TECH SYNC: Update player coordinates in the shared state
       this.state.player.pos.x = nextPos.x;
       this.state.player.pos.y = nextPos.y;
+
+      // [NEW] Check spatial boundaries and fetch chunks seamlessly
+      this.updateActiveSpatialChunks(nextPos);
       
       // MANDATORY: Immediately snap the camera to the player's new centered position.
       // This prevents the "NW Drift" by ensuring the viewport origin remains 
@@ -692,11 +695,15 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
     if (!this.MapDataStore) return;
     
     try {
-      // Load the target zone
-      const response = await fetch(`./data/zones/${targetZoneId}.json`);
+      // Load the target zone master configuration file
+      const response = await fetch(`./data/zones/${targetZoneId}_master.json`);
       if (!response.ok) throw new Error(`Zone ${targetZoneId} not found`);
       
       const zoneData = await response.json();
+      
+      // Ensure layers array is initialized so the engine doesn't crash on length checks
+      if (!zoneData.layers) zoneData.layers = [];
+      
       await this.MapDataStore.load(zoneData);
       
       // Update zone state
@@ -844,6 +851,43 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
   }
 
   /**
+   * [NEW] Calculates current chunk and fetches adjacent terrain to eliminate pop-in.
+   */
+  async updateActiveSpatialChunks(pos) {
+    if (!this.MapDataStore?.data) return;
+    const zoneId = this.state.zone.id;
+    const CHUNK_SIZE = 50;
+
+    const cx = Math.floor(pos.x / CHUNK_SIZE);
+    const cy = Math.floor(pos.y / CHUNK_SIZE);
+
+    const fetchPromises = [];
+    for (let y = cy - 1; y <= cy + 1; y++) {
+      for (let x = cx - 1; x <= cx + 1; x++) {
+        if (x >= 0 && y >= 0) {
+          fetchPromises.push(this.MapDataStore.fetchSpatialChunk(zoneId, x, y));
+        }
+      }
+    }
+
+    const results = await Promise.all(fetchPromises);
+    
+    // If new terrain was downloaded, refresh the canvas and collision data
+    if (results.some(renderedNewData => renderedNewData === true)) {
+      const mapData = this.MapDataStore.data;
+      const navLayer = mapData.layers.find(l => l.type === 'navigation');
+      
+      // Update collision boundaries silently in the background
+      if (navLayer && navLayer.id === 'nav-auto-baked') {
+        navLayer.grid = this.bakeCollisionData(mapData.layers, mapData.mapSize, mapData.assetLibrary || {});
+      }
+      
+      this.draw();
+      if (this.WorldMapManager) this.WorldMapManager.draw();
+    }
+  }
+
+  /**
    * Loads a specific zone, resets player spawn, and triggers a full UI/Map refresh.
    * @param {Object} zoneData - Raw JSON data from the MapDataStore.
    */
@@ -870,22 +914,43 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
     if (this.state.player) {
         let spawnFound = false;
 
-        // A. Search for "entranceBlue" in the layers
-        if (zoneData.layers) {
-            for (const layer of zoneData.layers) {
+        // A. Search for "entranceBlue" in the layers (fully bulletproof against non-iterable grids)
+        if (!Array.isArray(zoneData.layers) && zoneData.layers) {
+            zoneData.layers = Object.values(zoneData.layers);
+        }
+        const safeLayers = Array.isArray(zoneData.layers) ? zoneData.layers : [];
+        if (safeLayers.length > 0) {
+            for (const layer of safeLayers) {
                 if (!layer.grid) continue;
-                for (let y = 0; y < layer.grid.length; y++) {
-                    for (let x = 0; x < layer.grid[y].length; x++) {
-                        const tile = layer.grid[y][x];
-                        if (tile && tile.assetId === 'entranceBlue') {
-                            this.state.player.pos.x = x;
-                            this.state.player.pos.y = y;
-                            spawnFound = true;
-                            console.log(`📍 Spawn: Found Blue Entrance at [${x}, ${y}]`);
-                            break;
+                
+                try {
+                    // Normalize rows whether grid is a 2D array or an object dictionary
+                    const rows = Array.isArray(layer.grid) 
+                        ? layer.grid.map((r, i) => [i, r]) 
+                        : Object.entries(layer.grid);
+                        
+                    for (const [yStr, row] of rows) {
+                        if (!row) continue;
+                        const y = parseInt(yStr, 10);
+                        
+                        const cols = Array.isArray(row) 
+                            ? row.map((t, i) => [i, t]) 
+                            : (typeof row === 'object' ? Object.entries(row) : []);
+                        
+                        for (const [xStr, tile] of cols) {
+                            const x = parseInt(xStr, 10);
+                            if (tile && tile.assetId === 'entranceBlue') {
+                                this.state.player.pos.x = x;
+                                this.state.player.pos.y = y;
+                                spawnFound = true;
+                                console.log(`📍 Spawn: Found Blue Entrance at [${x}, ${y}]`);
+                                break;
+                            }
                         }
+                        if (spawnFound) break;
                     }
-                    if (spawnFound) break;
+                } catch (e) {
+                    // Suppress interim iterator errors while spatial chunks stream in asynchronously
                 }
                 if (spawnFound) break;
             }
@@ -945,6 +1010,9 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
             opacity: 0 
         });
     }
+
+    // [NEW] Fetch initial chunks before rendering the zone
+    await this.updateActiveSpatialChunks(this.state.player.pos);
 
     // 4. Center camera on player (matching MapEditor's test mode behavior)
     if (this.state.player) {

@@ -8,6 +8,7 @@ export class MapDataStore {
     this.assetImages = {};
     this.backgroundImage = null;
     this.isLoaded = false;
+    this.loadedChunks = new Set(); // [NEW] Track fetched chunks
   }
 
   /**
@@ -30,6 +31,14 @@ export class MapDataStore {
 
     console.log(`🌐 World: Loading map structure for ${resolvedName}`);
     this.data = zoneData;
+    
+    // [CRITICAL FIX] Clear chunk cache on zone transition so new chunks can download
+    this.loadedChunks.clear();
+
+    // [CRITICAL FIX] Ensure layers array exists so the Renderer and ZoneManager don't crash before chunks arrive
+    if (!this.data.layers) {
+        this.data.layers = [];
+    }
 
     const assetPromises = [];
     
@@ -114,5 +123,60 @@ export class MapDataStore {
   getAssetImage(assetId) {
     const asset = this.data.assetLibrary?.[assetId];
     return asset?.imageUrl ? this.assetImages[asset.imageUrl] : null;
+  }
+
+  /**
+   * [NEW] Dynamically fetches spatial chunks and merges them into the engine state.
+   */
+  async fetchSpatialChunk(zoneId, chunkX, chunkY) {
+    const chunkId = `${chunkX}_${chunkY}`;
+    if (this.loadedChunks.has(chunkId)) return false; 
+
+    try {
+      const response = await fetch(`./data/zones/${zoneId}_chunk_${chunkId}.json`);
+      if (!response.ok) {
+        this.loadedChunks.add(chunkId); // Mark as checked even if it's an empty void
+        return false;
+      }
+
+      const chunkData = await response.json();
+
+      // Ensure master layers is an array
+      if (!Array.isArray(this.data.layers)) {
+        this.data.layers = Object.values(this.data.layers || {});
+      }
+
+      // Merge localized layer data into the master engine state
+      const chunkLayers = Array.isArray(chunkData.layers) ? chunkData.layers : Object.values(chunkData.layers || {});
+      
+      chunkLayers.forEach(chunkLayer => {
+        const layerId = chunkLayer.id || chunkLayer.name;
+        let masterLayer = this.data.layers.find(l => l && (l.id || l.name) === layerId);
+
+        if (!masterLayer) {
+          masterLayer = { ...chunkLayer, grid: {} };
+          this.data.layers.push(masterLayer);
+        }
+        if (!masterLayer.grid) masterLayer.grid = {};
+
+        // Merge the numeric chunk objects into the master 2D array
+        Object.entries(chunkLayer.grid).forEach(([yStr, row]) => {
+          const y = parseInt(yStr, 10);
+          if (!masterLayer.grid[y]) masterLayer.grid[y] = [];
+
+          Object.entries(row).forEach(([xStr, tile]) => {
+            const x = parseInt(xStr, 10);
+            masterLayer.grid[y][x] = tile;
+          });
+        });
+      });
+
+      this.loadedChunks.add(chunkId);
+      return true; // Return true to trigger a canvas redraw
+    } catch (err) {
+      console.warn(`⚠️ Skipped missing chunk ${chunkId}`);
+      this.loadedChunks.add(chunkId);
+      return false;
+    }
   }
 }
