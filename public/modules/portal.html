@@ -386,11 +386,13 @@
                     this.renderZoneList(); 
                     
                     try {
-                        const zoneRes = await fetch(`../data/zones/${zone.id}.json`);
+                        const zoneRes = await fetch(`../data/zones/${zone.id}_master.json`);
+                        if (!zoneRes.ok) throw new Error("File not found");
                         const fullMapData = await zoneRes.json();
                         // Passing 'true' for forceExpand ensures it pops open
                         this.selectZone(zone.id, fullMapData, isLocked, true);
                     } catch (e) {
+                        console.warn("Portal Fetch Error:", e);
                         this.selectZone(zone.id, zone, isLocked, true);
                     }
                 };
@@ -536,9 +538,9 @@
         },
 
         executeTeleport(zid, zoneData, cost) {
-            const entrance = zoneData.hexes?.find(h => h.trigger === "blueEntrance");
-            const targetX = entrance ? entrance.q : 12;
-            const targetY = entrance ? entrance.r : 14;
+            // Pull explicit spawn points from the master config, fallback to center
+            const targetX = (zoneData.spawnPoints && zoneData.spawnPoints.length > 0) ? zoneData.spawnPoints[0].x : 10;
+            const targetY = (zoneData.spawnPoints && zoneData.spawnPoints.length > 0) ? zoneData.spawnPoints[0].y : 10;
 
             if (this.gm) {
                 // 1. Deduct Gold

@@ -910,63 +910,23 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
       titleEl.textContent = resolvedName;
     }
 
-    // 2. Handle Player Spawning (Priority: entranceBlue > spawnPoints > 0,0)
+    // 2. Handle Player Spawning (Priority: Master SpawnPoints > Safe Center)
     if (this.state.player) {
         let spawnFound = false;
 
-        // A. Search for "entranceBlue" in the layers (fully bulletproof against non-iterable grids)
-        if (!Array.isArray(zoneData.layers) && zoneData.layers) {
-            zoneData.layers = Object.values(zoneData.layers);
-        }
-        const safeLayers = Array.isArray(zoneData.layers) ? zoneData.layers : [];
-        if (safeLayers.length > 0) {
-            for (const layer of safeLayers) {
-                if (!layer.grid) continue;
-                
-                try {
-                    // Normalize rows whether grid is a 2D array or an object dictionary
-                    const rows = Array.isArray(layer.grid) 
-                        ? layer.grid.map((r, i) => [i, r]) 
-                        : Object.entries(layer.grid);
-                        
-                    for (const [yStr, row] of rows) {
-                        if (!row) continue;
-                        const y = parseInt(yStr, 10);
-                        
-                        const cols = Array.isArray(row) 
-                            ? row.map((t, i) => [i, t]) 
-                            : (typeof row === 'object' ? Object.entries(row) : []);
-                        
-                        for (const [xStr, tile] of cols) {
-                            const x = parseInt(xStr, 10);
-                            if (tile && tile.assetId === 'entranceBlue') {
-                                this.state.player.pos.x = x;
-                                this.state.player.pos.y = y;
-                                spawnFound = true;
-                                console.log(`📍 Spawn: Found Blue Entrance at [${x}, ${y}]`);
-                                break;
-                            }
-                        }
-                        if (spawnFound) break;
-                    }
-                } catch (e) {
-                    // Suppress interim iterator errors while spatial chunks stream in asynchronously
-                }
-                if (spawnFound) break;
-            }
-        }
-
-        // B. Fallback to Map Data Spawn Points
-        if (!spawnFound && zoneData.spawnPoints && zoneData.spawnPoints.length > 0) {
+        // A. Priority 1: Use explicit SpawnPoints from the _master.json config
+        if (zoneData.spawnPoints && zoneData.spawnPoints.length > 0) {
             this.state.player.pos.x = zoneData.spawnPoints[0].x;
             this.state.player.pos.y = zoneData.spawnPoints[0].y;
             spawnFound = true;
+            console.log(`📍 Spawn: Dropping at SpawnPoint [${this.state.player.pos.x}, ${this.state.player.pos.y}]`);
         }
 
-        // C. Last Resort (Safe Center)
+        // B. Priority 2: Safe Center Fallback
         if (!spawnFound) {
             this.state.player.pos.x = Math.floor((zoneData.mapSize?.width || 10) / 2);
             this.state.player.pos.y = Math.floor((zoneData.mapSize?.height || 10) / 2);
+            console.log(`📍 Spawn: Dropping at Center [${this.state.player.pos.x}, ${this.state.player.pos.y}]`);
         }
     }
     // [NEW] FORCE VISUAL CLEANUP
