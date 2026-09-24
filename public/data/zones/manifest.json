@@ -1,5 +1,8 @@
 {
   "Z00": {
+    "zoneName": "The Convergence",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z00_master.json",
     "chunks": [
       "0_0",
@@ -14,6 +17,9 @@
     "totalHexes": 20811
   },
   "Z01": {
+    "zoneName": "Crystal Caves",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z01_master.json",
     "chunks": [
       "0_0"
@@ -21,6 +27,9 @@
     "totalHexes": 710
   },
   "Z02": {
+    "zoneName": "Glimmerwood",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z02_master.json",
     "chunks": [
       "0_0"
@@ -28,6 +37,9 @@
     "totalHexes": 714
   },
   "Z03": {
+    "zoneName": "The Shifting Maze",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z03_master.json",
     "chunks": [
       "0_0"
@@ -35,6 +47,9 @@
     "totalHexes": 693
   },
   "Z04": {
+    "zoneName": "Chromatic Badlands",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z04_master.json",
     "chunks": [
       "0_0"
@@ -42,6 +57,9 @@
     "totalHexes": 686
   },
   "Z05": {
+    "zoneName": "Mana Springs",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z05_master.json",
     "chunks": [
       "0_0"
@@ -49,6 +67,9 @@
     "totalHexes": 702
   },
   "Z06": {
+    "zoneName": "Blazefire Wastes",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z06_master.json",
     "chunks": [
       "0_0"
@@ -56,6 +77,9 @@
     "totalHexes": 712
   },
   "Z07": {
+    "zoneName": "Shadow Mire",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z07_master.json",
     "chunks": [
       "0_0"
@@ -63,6 +87,9 @@
     "totalHexes": 716
   },
   "Z08": {
+    "zoneName": "Whispering Woods",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z08_master.json",
     "chunks": [
       "0_0"
@@ -70,6 +97,9 @@
     "totalHexes": 700
   },
   "Z09": {
+    "zoneName": "Ashfall Barrens",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z09_master.json",
     "chunks": [
       "0_0"
@@ -77,6 +107,9 @@
     "totalHexes": 700
   },
   "Z10": {
+    "zoneName": "Screaming Crags",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z10_master.json",
     "chunks": [
       "0_0"
@@ -84,6 +117,9 @@
     "totalHexes": 705
   },
   "Z100": {
+    "zoneName": "The Singing Rivers",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z100_master.json",
     "chunks": [
       "0_0"
@@ -91,6 +127,9 @@
     "totalHexes": 732
   },
   "Z101": {
+    "zoneName": "The Echoing Gorge of Lost Souls",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z101_master.json",
     "chunks": [
       "0_0"
@@ -98,6 +137,9 @@
     "totalHexes": 699
   },
   "Z11": {
+    "zoneName": "The Great Vine Labyrinth",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z11_master.json",
     "chunks": [
       "0_0"
@@ -105,6 +147,9 @@
     "totalHexes": 720
   },
   "Z12": {
+    "zoneName": "The Howling Steppes",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z12_master.json",
     "chunks": [
       "0_0"
@@ -112,6 +157,9 @@
     "totalHexes": 717
   },
   "Z13": {
+    "zoneName": "Cloud Peaks",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z13_master.json",
     "chunks": [
       "0_0"
@@ -119,6 +167,9 @@
     "totalHexes": 705
   },
   "Z14": {
+    "zoneName": "Emberfall Forest",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z14_master.json",
     "chunks": [
       "0_0"
@@ -126,6 +177,9 @@
     "totalHexes": 731
   },
   "Z15": {
+    "zoneName": "Aetherial Forests",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z15_master.json",
     "chunks": [
       "0_0"
@@ -133,6 +187,9 @@
     "totalHexes": 693
   },
   "Z16": {
+    "zoneName": "Grimwater Swamps",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z16_master.json",
     "chunks": [
       "0_0"
@@ -140,6 +197,9 @@
     "totalHexes": 730
   },
   "Z17": {
+    "zoneName": "Gravefrost Tundra",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z17_master.json",
     "chunks": [
       "0_0"
@@ -147,6 +207,9 @@
     "totalHexes": 702
   },
   "Z18": {
+    "zoneName": "The Sunken City of Lumina",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z18_master.json",
     "chunks": [
       "0_0"
@@ -154,6 +217,9 @@
     "totalHexes": 704
   },
   "Z19": {
+    "zoneName": "Gloomwood",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z19_master.json",
     "chunks": [
       "0_0"
@@ -161,6 +227,9 @@
     "totalHexes": 717
   },
   "Z20": {
+    "zoneName": "Corrupted Jungles",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z20_master.json",
     "chunks": [
       "0_0"
@@ -168,6 +237,9 @@
     "totalHexes": 723
   },
   "Z21": {
+    "zoneName": "Echoing Chasms",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z21_master.json",
     "chunks": [
       "0_0"
@@ -175,6 +247,9 @@
     "totalHexes": 755
   },
   "Z22": {
+    "zoneName": "Sunken Ruins",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z22_master.json",
     "chunks": [
       "0_0"
@@ -182,6 +257,9 @@
     "totalHexes": 708
   },
   "Z23": {
+    "zoneName": "Pandemonium",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z23_master.json",
     "chunks": [
       "0_0"
@@ -189,6 +267,9 @@
     "totalHexes": 700
   },
   "Z24": {
+    "zoneName": "The Empyrean",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z24_master.json",
     "chunks": [
       "0_0"
@@ -196,6 +277,9 @@
     "totalHexes": 720
   },
   "Z25": {
+    "zoneName": "The Sundered Deep",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z25_master.json",
     "chunks": [
       "0_0"
@@ -203,6 +287,9 @@
     "totalHexes": 707
   },
   "Z26": {
+    "zoneName": "Starfall Deserts",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z26_master.json",
     "chunks": [
       "0_0"
@@ -210,6 +297,9 @@
     "totalHexes": 717
   },
   "Z27": {
+    "zoneName": "The Weeping Mire",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z27_master.json",
     "chunks": [
       "0_0"
@@ -217,6 +307,9 @@
     "totalHexes": 725
   },
   "Z28": {
+    "zoneName": "Frozen Spirelands",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z28_master.json",
     "chunks": [
       "0_0"
@@ -224,6 +317,9 @@
     "totalHexes": 730
   },
   "Z29": {
+    "zoneName": "Living Mountain",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z29_master.json",
     "chunks": [
       "0_0"
@@ -231,6 +327,9 @@
     "totalHexes": 723
   },
   "Z30": {
+    "zoneName": "Chrono-Distorted Fields",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z30_master.json",
     "chunks": [
       "0_0"
@@ -238,6 +337,9 @@
     "totalHexes": 688
   },
   "Z31": {
+    "zoneName": "Whisperwind Peaks",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z31_master.json",
     "chunks": [
       "0_0"
@@ -245,6 +347,9 @@
     "totalHexes": 714
   },
   "Z32": {
+    "zoneName": "The Vilegrowth",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z32_master.json",
     "chunks": [
       "0_0"
@@ -252,6 +357,9 @@
     "totalHexes": 703
   },
   "Z33": {
+    "zoneName": "Acidic Fens",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z33_master.json",
     "chunks": [
       "0_0"
@@ -259,6 +367,9 @@
     "totalHexes": 714
   },
   "Z34": {
+    "zoneName": "Bone Deserts",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z34_master.json",
     "chunks": [
       "0_0"
@@ -266,6 +377,9 @@
     "totalHexes": 744
   },
   "Z35": {
+    "zoneName": "The Maw",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z35_master.json",
     "chunks": [
       "0_0"
@@ -273,6 +387,9 @@
     "totalHexes": 708
   },
   "Z36": {
+    "zoneName": "Poisonbloom Meadows",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z36_master.json",
     "chunks": [
       "0_0"
@@ -280,6 +397,9 @@
     "totalHexes": 749
   },
   "Z37": {
+    "zoneName": "Storm-Wrenched Coast",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z37_master.json",
     "chunks": [
       "0_0"
@@ -287,6 +407,9 @@
     "totalHexes": 713
   },
   "Z38": {
+    "zoneName": "The Rusting Wastes",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z38_master.json",
     "chunks": [
       "0_0"
@@ -294,6 +417,9 @@
     "totalHexes": 708
   },
   "Z39": {
+    "zoneName": "Webbed Caverns",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z39_master.json",
     "chunks": [
       "0_0"
@@ -301,6 +427,9 @@
     "totalHexes": 701
   },
   "Z40": {
+    "zoneName": "The Scarred Peaks",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z40_master.json",
     "chunks": [
       "0_0"
@@ -308,6 +437,9 @@
     "totalHexes": 711
   },
   "Z41": {
+    "zoneName": "Fungal Undergrowth",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z41_master.json",
     "chunks": [
       "0_0"
@@ -315,6 +447,9 @@
     "totalHexes": 705
   },
   "Z42": {
+    "zoneName": "Obsidian Flats",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z42_master.json",
     "chunks": [
       "0_0"
@@ -322,6 +457,9 @@
     "totalHexes": 703
   },
   "Z43": {
+    "zoneName": "Quicksand Dunes",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z43_master.json",
     "chunks": [
       "0_0"
@@ -329,6 +467,9 @@
     "totalHexes": 719
   },
   "Z44": {
+    "zoneName": "Floating Islands",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z44_master.json",
     "chunks": [
       "0_0"
@@ -336,6 +477,9 @@
     "totalHexes": 716
   },
   "Z45": {
+    "zoneName": "Glass Sea",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z45_master.json",
     "chunks": [
       "0_0"
@@ -343,6 +487,9 @@
     "totalHexes": 718
   },
   "Z46": {
+    "zoneName": "Upside-Down Forest",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z46_master.json",
     "chunks": [
       "0_0"
@@ -350,6 +497,9 @@
     "totalHexes": 694
   },
   "Z47": {
+    "zoneName": "Singing Sands",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z47_master.json",
     "chunks": [
       "0_0"
@@ -357,6 +507,9 @@
     "totalHexes": 711
   },
   "Z48": {
+    "zoneName": "Aurora Borealis Caverns",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z48_master.json",
     "chunks": [
       "0_0"
@@ -364,6 +517,9 @@
     "totalHexes": 718
   },
   "Z49": {
+    "zoneName": "Gloom-Shrouded Peaks",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z49_master.json",
     "chunks": [
       "0_0"
@@ -371,6 +527,9 @@
     "totalHexes": 697
   },
   "Z50": {
+    "zoneName": "Sunken Spire City",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z50_master.json",
     "chunks": [
       "0_0"
@@ -378,6 +537,9 @@
     "totalHexes": 736
   },
   "Z51": {
+    "zoneName": "Giant Mushroom Forests",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z51_master.json",
     "chunks": [
       "0_0"
@@ -385,6 +547,9 @@
     "totalHexes": 710
   },
   "Z52": {
+    "zoneName": "Living Stone Gardens",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z52_master.json",
     "chunks": [
       "0_0"
@@ -392,6 +557,9 @@
     "totalHexes": 727
   },
   "Z53": {
+    "zoneName": "The Whispering Wastes",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z53_master.json",
     "chunks": [
       "0_0"
@@ -399,6 +567,9 @@
     "totalHexes": 701
   },
   "Z54": {
+    "zoneName": "Mirage Deserts",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z54_master.json",
     "chunks": [
       "0_0"
@@ -406,6 +577,9 @@
     "totalHexes": 715
   },
   "Z55": {
+    "zoneName": "Gravity Wells",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z55_master.json",
     "chunks": [
       "0_0"
@@ -413,6 +587,9 @@
     "totalHexes": 740
   },
   "Z56": {
+    "zoneName": "Chromatic Reefs",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z56_master.json",
     "chunks": [
       "0_0"
@@ -420,6 +597,9 @@
     "totalHexes": 734
   },
   "Z57": {
+    "zoneName": "The Endless Bridge",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z57_master.json",
     "chunks": [
       "0_0"
@@ -427,6 +607,9 @@
     "totalHexes": 729
   },
   "Z58": {
+    "zoneName": "Sky-Whale Graveyard",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z58_master.json",
     "chunks": [
       "0_0"
@@ -434,6 +617,9 @@
     "totalHexes": 703
   },
   "Z59": {
+    "zoneName": "The Weaving Caves",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z59_master.json",
     "chunks": [
       "0_0"
@@ -441,6 +627,9 @@
     "totalHexes": 799
   },
   "Z60": {
+    "zoneName": "Echoing Valley of the Giants",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z60_master.json",
     "chunks": [
       "0_0"
@@ -448,6 +637,9 @@
     "totalHexes": 731
   },
   "Z61": {
+    "zoneName": "The Glimmering Shore",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z61_master.json",
     "chunks": [
       "0_0"
@@ -455,6 +647,9 @@
     "totalHexes": 721
   },
   "Z62": {
+    "zoneName": "The Whispering Canyon",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z62_master.json",
     "chunks": [
       "0_0"
@@ -462,6 +657,9 @@
     "totalHexes": 708
   },
   "Z63": {
+    "zoneName": "Floating River",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z63_master.json",
     "chunks": [
       "0_0"
@@ -469,6 +667,9 @@
     "totalHexes": 730
   },
   "Z64": {
+    "zoneName": "The Cloud Sea",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z64_master.json",
     "chunks": [
       "0_0"
@@ -476,6 +677,9 @@
     "totalHexes": 746
   },
   "Z65": {
+    "zoneName": "Obsidian Monolith Plains",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z65_master.json",
     "chunks": [
       "0_0"
@@ -483,6 +687,9 @@
     "totalHexes": 701
   },
   "Z66": {
+    "zoneName": "The Bloodfang Jungle",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z66_master.json",
     "chunks": [
       "0_0"
@@ -490,6 +697,9 @@
     "totalHexes": 722
   },
   "Z67": {
+    "zoneName": "Sunstone Deserts",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z67_master.json",
     "chunks": [
       "0_0"
@@ -497,6 +707,9 @@
     "totalHexes": 710
   },
   "Z68": {
+    "zoneName": "The Whispering Gardens",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z68_master.json",
     "chunks": [
       "0_0"
@@ -504,6 +717,9 @@
     "totalHexes": 715
   },
   "Z69": {
+    "zoneName": "Glass Peaks",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z69_master.json",
     "chunks": [
       "0_0"
@@ -511,6 +727,9 @@
     "totalHexes": 687
   },
   "Z70": {
+    "zoneName": "Phantom Forests",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z70_master.json",
     "chunks": [
       "0_0"
@@ -518,6 +737,9 @@
     "totalHexes": 725
   },
   "Z71": {
+    "zoneName": "The Shrouded Isles",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z71_master.json",
     "chunks": [
       "0_0"
@@ -525,6 +747,9 @@
     "totalHexes": 738
   },
   "Z72": {
+    "zoneName": "Gravity-Defying Rapids",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z72_master.json",
     "chunks": [
       "0_0"
@@ -532,6 +757,9 @@
     "totalHexes": 703
   },
   "Z73": {
+    "zoneName": "The Azure Depths",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z73_master.json",
     "chunks": [
       "0_0"
@@ -539,6 +767,9 @@
     "totalHexes": 731
   },
   "Z74": {
+    "zoneName": "Crystalline Spires",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z74_master.json",
     "chunks": [
       "0_0"
@@ -546,6 +777,9 @@
     "totalHexes": 712
   },
   "Z75": {
+    "zoneName": "The Void Scar",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z75_master.json",
     "chunks": [
       "0_0"
@@ -553,6 +787,9 @@
     "totalHexes": 704
   },
   "Z76": {
+    "zoneName": "Living Labyrinth",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z76_master.json",
     "chunks": [
       "0_0"
@@ -560,6 +797,9 @@
     "totalHexes": 697
   },
   "Z77": {
+    "zoneName": "The Silent Sands",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z77_master.json",
     "chunks": [
       "0_0"
@@ -567,6 +807,9 @@
     "totalHexes": 718
   },
   "Z78": {
+    "zoneName": "Acoustic Caves",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z78_master.json",
     "chunks": [
       "0_0"
@@ -574,6 +817,9 @@
     "totalHexes": 701
   },
   "Z79": {
+    "zoneName": "The Glittering Grottos",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z79_master.json",
     "chunks": [
       "0_0"
@@ -581,6 +827,9 @@
     "totalHexes": 746
   },
   "Z80": {
+    "zoneName": "Timeworn Badlands",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z80_master.json",
     "chunks": [
       "0_0"
@@ -588,6 +837,9 @@
     "totalHexes": 719
   },
   "Z81": {
+    "zoneName": "The Canopy Kingdom",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z81_master.json",
     "chunks": [
       "0_0"
@@ -595,6 +847,9 @@
     "totalHexes": 711
   },
   "Z82": {
+    "zoneName": "The Sunken Library",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z82_master.json",
     "chunks": [
       "0_0"
@@ -602,6 +857,9 @@
     "totalHexes": 706
   },
   "Z83": {
+    "zoneName": "Chromatic Geysers",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z83_master.json",
     "chunks": [
       "0_0"
@@ -609,6 +867,9 @@
     "totalHexes": 727
   },
   "Z84": {
+    "zoneName": "The Whispering City",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z84_master.json",
     "chunks": [
       "0_0"
@@ -616,6 +877,9 @@
     "totalHexes": 705
   },
   "Z85": {
+    "zoneName": "The Labyrinthine Mangroves",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z85_master.json",
     "chunks": [
       "0_0"
@@ -623,6 +887,9 @@
     "totalHexes": 742
   },
   "Z86": {
+    "zoneName": "The Frozen Heart of the World",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z86_master.json",
     "chunks": [
       "0_0"
@@ -630,6 +897,9 @@
     "totalHexes": 708
   },
   "Z87": {
+    "zoneName": "Gelatinous Jungles",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z87_master.json",
     "chunks": [
       "0_0"
@@ -637,6 +907,9 @@
     "totalHexes": 720
   },
   "Z88": {
+    "zoneName": "The Petrified Ocean",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z88_master.json",
     "chunks": [
       "0_0"
@@ -644,6 +917,9 @@
     "totalHexes": 733
   },
   "Z89": {
+    "zoneName": "The Symphony Springs",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z89_master.json",
     "chunks": [
       "0_0"
@@ -651,6 +927,9 @@
     "totalHexes": 726
   },
   "Z90": {
+    "zoneName": "The Whispering Cliffs",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z90_master.json",
     "chunks": [
       "0_0"
@@ -658,6 +937,9 @@
     "totalHexes": 701
   },
   "Z91": {
+    "zoneName": "The Bioluminescent Bog",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z91_master.json",
     "chunks": [
       "0_0"
@@ -665,6 +947,9 @@
     "totalHexes": 707
   },
   "Z92": {
+    "zoneName": "The Stone Giant's Graveyard",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z92_master.json",
     "chunks": [
       "0_0"
@@ -672,6 +957,9 @@
     "totalHexes": 721
   },
   "Z93": {
+    "zoneName": "The Maze of Roots",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z93_master.json",
     "chunks": [
       "0_0"
@@ -679,6 +967,9 @@
     "totalHexes": 928
   },
   "Z94": {
+    "zoneName": "The Endless Plains of Glass",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z94_master.json",
     "chunks": [
       "0_0"
@@ -686,6 +977,9 @@
     "totalHexes": 710
   },
   "Z95": {
+    "zoneName": "The Whispering Temple Ruins",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z95_master.json",
     "chunks": [
       "0_0"
@@ -693,6 +987,9 @@
     "totalHexes": 708
   },
   "Z96": {
+    "zoneName": "The Crystal Ocean",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z96_master.json",
     "chunks": [
       "0_0"
@@ -700,6 +997,9 @@
     "totalHexes": 710
   },
   "Z97": {
+    "zoneName": "The Sunken Palace of the Sea King",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z97_master.json",
     "chunks": [
       "0_0"
@@ -707,6 +1007,9 @@
     "totalHexes": 692
   },
   "Z98": {
+    "zoneName": "The Land of Shifting Colors",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z98_master.json",
     "chunks": [
       "0_0"
@@ -714,6 +1017,9 @@
     "totalHexes": 740
   },
   "Z99": {
+    "zoneName": "The Cloud Forest of the Sky Serpents",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "Z99_master.json",
     "chunks": [
       "0_0"
@@ -721,6 +1027,9 @@
     "totalHexes": 710
   },
   "ZMW00": {
+    "zoneName": "Geminus",
+    "minLevel": 1,
+    "type": "Standard",
     "masterConfigFile": "ZMW00_master.json",
     "chunks": [
       "0_0",

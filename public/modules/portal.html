@@ -262,10 +262,8 @@
     </div>
     
 <script type="module">
-    // Pathing aligned with GEMINUS FILE TREE
-    import { zonesData } from '../src/data/zonesData.js';
-    import { bestiaryData } from '../src/data/bestiaryData.js';
-
+    // Cloudflare Fix: Removed /src/ imports. Data now streams dynamically from manifest and window.parent.
+    
     const PortalManager = {
         gm: null,
         player: null,
@@ -274,23 +272,27 @@
             SURGE: `<svg class="w-3 h-3 text-purple-400 event-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M4 17v4M2 19h4M17 4v4M16 6h4M20 17v4M19 19h4M12 9a3 3 0 100-6 3 3 0 000 6zm0 12a3 3 0 100-6 3 3 0 000 6zm0-3a3 3 0 100-6 3 3 0 000 6z"></path></svg>`
         },
         filters: { search: '', sort: 'level-asc', showFavorites: false },
-        zoneCache: [],
+        zoneCache: {},
         notifiedEvents: new Set(),
-        isMinimized: false, // Tracks if the user manually closed the panel
+        isMinimized: false,
 
-        
-
-        init(player) {
+        async init(player) {
             this.player = player;
             this.gm = window.parent.gameManager;
             
-            // This now populates the list instantly from the zonesData.js file
+            // Fetch the manifest dynamically
+            try {
+                const res = await fetch('../data/zones/manifest.json');
+                this.zoneCache = await res.json();
+            } catch(e) {
+                console.error("Portal: Failed to load manifest", e);
+                this.zoneCache = {};
+            }
+            
             this.renderZoneList();
             
-            // Setup the minimize toggle listener
             document.getElementById('minimize-intel-btn')?.addEventListener('click', () => this.toggleMinimize());
 
-            // Listeners for Search, Sort, and Tab switching
             document.getElementById('search-input')?.addEventListener('input', (e) => {
                 this.filters.search = e.target.value;
                 this.renderZoneList();
@@ -309,28 +311,31 @@
 
             document.getElementById('tab-network')?.addEventListener('click', () => this.switchTab('network'));
             document.getElementById('tab-destinations')?.addEventListener('click', () => this.switchTab('destinations'));
-            // RESTORED: Start the live world event ticker
+            
             this.updateEventTicker();
             setInterval(() => {
                 this.updateEventTicker();
                 this.checkNewEvents(); 
                 const selectedName = document.getElementById('selected-zone-name').innerText;
                 if (selectedName !== '-') {
-                    const currentZone = zonesData.find(z => z.zoneName === selectedName);
-                    // Adding 'false' ensures the background timer doesn't pop the panel open
+                    const zonesArray = Object.keys(this.zoneCache).map(key => ({ id: key, ...this.zoneCache[key] }));
+                    const currentZone = zonesArray.find(z => z.zoneName === selectedName);
                     if (currentZone) this.selectZone(currentZone.id, currentZone, this.player.level < currentZone.minLevel, false);
                 }
             }, 1000);
         },
 
-        
         renderZoneList() {
             const container = document.getElementById('teleport-list-container');
             if (!container) return;
-
             container.innerHTML = ''; 
 
-            let filtered = zonesData.filter(zone => {
+            const zonesArray = Object.keys(this.zoneCache).map(key => ({
+                id: key,
+                ...this.zoneCache[key]
+            }));
+
+            let filtered = zonesArray.filter(zone => {
                 if (zone.id === 'ZMW00') return false;
                 const matchesSearch = !this.filters.search || zone.zoneName.toLowerCase().includes(this.filters.search.toLowerCase());
                 const isFav = this.player.favoriteZones?.includes(zone.id);
@@ -348,7 +353,6 @@
             filtered.forEach(zone => {
                 const isFav = this.player.favoriteZones?.includes(zone.id);
                 const isLocked = this.player.level < zone.minLevel;
-                // NEW: Check if this zone is the one currently displayed in the Intel Panel
                 const isSelected = zone.id === this.currentSelectedId;
 
                 const activeEvents = window.parent.game?.worldEvents || [];
@@ -356,7 +360,6 @@
                 const eventIcon = activeEvent ? this.eventIcons[activeEvent.type] || '' : '';
 
                 const card = document.createElement('div');
-                // Added 'selected' class logic and improved border contrast
                 card.className = `teleport-list-item p-3 mb-2 rounded border transition-all cursor-pointer ${
                     isSelected ? 'bg-cyan-900/40 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 
                     isLocked ? 'opacity-40 bg-red-900/10 border-red-900/30' : 'bg-blue-900/20 border-blue-500/50 hover:bg-blue-900/40'
@@ -389,10 +392,8 @@
                         const zoneRes = await fetch(`../data/zones/${zone.id}_master.json`);
                         if (!zoneRes.ok) throw new Error("File not found");
                         const fullMapData = await zoneRes.json();
-                        // Passing 'true' for forceExpand ensures it pops open
                         this.selectZone(zone.id, fullMapData, isLocked, true);
                     } catch (e) {
-                        console.warn("Portal Fetch Error:", e);
                         this.selectZone(zone.id, zone, isLocked, true);
                     }
                 };
@@ -401,6 +402,7 @@
             
             container.appendChild(fragment);
         },
+
         toggleMinimize() {
             const panel = document.getElementById('teleport-control-panel');
             const icon = document.getElementById('minimize-icon');
@@ -412,21 +414,20 @@
                 this.gm.playMagiTechSound('ui_click_heavy');
             }
 
-            // Use h-12 for a much smaller "minimized" bar
             const isMinimized = panel.classList.toggle('h-12');
             this.isMinimized = isMinimized;
             
             if (isMinimized) {
                 intelGrid.classList.add('hidden');
                 costDisplay.classList.add('hidden');
-                warpBtn.classList.add('hidden'); // Hide the big button
+                warpBtn.classList.add('hidden'); 
                 icon.style.transform = 'rotate(180deg)';
                 panel.classList.remove('p-4');
-                panel.classList.add('p-1'); // Minimal padding
+                panel.classList.add('p-1'); 
             } else {
                 intelGrid.classList.remove('hidden');
                 costDisplay.classList.remove('hidden');
-                warpBtn.classList.remove('hidden'); // Show button again
+                warpBtn.classList.remove('hidden'); 
                 icon.style.transform = 'rotate(0deg)';
                 panel.classList.remove('p-1');
                 panel.classList.add('p-4');
@@ -440,10 +441,8 @@
             const costDisplay = document.getElementById('teleport-cost-display');
             const warpBtn = document.getElementById('teleport-button');
 
-            // RE-ATTACHMENT: Ensure panel is visible
             panel.classList.remove('hidden');
 
-            // AUTO-EXPAND: Force open if panel is minimized and a new zone is clicked
             if (forceExpand || (this.isMinimized && zid !== this.currentSelectedId)) {
                 if (this.isMinimized) {
                     this.toggleMinimize();
@@ -451,19 +450,18 @@
             }
             this.currentSelectedId = zid;
 
-            // 1. DATA LOOKUP & APEX IDENTIFICATION
-            const zoneMeta = zonesData.find(z => z.id === zid);
-            const monsterPool = zoneMeta ? (zoneMeta.mobs || []) : [];
+            const zoneMeta = this.zoneCache[zid] || zoneData;
+            const parentBestiary = window.parent.bestiaryData || {}; 
+            const monsterPool = zoneData.zoneMobs || [];
             let apexThreat = null;
             
             monsterPool.forEach(mId => {
-                const mData = bestiaryData[mId];
+                const mData = parentBestiary[mId];
                 if (mData && (!apexThreat || mData.level > apexThreat.level)) {
                     apexThreat = mData;
                 }
             });
 
-            // 2. WORLD EVENTS
             const activeEvents = window.parent.game?.worldEvents || [];
             const event = activeEvents.find(e => e.zoneId === zid && e.expires > Date.now());
             let eventHtml = '';
@@ -478,7 +476,6 @@
                     </div>`;
             }
 
-            // 3. APEX DISPLAY
             let threatHtml = apexThreat ? `
                 <div class="col-span-2 mt-2 pt-2 border-t border-white/10">
                     <p class="text-[9px] text-red-500 font-bold uppercase tracking-widest">Apex Threat</p>
@@ -488,13 +485,11 @@
                     </div>
                 </div>` : '';
 
-            // 4. POWER SCALING & DIFFICULTY
             const playerPower = (this.player.stats.wc * 2) + this.player.stats.ac; 
             const zoneThreat = (apexThreat ? apexThreat.level * 100 : (zoneData.minLevel * 50));
             const ratio = playerPower / zoneThreat;
             let diff = ratio > 3.0 ? {t: "TRIVIAL", c: "text-green-400"} : ratio > 1.5 ? {t: "MANAGEABLE", c: "text-sky-300"} : ratio >= 0.9 ? {t: "CHALLENGING", c: "text-yellow-400"} : {t: "LETHAL", c: "text-red-500"};
 
-            // 5. RENDER CONTENT
             zoneTitle.innerText = zoneData.zoneName || zid;
             intelPanel.innerHTML = `
                 <span class="opacity-60">Req. Lvl:</span> <span class="font-bold text-white">${zoneData.minLevel || 1}</span>
@@ -505,7 +500,6 @@
                 ${threatHtml}
             `;
 
-            // 6. COST CALCULATION
             const baseCost = 10000 + ((zoneData.minLevel || 1) * 50);
             const discount = (this.player.teleportNetwork?.costReduction || 0) * 0.05;
             const cost = Math.floor(baseCost * (1 - discount));
@@ -519,90 +513,59 @@
             };
         },
 
-        toggleMinimize() {
-            const panel = document.getElementById('teleport-control-panel');
-            const details = document.getElementById('intel-details-container');
-            const icon = document.getElementById('minimize-icon');
-            
-            // Toggle state boolean
-            this.isMinimized = !this.isMinimized;
-            
-            // Apply visual state
-            panel.classList.toggle('minimized', this.isMinimized);
-            if (details) details.classList.toggle('hidden', this.isMinimized);
-            
-            // UI Feedback: Rotate the arrow icon
-            if (icon) {
-                icon.style.transform = this.isMinimized ? 'rotate(180deg)' : 'rotate(0deg)';
-            }
-        },
-
         executeTeleport(zid, zoneData, cost) {
-            // Pull explicit spawn points from the master config, fallback to center
             const targetX = (zoneData.spawnPoints && zoneData.spawnPoints.length > 0) ? zoneData.spawnPoints[0].x : 10;
             const targetY = (zoneData.spawnPoints && zoneData.spawnPoints.length > 0) ? zoneData.spawnPoints[0].y : 10;
 
             if (this.gm) {
-                // 1. Deduct Gold
                 if (!window.parent.DEV_FREE_WARP) this.player.gold -= cost;
 
-                // 2. Trigger Effect with a Callback for the actual move
                 if (this.gm.triggerTeleportEffect) {
                     this.gm.triggerTeleportEffect(zoneData.zoneName, () => {
-                        // This code ONLY runs when the screen is fully pixelated
                         if (this.gm.ZoneManager) {
                             this.gm.ZoneManager.handleZoneTransition(zid, targetX, targetY);
                         }
-                        
-                        // Close overlay while screen is still blocky
                         const overlay = window.parent.document.getElementById('module-overlay');
                         if (overlay) overlay.classList.add('hidden');
                     });
                 } else {
-                    // Fallback if effect fails
                     if (this.gm.ZoneManager) this.gm.ZoneManager.handleZoneTransition(zid, targetX, targetY);
                 }
             }
-        }, // This comma is important! It separates executeTeleport from the next function.
+        }, 
 
-        // --- STEP 4 INJECTION START ---
-        toggleFavorite(zid) {
+        toggleFav(zid) {
             if (!this.player.favoriteZones) this.player.favoriteZones = [];
             const idx = this.player.favoriteZones.indexOf(zid);
             if (idx > -1) this.player.favoriteZones.splice(idx, 1);
             else this.player.favoriteZones.push(zid);
-            this.renderZoneList(); // Refresh list to update star colors
+            this.renderZoneList(); 
         },
 
         switchTab(tab) {
             const isDest = tab === 'destinations';
-            // Hide info box if we switch to the Network tab
-    if (!isDest) document.getElementById('teleport-control-panel').classList.add('hidden');
+            if (!isDest) document.getElementById('teleport-control-panel').classList.add('hidden');
             document.getElementById('tab-destinations').classList.toggle('active', isDest);
             document.getElementById('tab-network').classList.toggle('active', !isDest);
             document.getElementById('content-destinations').classList.toggle('hidden', !isDest);
             document.getElementById('content-network').classList.toggle('hidden', isDest);
             document.getElementById('content-network').classList.toggle('flex', !isDest);
             
-            // RESTORED: Trigger the network card rendering
             if (!isDest) {
                 this.renderNetworkTab();
             }
         },
 
         upgradePerk(perkId) {
-            // Find the perk definition from the hub data
             const perk = {
                 costReduction: { name: 'Aetheric Efficiency', baseCost: 100 }
             }[perkId];
 
             if (!perk) return;
 
-            // Logic to check shards and apply permanent bonuses
             const currentRank = this.player.teleportNetwork?.[perkId] || 0;
             const cost = perk.baseCost * (currentRank + 1);
 
-            // DEV OVERRIDE: Remove the shard cost check for testing
             const isDevMode = true; 
 
             if (isDevMode || this.player.aetheriumShards >= cost) {
@@ -611,20 +574,17 @@
                 if (!this.player.teleportNetwork) this.player.teleportNetwork = {};
                 this.player.teleportNetwork[perkId] = currentRank + 1;
                 
-                // Play sound and refresh UI
                 if (this.gm?.playMagiTechSound) this.gm.playMagiTechSound('ui_upgrade_success');
                 this.renderNetworkTab();
                 
-                // Calculate the new total discount for the toast
-const newDiscount = (currentRank + 1) * 5;
-this.showToast(`${perk.name} Rank ${currentRank + 1}: Total Discount ${newDiscount}%`);
+                const newDiscount = (currentRank + 1) * 5;
+                this.showToast(`${perk.name} Rank ${currentRank + 1}: Total Discount ${newDiscount}%`);
             } else {
                 if (this.gm?.playMagiTechSound) this.gm.playMagiTechSound('ui_error');
                 alert("Insufficient Aetherium Shards!");
             }
         },
 
-        // Inside PortalManager
         showToast(message) {
             let toast = document.getElementById('portal-toast');
             if (!toast) {
@@ -655,7 +615,6 @@ this.showToast(`${perk.name} Rank ${currentRank + 1}: Total Discount ${newDiscou
             const tickerContent = document.getElementById('event-ticker-content');
             if (!tickerContent) return;
 
-            // In Geminus, we pull active events from the game state
             const activeEvents = window.parent.game?.worldEvents || [];
             
             if (activeEvents.length > 0) {
@@ -675,21 +634,17 @@ this.showToast(`${perk.name} Rank ${currentRank + 1}: Total Discount ${newDiscou
             
             activeEvents.forEach(event => {
                 if (!this.notifiedEvents.has(event.id)) {
-                    // 1. Mark as notified immediately
                     this.notifiedEvents.add(event.id);
 
-                    // 2. Play the unique Magi-Tech sound via the bridge
                     if (this.gm?.playMagiTechSound) {
                         const soundType = event.type === 'HORDE' ? 'event_horde_start' : 'event_surge_start';
                         this.gm.playMagiTechSound(soundType);
                     }
 
-                    // 3. Show a priority toast
                     this.showToast(`NEW WORLD EVENT: ${event.title}`);
                 }
             });
 
-            // Cleanup expired events from the set to save memory
             const activeIds = activeEvents.map(e => e.id);
             this.notifiedEvents.forEach(id => {
                 if (!activeIds.includes(id)) this.notifiedEvents.delete(id);
@@ -703,42 +658,34 @@ this.showToast(`${perk.name} Rank ${currentRank + 1}: Total Discount ${newDiscou
 
             shardDisplay.textContent = (this.player.aetheriumShards || 0).toLocaleString();
             
-            // This logic allows spending Shards for permanent buffs
             const perks = [
                 { id: 'costReduction', name: 'Aetheric Efficiency', desc: 'Reduces Gold cost of all warps.', bonus: '5%' }
             ];
 
-            // Inside renderNetworkTab()
-        container.innerHTML = perks.map(perk => {
-            // Fetch actual rank
-            const currentRank = this.player.teleportNetwork?.[perk.id] || 0;
-            // Calculate current percentage (5% per rank)
-            const currentDiscount = currentRank * 5;
-            
-            return `
-            <div class="bg-black/40 p-3 rounded border border-white/10">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-cyan-400 font-bold text-xs uppercase">${perk.name}</p>
-                        <p class="text-[10px] text-gray-400">${perk.desc}</p>
-                        <div class="flex gap-3 mt-1">
-                            <p class="text-[10px] text-yellow-500 font-bold">RANK: ${currentRank}</p>
-                            <p class="text-[10px] text-green-400 font-bold">DISCOUNT: ${currentDiscount}%</p>
+            container.innerHTML = perks.map(perk => {
+                const currentRank = this.player.teleportNetwork?.[perk.id] || 0;
+                const currentDiscount = currentRank * 5;
+                
+                return `
+                <div class="bg-black/40 p-3 rounded border border-white/10">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-cyan-400 font-bold text-xs uppercase">${perk.name}</p>
+                            <p class="text-[10px] text-gray-400">${perk.desc}</p>
+                            <div class="flex gap-3 mt-1">
+                                <p class="text-[10px] text-yellow-500 font-bold">RANK: ${currentRank}</p>
+                                <p class="text-[10px] text-green-400 font-bold">DISCOUNT: ${currentDiscount}%</p>
+                            </div>
                         </div>
+                        <button class="glass-button px-3 py-1 text-[10px]" onclick="window.PortalManager.upgradePerk('${perk.id}')">Upgrade</button>
                     </div>
-                    <button class="glass-button px-3 py-1 text-[10px]" onclick="window.PortalManager.upgradePerk('${perk.id}')">Upgrade</button>
                 </div>
-            </div>
-        `}).join('');
-        },
-        // --- STEP 4 INJECTION END ---
-        
-    }; // End of PortalManager
+            `}).join('');
+        }
+    };
 
-    window.PortalManager = PortalManager; // This bridges the onclick events to the object
+    window.PortalManager = PortalManager; 
     window.ShopManager = { init: (player) => PortalManager.init(player) };
-    
-
 </script>
 </body>
 </html>

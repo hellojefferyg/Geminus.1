@@ -722,8 +722,8 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
       this.panOffset = { x: 0, y: 0 };
       this.zoom = 1;
       
-      // Reload zone
-      await this.loadZone(zoneData);
+      // Reload zone, passing the explicit target coordinates from the portal
+      await this.loadZone(zoneData, parseInt(targetX), parseInt(targetY));
       
       if (this.UIManager) this.UIManager.updatePlayerStatusUI();
     } catch (err) {
@@ -891,7 +891,7 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
    * Loads a specific zone, resets player spawn, and triggers a full UI/Map refresh.
    * @param {Object} zoneData - Raw JSON data from the MapDataStore.
    */
-  async loadZone(zoneData) {
+  async loadZone(zoneData, forceX, forceY) {
     this.isLoaded = false;
     if (!zoneData) return;
 
@@ -910,12 +910,20 @@ const path = this.aStarPathfind(gridForPathfinder, playerPos, target, tileType |
       titleEl.textContent = resolvedName;
     }
 
-    // 2. Handle Player Spawning (Priority: Master SpawnPoints > Safe Center)
+    // 2. Handle Player Spawning
     if (this.state.player) {
         let spawnFound = false;
 
-        // A. Priority 1: Use explicit SpawnPoints from the _master.json config
-        if (zoneData.spawnPoints && zoneData.spawnPoints.length > 0) {
+        // A. Priority 1: Use explicit coordinates passed from the Portal Transition
+        if (forceX !== undefined && forceY !== undefined && !isNaN(forceX) && !isNaN(forceY)) {
+            this.state.player.pos.x = forceX;
+            this.state.player.pos.y = forceY;
+            spawnFound = true;
+            console.log(`📍 Spawn: Portal Warp directly to [${forceX}, ${forceY}]`);
+        }
+
+        // B. Priority 2: Use explicit SpawnPoints from the _master.json config
+        if (!spawnFound && zoneData.spawnPoints && zoneData.spawnPoints.length > 0) {
             this.state.player.pos.x = zoneData.spawnPoints[0].x;
             this.state.player.pos.y = zoneData.spawnPoints[0].y;
             spawnFound = true;
